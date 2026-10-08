@@ -1,6 +1,6 @@
 # Battle-Mage Mode
 
-A self-imposed challenge mode for Old School RuneScape. Swear an oath to one of four gods (Saradomin, Zamorak, Guthix or Zaros) and play by the Battle-Mage rules: magic runs on a resource called **PKP**, and your gear, spells and teleports are limited by the god you serve.
+A self-imposed challenge mode for Old School RuneScape. Swear an oath to one of four gods (Saradomin, Zamorak, Guthix or Zaros) and play by the Battle-Mage rules: magic runs on a resource called **PKP**, and your gear/gameplay are shaped by the system in correlation to whichever god you serve.
 
 ## How it works
 
