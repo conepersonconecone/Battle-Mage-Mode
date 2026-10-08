@@ -81,6 +81,7 @@ public class BattleMagePlugin extends Plugin
 	@Inject private OnboardingOverlay onboardingOverlay;
 	@Inject private ClientToolbar clientToolbar;
 	@Inject private ItemManager itemManager;
+	@Inject private Sfx sfx;
 	@Inject private OverlayManager overlayManager;
 	@Inject private PkpBarOverlay barOverlay;
 	@Inject private EffectTimerOverlay effectTimerOverlay;
@@ -582,9 +583,6 @@ public class BattleMagePlugin extends Plugin
 	@Override
 	protected void shutDown()
 	{
-		// The clip holds a line on the audio device, so it is released here rather than left open
-		// for the life of the client.
-		Sfx.dispose();
 		// an editor left open must not leave its preview (or its mouse listener) behind
 		look.cancel();
 		overlayManager.remove(barOverlay);
@@ -2671,7 +2669,7 @@ public class BattleMagePlugin extends Plugin
 			// The sting rides the same guard as the animation, so it plays exactly when the bar
 			// first appears and never again for a god swapped later - the player is already looking
 			// at the bar by then, and a sound with nothing to announce is just noise.
-			Sfx.play(Sfx.OATH_REVEAL, OATH_SOUND_VOLUME);
+			sfx.play(Sfx.OATH_REVEAL, OATH_SOUND_VOLUME);
 		}
 	}
 
