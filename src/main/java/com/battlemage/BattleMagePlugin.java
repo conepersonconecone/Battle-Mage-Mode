@@ -72,9 +72,16 @@ public class BattleMagePlugin extends Plugin
 	private static final long TICK_MS_L = 600L;
 	/** Volume (0-100) of the sting played once when the PKP bar first appears. */
 	private static final int OATH_SOUND_VOLUME = 70;
+	private static final int TITHES_SOUND_VOLUME = 25;
+	private static final int TITHES_CLICK_VOLUME = 35;
+	/** How far below full volume the swell starts, in dB. */
+	private static final double TITHES_SWELL_START_DB = -18.0;
+	/** How long the TITHES choir takes to swell from a whisper to full volume. */
+	private static final long TITHES_SWELL_MS = 9000L;
 
 	@Inject private Client client;
 	@Inject private ClientThread clientThread;
+	@Inject private java.util.concurrent.ScheduledExecutorService executor;
 	@Inject private ConfigManager configManager;
 	@Inject private Appearance look;
 	@Inject private Rules rules;
@@ -503,6 +510,8 @@ public class BattleMagePlugin extends Plugin
 					clientThread.invoke(() -> noteLevelUp("Magic", 88, skillColor(Skill.MAGIC)));
 				}
 			});
+		panel.setOnTithesHover(this::tithesChoir);
+		panel.setOnTithesClick(this::tithesClicked);
 		refreshNavButton();
 
 		// No god chosen yet: show the chooser rather than silently enforcing nothing.
@@ -581,9 +590,55 @@ public class BattleMagePlugin extends Plugin
 		}
 	}
 
+	private volatile java.util.concurrent.ScheduledFuture<?> tithesChoirTask;
+	private volatile long tithesChoirStartMs;
+	private int tithesGrain;
+
+	/**
+	 * Starts or stops the TITHES choir. While the mouse is on the button, overlapping slices of the
+	 * pad are played back to back, each a little louder, so the sound swells over TITHES_SWELL_MS and
+	 * then holds for as long as the mouse stays. Leaving stops the slices at once; the last one fades
+	 * out by itself in a fraction of a second.
+	 */
+	private synchronized void tithesChoir(boolean on)
+	{
+		if (tithesChoirTask != null)
+		{
+			tithesChoirTask.cancel(false);
+			tithesChoirTask = null;
+		}
+		if (!on)
+		{
+			return;
+		}
+		tithesChoirStartMs = System.currentTimeMillis();
+		tithesChoirTask = executor.scheduleAtFixedRate(this::playTithesGrain, 0, Sfx.TITHES_GRAIN_MS,
+			java.util.concurrent.TimeUnit.MILLISECONDS);
+	}
+
+	private void playTithesGrain()
+	{
+		double x = Math.min(1.0, (System.currentTimeMillis() - tithesChoirStartMs) / (double) TITHES_SWELL_MS);
+		// The swell rises evenly in loudness (linear in dB) from a soft start to the set volume, then
+		// holds. Linear in dB, not in amplitude, so it is audible from the first second instead of
+		// spending half the swell too quiet to hear.
+		double db = TITHES_SWELL_START_DB * (1.0 - x) + 20.0 * Math.log10(TITHES_SOUND_VOLUME / 100.0);
+		// swell slices while it builds, then the loop (same pad plus shimmer) holds
+		String[] set = x < 1.0 ? Sfx.TITHES_SWELL : Sfx.TITHES_LOOP;
+		sfx.playGain(set[tithesGrain++ % set.length], (float) db);
+	}
+
+	/** TITHES was clicked: the choir stops (its last slice fades under the new sound) and the chime plays. */
+	private void tithesClicked()
+	{
+		tithesChoir(false);
+		executor.execute(() -> sfx.play(Sfx.TITHES_CLICK, TITHES_CLICK_VOLUME));
+	}
+
 	@Override
 	protected void shutDown()
 	{
+		tithesChoir(false);
 		// an editor left open must not leave its preview (or its mouse listener) behind
 		look.cancel();
 		overlayManager.remove(barOverlay);
