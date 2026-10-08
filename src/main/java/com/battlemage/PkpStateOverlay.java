@@ -15,8 +15,8 @@ import net.runelite.client.ui.overlay.OverlayLayer;
 import net.runelite.client.ui.overlay.OverlayPosition;
 
 /**
- * Full-canvas punishment overlay. While PSI is depleted it stays on screen (grey wash + PSI DEPLETED)
- * until you melee back to full; while overloaded it shows PSI OVERLOAD until you cast. Both pulse gently.
+ * Full-canvas punishment overlay. While PKP is depleted it stays on screen (grey wash + PKP DEPLETED)
+ * until you melee back to full; while overloaded it shows PKP OVERLOAD until you cast. Both pulse gently.
  */
 class PkpStateOverlay extends Overlay
 {
@@ -106,12 +106,6 @@ class PkpStateOverlay extends Overlay
 		Color base = critical ? look.criticalColor()
 			: (depleted ? look.depletedColor() : look.overloadColor());
 
-		// Each text sits wherever the player dragged it in the appearance editor. CRITICAL has its own
-		// position (default: along the bottom, so the game view stays playable); depleted and
-		// overload share one.
-		final int cx = (int) Math.round(cw * ((critical ? look.criticalTextXPercent() : look.stateTextXPercent()) / 100.0));
-		final int cy = (int) Math.round(ch * ((critical ? look.criticalTextYPercent() : look.stateTextYPercent()) / 100.0));
-
 		int baseSize = critical ? Math.max(20, ch / 15) : Math.max(28, ch / 9);
 		int scale = critical ? look.criticalTextScalePercent()
 			: (depleted ? look.depletedTextScalePercent() : look.overloadTextScalePercent());
@@ -122,8 +116,28 @@ class PkpStateOverlay extends Overlay
 
 		g.setFont(new Font(Font.SANS_SERIF, Font.BOLD, size));
 		FontMetrics fm = g.getFontMetrics();
-		int ty = cy + fm.getAscent() / 2;
-		int tx = cx - fm.stringWidth(text) / 2;
+
+		// Each text sits wherever the player dragged it in the appearance editor (CRITICAL has its own
+		// spot; depleted and overload share one). Until it is moved by hand it sits centred above the
+		// PKP bar with its bottom ANCHOR_GAP_PX above the bar's top edge. With the bar hidden it falls
+		// back to the middle of the screen.
+		final double xp = critical ? look.criticalTextXPercent() : look.stateTextXPercent();
+		final double yp = critical ? look.criticalTextYPercent() : look.stateTextYPercent();
+		int tx;
+		int ty;
+		java.awt.Rectangle bar = plugin.pkpBarBounds();
+		if ((xp < 0 || yp < 0) && look.showBar() && bar.width > 0 && bar.height > 0)
+		{
+			ty = bar.y - Appearance.ANCHOR_GAP_PX - fm.getDescent();
+			tx = (int) Math.round(bar.getCenterX()) - fm.stringWidth(text) / 2;
+		}
+		else
+		{
+			int cx = (int) Math.round(cw * ((xp < 0 ? 50 : xp) / 100.0));
+			int cy = (int) Math.round(ch * ((yp < 0 ? 50 : yp) / 100.0));
+			ty = cy + fm.getAscent() / 2;
+			tx = cx - fm.stringWidth(text) / 2;
+		}
 
 		// Build the glyph outline once: stroking it gives a clean, gap-free black edge at any font
 		// size, which reads far better over the 3D scene than the old offset-drawString halo.

@@ -34,7 +34,7 @@ public interface BattleMageConfig extends Config
 	@ConfigItem(keyName = "castCardsEnabled", name = "castCardsEnabled", description = "", hidden = true)
 	default boolean castCardsEnabled()
 	{
-		return false;
+		return true;
 	}
 
 	@ConfigItem(keyName = "levelUpCards", name = "levelUpCards", description = "", hidden = true)
@@ -172,7 +172,7 @@ public interface BattleMageConfig extends Config
 	@ConfigItem(keyName = "desaturationStrength", name = "desaturationStrength", description = "", hidden = true)
 	default int desaturationStrength()
 	{
-		return 140;
+		return 77;
 	}
 
 	@ConfigItem(keyName = "depletedTextScalePercent", name = "depletedTextScalePercent", description = "", hidden = true)
@@ -196,13 +196,13 @@ public interface BattleMageConfig extends Config
 	@ConfigItem(keyName = "depletedText", name = "depletedText", description = "", hidden = true)
 	default String depletedText()
 	{
-		return "PSI DEPLETED";
+		return "PKP DEPLETED";
 	}
 
 	@ConfigItem(keyName = "overloadText", name = "overloadText", description = "", hidden = true)
 	default String overloadText()
 	{
-		return "PSI OVERLOAD";
+		return "PKP OVERLOAD";
 	}
 
 	@ConfigItem(keyName = "criticalText", name = "criticalText", description = "", hidden = true)
@@ -232,25 +232,25 @@ public interface BattleMageConfig extends Config
 	@ConfigItem(keyName = "stateTextXPercent", name = "stateTextXPercent", description = "", hidden = true)
 	default double stateTextXPercent()
 	{
-		return 50;
+		return -1;
 	}
 
 	@ConfigItem(keyName = "stateTextYPercent", name = "stateTextYPercent", description = "", hidden = true)
 	default double stateTextYPercent()
 	{
-		return 50;
+		return -1;
 	}
 
 	@ConfigItem(keyName = "criticalTextXPercent", name = "criticalTextXPercent", description = "", hidden = true)
 	default double criticalTextXPercent()
 	{
-		return 50;
+		return -1;
 	}
 
 	@ConfigItem(keyName = "criticalTextYPercent", name = "criticalTextYPercent", description = "", hidden = true)
 	default double criticalTextYPercent()
 	{
-		return 88;
+		return -1;
 	}
 
 	@ConfigItem(keyName = "pkpPopupsEnabled", name = "pkpPopupsEnabled", description = "", hidden = true)

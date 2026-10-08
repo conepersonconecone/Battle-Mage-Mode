@@ -49,6 +49,7 @@ import net.runelite.client.ui.NavigationButton;
 import net.runelite.client.ui.overlay.OverlayManager;
 import net.runelite.client.game.ItemEquipmentStats;
 import net.runelite.client.game.ItemStats;
+import net.runelite.client.util.Text;
 
 @Slf4j
 @PluginDescriptor(
@@ -1326,8 +1327,10 @@ public class BattleMagePlugin extends Plugin
 		{
 			return;
 		}
-		// Game messages only: anything with a sender is another player typing, never the real sip.
-		if (event.getName() != null && !event.getName().isEmpty())
+		// The sip line is "said" by the player who drank, so it arrives as a chat message from you (or,
+		// depending on the client, with no sender). Anything from ANOTHER player is someone typing the
+		// words, never a real sip.
+		if (!fromLocalPlayerOrGame(event.getName()))
 		{
 			return;
 		}
@@ -1345,6 +1348,18 @@ public class BattleMagePlugin extends Plugin
 			pendingTeaItemId = -1;
 			applyConsumable(id);
 		}
+	}
+
+	/** True when a chat line has no sender (a game message) or was sent by the logged-in player. */
+	private boolean fromLocalPlayerOrGame(String sender)
+	{
+		if (sender == null || sender.isEmpty())
+		{
+			return true;
+		}
+		Player me = client.getLocalPlayer();
+		String myName = me == null ? null : me.getName();
+		return myName != null && Text.sanitize(sender).equalsIgnoreCase(Text.sanitize(myName));
 	}
 
 	// ============================================================ click handling
@@ -2898,6 +2913,13 @@ public class BattleMagePlugin extends Plugin
 	}
 
 	// ============================================================ state queries (overlays)
+
+	/** Where the PKP bar was last drawn (empty when it is hidden or not drawn yet). */
+	java.awt.Rectangle pkpBarBounds()
+	{
+		java.awt.Rectangle b = barOverlay.getBounds();
+		return b == null ? new java.awt.Rectangle() : new java.awt.Rectangle(b);
+	}
 
 	int getMaxPkp()
 	{

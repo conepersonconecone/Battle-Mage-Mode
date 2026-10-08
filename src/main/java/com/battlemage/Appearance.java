@@ -41,6 +41,12 @@ public class Appearance
 	/** Defaults, in one place, for the editor's "Reset to defaults". Match {@link BattleMageConfig}. */
 	static final Map<String, Object> DEFAULTS = new LinkedHashMap<>();
 
+	/** A state-text position of -1 means "not placed by hand": the text sits centred above the PKP bar. */
+	static final double ANCHORED = -1.0;
+
+	/** Gap, in pixels, between the bottom of the state text and the top of the PKP bar. */
+	static final int ANCHOR_GAP_PX = 50;
+
 	static
 	{
 		DEFAULTS.put("showBar", true);
@@ -59,24 +65,25 @@ public class Appearance
 		DEFAULTS.put("effectIconSize", 34);
 		DEFAULTS.put("effectBorderEnabled", true);
 		DEFAULTS.put("desaturateScreen", true);
-		DEFAULTS.put("desaturationStrength", 140);
+		DEFAULTS.put("desaturationStrength", 77);
 		DEFAULTS.put("depletedTextScalePercent", 100);
 		DEFAULTS.put("overloadTextScalePercent", 100);
 		DEFAULTS.put("criticalTextScalePercent", 100);
-		DEFAULTS.put("depletedText", "PSI DEPLETED");
-		DEFAULTS.put("overloadText", "PSI OVERLOAD");
+		DEFAULTS.put("depletedText", "PKP DEPLETED");
+		DEFAULTS.put("overloadText", "PKP OVERLOAD");
 		DEFAULTS.put("criticalText", "CRITICAL OVERLOAD");
 		DEFAULTS.put("depletedColor", new Color(0xFF2A2A));
 		DEFAULTS.put("overloadColor", new Color(0xC04AFF));
 		DEFAULTS.put("criticalColor", new Color(0xFFB300));
-		DEFAULTS.put("stateTextXPercent", 50.0);
-		DEFAULTS.put("stateTextYPercent", 50.0);
-		DEFAULTS.put("criticalTextXPercent", 50.0);
-		DEFAULTS.put("criticalTextYPercent", 88.0);
+		// -1 = not placed by hand: sit centred, 50px above the PKP bar (see PkpStateOverlay)
+		DEFAULTS.put("stateTextXPercent", ANCHORED);
+		DEFAULTS.put("stateTextYPercent", ANCHORED);
+		DEFAULTS.put("criticalTextXPercent", ANCHORED);
+		DEFAULTS.put("criticalTextYPercent", ANCHORED);
 		DEFAULTS.put("pkpPopupsEnabled", true);
 		DEFAULTS.put("pkpPopupSeconds", 3);
 		DEFAULTS.put("inventoryTooltips", true);
-		DEFAULTS.put("castCardsEnabled", false);
+		DEFAULTS.put("castCardsEnabled", true);
 		DEFAULTS.put("levelUpCards", true);
 		DEFAULTS.put("meleeColor", new Color(0xF2F2F2));
 		DEFAULTS.put("combatSpellColor", new Color(0x46C8FF));
@@ -295,7 +302,7 @@ public class Appearance
 	/** The default position for the given state's text, in percent of the canvas. */
 	static double[] defaultPosition(Sample s)
 	{
-		return s == Sample.CRITICAL ? new double[]{50, 88} : new double[]{50, 50};
+		return new double[]{ANCHORED, ANCHORED};
 	}
 
 	private void moveStateText(int cx, int cy)

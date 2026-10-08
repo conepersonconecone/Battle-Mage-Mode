@@ -218,10 +218,12 @@ class AppearanceEditor extends JPanel
 	private void refreshPosition()
 	{
 		boolean critical = stateSample == Appearance.Sample.CRITICAL;
-		String where = String.format("%s position: %.0f%% across, %.0f%% down",
-			critical ? "Critical" : "Depleted / overload",
-			critical ? look.criticalTextXPercent() : look.stateTextXPercent(),
-			critical ? look.criticalTextYPercent() : look.stateTextYPercent());
+		double x = critical ? look.criticalTextXPercent() : look.stateTextXPercent();
+		double y = critical ? look.criticalTextYPercent() : look.stateTextYPercent();
+		String label = critical ? "Critical" : "Depleted / overload";
+		String where = (x < 0 || y < 0)
+			? label + " position: above the PKP bar"
+			: String.format("%s position: %.0f%% across, %.0f%% down", label, x, y);
 		position.setText("<html><body style='width:170px'>" + where
 			+ "<br>Drag the text on screen to move it.</body></html>");
 	}
