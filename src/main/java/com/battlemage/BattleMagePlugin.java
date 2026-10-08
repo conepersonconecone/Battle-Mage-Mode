@@ -1202,7 +1202,7 @@ public class BattleMagePlugin extends Plugin
 		final ItemComposition comp = itemManager.getItemComposition(itemId);
 		final String name = comp == null ? "" : comp.getName().toLowerCase(Locale.ROOT);
 
-		final ItemStats stats = itemManager.getItemStats(itemId, false);
+		final ItemStats stats = itemManager.getItemStats(itemId);
 		final ItemEquipmentStats eq = stats != null ? stats.getEquipment() : null;
 		final boolean weaponSlot = eq != null && eq.getSlot() == WEAPON_SLOT;
 
@@ -1740,7 +1740,7 @@ public class BattleMagePlugin extends Plugin
 		{
 			return false;
 		}
-		ItemStats stats = itemManager.getItemStats(weapon, false);
+		ItemStats stats = itemManager.getItemStats(weapon);
 		ItemEquipmentStats eq = stats == null ? null : stats.getEquipment();
 		return eq != null && eq.isTwoHanded();
 	}
@@ -1898,7 +1898,7 @@ public class BattleMagePlugin extends Plugin
 	/** True for an item worn in the weapon slot (by its item stats); used only for the tooltip. */
 	private boolean isMeleeWieldable(int itemId)
 	{
-		ItemStats stats = itemManager.getItemStats(itemId, false);
+		ItemStats stats = itemManager.getItemStats(itemId);
 		ItemEquipmentStats eq = stats == null ? null : stats.getEquipment();
 		return stats != null && stats.isEquipable() && eq != null && eq.getSlot() == WEAPON_SLOT;
 	}
@@ -1906,7 +1906,7 @@ public class BattleMagePlugin extends Plugin
 	/** True for an item worn in the shield slot (by its item stats); used only for the tooltip. */
 	private boolean isShieldSlotItem(int itemId)
 	{
-		ItemStats stats = itemManager.getItemStats(itemId, false);
+		ItemStats stats = itemManager.getItemStats(itemId);
 		ItemEquipmentStats eq = stats == null ? null : stats.getEquipment();
 		return stats != null && stats.isEquipable() && eq != null && eq.getSlot() == SHIELD_SLOT;
 	}

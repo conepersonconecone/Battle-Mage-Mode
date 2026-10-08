@@ -11,7 +11,6 @@ import java.util.List;
 import javax.inject.Inject;
 import net.runelite.api.Client;
 import net.runelite.api.widgets.Widget;
-import net.runelite.api.widgets.WidgetInfo;
 import net.runelite.client.ui.overlay.Overlay;
 import net.runelite.client.ui.overlay.OverlayLayer;
 import net.runelite.client.ui.overlay.OverlayPosition;
@@ -28,6 +27,9 @@ import net.runelite.client.ui.overlay.OverlayPosition;
  */
 class OffLimitItemOverlay extends Overlay
 {
+	/** The inventory interface (group 149, child 0), by number rather than the retired WidgetInfo enum. */
+	private static final int INVENTORY_GROUP = 149;
+
 	// the worn-equipment interface group; item icons within it carry their worn item id
 	private static final int EQUIPMENT_GROUP = 387;
 
@@ -74,7 +76,7 @@ class OffLimitItemOverlay extends Overlay
 		final List<Rectangle> exempt = new ArrayList<>();
 
 		// inventory tab: wash it, mark every non-exempt item, and note any exempt item carried
-		Widget inv = client.getWidget(WidgetInfo.INVENTORY);
+		Widget inv = client.getWidget(INVENTORY_GROUP, 0);
 		if (inv != null && !inv.isHidden())
 		{
 			fill(g, wash, inv.getBounds());
@@ -209,7 +211,7 @@ class OffLimitItemOverlay extends Overlay
 
 	private void renderNormal(Graphics2D g)
 	{
-		Widget inv = client.getWidget(WidgetInfo.INVENTORY);
+		Widget inv = client.getWidget(INVENTORY_GROUP, 0);
 		if (inv == null || inv.isHidden())
 		{
 			return;
