@@ -50,6 +50,8 @@ class BattleMagePanel extends PluginPanel
 	private static final String CREATOR_URL = "https://www.youtube.com/@AConePerson";
 	private static final String TITHES_URL = "https://ko-fi.com/coneperson";
 	private static final String SUGGESTIONS_URL = "https://discord.gg/mxtk4RRCmr";
+	/** The rulebook, hosted with GitHub Pages from the plugin repo's docs/ folder. */
+	private static final String RULEBOOK_URL = "https://conepersonconecone.github.io/Battle-Mage-Mode/";
 
 	BattleMagePanel(Oath oath, Rules rules, Appearance look, Runnable onChooseGod, AppearanceEditor.Previews previews)
 	{
@@ -291,11 +293,8 @@ class BattleMagePanel extends PluginPanel
 		rules.setFocusPainted(false);
 		rules.setAlignmentX(Component.LEFT_ALIGNMENT);
 		rules.setMaximumSize(new Dimension(Integer.MAX_VALUE, 26));
-		// Says what the page actually holds. It used to promise "every rule, item and effect", which
-		// stopped being true when the effect tables came off the page and the item lists moved behind
-		// the Spoilers button - a tooltip that oversells is the same drift as a page that misquotes
-		// the codex, just in the other direction.
-		rules.addActionListener(e -> Rulebook.open());
+		// The rulebook is a web page (GitHub Pages), opened in the player's browser.
+		rules.addActionListener(e -> LinkBrowser.browse(RULEBOOK_URL));
 		return rules;
 	}
 

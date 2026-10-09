@@ -574,20 +574,10 @@ public class BattleMagePlugin extends Plugin
 		});
 	}
 
-	/**
-	 * Selects the button so its panel shows again. Looked up by name because {@code openPanel} only
-	 * exists on newer RuneLite builds; on an older one the panel simply stays closed.
-	 */
+	/** Selects the button so its panel shows again. */
 	private void reopenPanel(NavigationButton button)
 	{
-		try
-		{
-			clientToolbar.getClass().getMethod("openPanel", NavigationButton.class).invoke(clientToolbar, button);
-		}
-		catch (ReflectiveOperationException | RuntimeException e)
-		{
-			log.debug("Could not reopen the side panel", e);
-		}
+		clientToolbar.openPanel(button);
 	}
 
 	private volatile java.util.concurrent.ScheduledFuture<?> tithesChoirTask;
