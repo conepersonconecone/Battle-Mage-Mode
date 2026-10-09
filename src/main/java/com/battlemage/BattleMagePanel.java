@@ -49,6 +49,7 @@ class BattleMagePanel extends PluginPanel
 	/** The channel the Creator button opens. */
 	private static final String CREATOR_URL = "https://www.youtube.com/@AConePerson";
 	private static final String TITHES_URL = "https://ko-fi.com/coneperson";
+	private static final String SUGGESTIONS_URL = "https://discord.gg/mxtk4RRCmr";
 
 	BattleMagePanel(Oath oath, Rules rules, Appearance look, Runnable onChooseGod, AppearanceEditor.Previews previews)
 	{
@@ -220,6 +221,8 @@ class BattleMagePanel extends PluginPanel
 		reselect.add(tithesShrine());
 		reselect.add(Box.createVerticalStrut(22));
 		reselect.add(creatorButton());
+		reselect.add(Box.createVerticalStrut(4));
+		reselect.add(linkButton("Suggestions", SUGGESTIONS_URL));
 	}
 
 	/** Opens the appearance editor in place of the normal panel. */
@@ -294,6 +297,18 @@ class BattleMagePanel extends PluginPanel
 		// the codex, just in the other direction.
 		rules.addActionListener(e -> Rulebook.open());
 		return rules;
+	}
+
+	/** A plain side-panel button that opens a web page in the player's browser. */
+	private JButton linkButton(String label, String url)
+	{
+		JButton b = new JButton(label);
+		b.setFont(FontManager.getRunescapeSmallFont());
+		b.setFocusPainted(false);
+		b.setAlignmentX(Component.LEFT_ALIGNMENT);
+		b.setMaximumSize(new Dimension(Integer.MAX_VALUE, 26));
+		b.addActionListener(e -> LinkBrowser.browse(url));
+		return b;
 	}
 
 	/** The channel the plugin came from. */
