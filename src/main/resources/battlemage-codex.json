@@ -1683,7 +1683,6 @@
           "Hunters' sunlight crossbow",
           "Venator Bow",
           "Zaryte Crossbow",
-          "Arkan Blade",
           "Staff of Balance",
           "Guthix crozier",
           "Guthix banner",
@@ -1844,7 +1843,8 @@
           "Verac's flail 50",
           "Verac's flail 25",
           "Verac's flail 0",
-          "Dragon Dagger"
+          "Dragon Dagger",
+          "Arkan Blade"
         ],
         "weaponExceptionDefaultPkp": 50,
         "pkpWeapons": {
@@ -3682,7 +3682,9 @@
           "Eclipse Moon Chestplate",
           "Eclipse Moon Tassets",
           "Imbued ancient cape",
-          "Imbued ancient max cape"
+          "Imbued ancient max cape",
+          "Armadyl chestplate",
+          "Bandos tassets"
         ],
         "shields": [
           "Ancient Kiteshield",
@@ -3945,7 +3947,6 @@
       },
       "weapons": {
         "blockedWeapons": [
-          "Dark Bow",
           "Bronze Sword",
           "Training Sword",
           "Iron Sword",
@@ -4235,7 +4236,8 @@
           "Karil's crossbow 25",
           "Karil's crossbow 0",
           "Toxic Blowpipe",
-          "Scorching Bow"
+          "Scorching Bow",
+          "Dark Bow"
         ],
         "rangedRestoreEnabled": true,
         "rangedRestore": 33
