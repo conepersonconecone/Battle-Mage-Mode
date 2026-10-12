@@ -27,15 +27,17 @@ import net.runelite.client.ui.overlay.OverlayPriority;
  * The oath flow: a compact pop-up over the game view.
  *
  * <ul>
- *   <li>{@code GODS} - the four gods as a diamond. Clicking a god
+ *   <li>{@code GODS} - the four gods in quadrants, as on the plugin icon. Clicking a god
  *       highlights it; <b>Lock-in</b> commits, naming the doctrine rather than the god - you are
  *       choosing an alignment, and the god is who embodies it. Lock-in swears the oath.</li>
  *   <li>{@code TIP} - shown once ever, after the first Lock-in: a short note pointing at the side
- *       panel for the rulebook and for changing faction. <b>Got it</b> closes the flow. Every later
+ *       panel for the rulebook, the Wise Old Man for changing faction, and his BMM option. <b>Got it</b> closes the flow. Every later
  *       Lock-in closes the flow straight away. Either way the reveal callback fires on close.</li>
  * </ul>
  *
- * <p>Nothing here is permanent - the side panel can change the god again after standing down.
+ * <p>Opened only by {@link WiseOldMan}, after the player rings the Cowbell amulet beside him and
+ * chooses <i>Begin Battle-Mage Mode</i>. Nothing here is permanent - denounce from the side panel,
+ * then return to him to choose again.
  */
 @Singleton
 public class OnboardingOverlay extends Overlay
@@ -44,9 +46,8 @@ public class OnboardingOverlay extends Overlay
 	private static final int CARD_W = 104;
 	/** Crest, name, epithet - nothing more. */
 	private static final int CARD_H = 82;
-	/** The gap between Saradomin and Zamorak. Guthix and Zaros sit centred in it, below. */
-	private static final int SPREAD = 34;
-	private static final int ROW_GAP = 8;
+	/** The gap between the four quadrants, across and down. */
+	private static final int QUAD_GAP = 10;
 	private static final int BTN_H = 26;
 
 	private static final Color SCRIM = new Color(6, 8, 11, 216);
@@ -70,7 +71,9 @@ public class OnboardingOverlay extends Overlay
 	private static final String[] TIP_COPY = {
 		"Open the Battle-Mage Mode side panel to read the rulebook, which explains how this game mode works.",
 		"",
-		"To change factions, use the side panel too: denounce your faction there, then select a new one.",
+		"To change factions, denounce yours in the side panel, then ring the Cowbell Amulet in front of the Wise Old Man again.",
+		"",
+		"Questions? Right-click the Wise Old Man and choose BMM.",
 	};
 
 	private enum Screen
@@ -148,6 +151,12 @@ public class OnboardingOverlay extends Overlay
 		// rather than starting from a blank screen.
 		selected = oath.getFaction();
 		mouseManager.registerMouseListener(mouseAdapter);
+	}
+
+	/** Whether the oath pop-up is on screen. */
+	boolean isActive()
+	{
+		return active;
 	}
 
 	public void close()
@@ -260,16 +269,15 @@ public class OnboardingOverlay extends Overlay
 	/**
 	 * The god screen.
 	 *
-	 * <p>The gods are laid out as a diamond: Saradomin and Zamorak facing each other, Guthix centred
-	 * between them, Zaros alone at the bottom. It reads as the relationship between them rather than
-	 * as a list.
+	 * <p>The gods each hold a quadrant, matching the four sparkles around the cone on the plugin
+	 * icon: Saradomin top left, Zamorak top right, Guthix bottom left, Zaros bottom right.
 	 *
 	 * <p>The panel is measured before it is drawn, walking the same arithmetic the draw pass walks,
 	 * so the frame always closes below Lock-in rather than running off the bottom of the viewport.
 	 */
 	private void renderGods(Graphics2D g, Rectangle view)
 	{
-		int gridW = CARD_W * 2 + SPREAD;
+		int gridW = CARD_W * 2 + QUAD_GAP;
 		int panelW = gridW + PAD * 2;
 		int innerW = panelW - PAD * 2;
 
@@ -280,8 +288,7 @@ public class OnboardingOverlay extends Overlay
 			+ 24                                  // title
 			+ 6
 			+ cardBlock                           // Saradomin and Zamorak
-			+ ROW_GAP + cardBlock                 // Guthix
-			+ ROW_GAP + cardBlock                 // Zaros
+			+ QUAD_GAP + cardBlock                // Guthix and Zaros
 			+ gapBeforeButton
 			+ BTN_H                               // Lock in
 			+ PAD;
@@ -291,7 +298,7 @@ public class OnboardingOverlay extends Overlay
 		drawPanel(g, px, py, panelW, panelH);
 
 		int left = px + PAD;
-		int centreX = left + (innerW - CARD_W) / 2;
+		int right = left + CARD_W + QUAD_GAP;
 		int y = py + PAD;
 
 		g.setFont(TITLE_FONT);
@@ -303,13 +310,11 @@ public class OnboardingOverlay extends Overlay
 		y += 6;
 
 		drawGodCard(g, Faction.SARADOMIN, left, y);
-		drawGodCard(g, Faction.ZAMORAK, left + CARD_W + SPREAD, y);
-		y += cardBlock + ROW_GAP;
+		drawGodCard(g, Faction.ZAMORAK, right, y);
+		y += cardBlock + QUAD_GAP;
 
-		drawGodCard(g, Faction.GUTHIX, centreX, y);
-		y += cardBlock + ROW_GAP;
-
-		drawGodCard(g, Faction.ZAROS, centreX, y);
+		drawGodCard(g, Faction.GUTHIX, left, y);
+		drawGodCard(g, Faction.ZAROS, right, y);
 		y += cardBlock;
 
 		y += gapBeforeButton;
@@ -328,7 +333,8 @@ public class OnboardingOverlay extends Overlay
 		Faction f = oath.getFaction();
 		Color accent = f != null ? f.getPrimary() : new Color(0x7FA8D8);
 
-		int panelW = CARD_W * 2 + SPREAD + PAD * 2;
+		// the same width as the god screen, so the two screens share one frame
+		int panelW = CARD_W * 2 + QUAD_GAP + PAD * 2;
 		int innerW = panelW - PAD * 2;
 
 		// Drop lines off the end until the panel fits the viewport rather than letting the button

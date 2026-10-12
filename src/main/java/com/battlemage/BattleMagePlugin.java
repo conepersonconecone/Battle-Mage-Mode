@@ -25,12 +25,15 @@ import net.runelite.api.ItemComposition;
 import net.runelite.api.ItemContainer;
 import net.runelite.api.MenuAction;
 import net.runelite.api.MenuEntry;
+import net.runelite.api.NPC;
 import net.runelite.api.Player;
 import net.runelite.api.Quest;
 import net.runelite.api.QuestState;
 import net.runelite.api.Skill;
 import net.runelite.api.events.AnimationChanged;
+import net.runelite.api.ChatMessageType;
 import net.runelite.api.events.ChatMessage;
+import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.HitsplatApplied;
 import net.runelite.api.events.MenuEntryAdded;
@@ -40,6 +43,7 @@ import net.runelite.api.events.StatChanged;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
+import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.plugins.Plugin;
@@ -102,6 +106,10 @@ public class BattleMagePlugin extends Plugin
 	@Inject private OffLimitItemOverlay offLimitOverlay;
 	@Inject private SpellBlockOverlay spellBlockOverlay;
 	@Inject private CombatLockOverlay combatLockOverlay;
+	@Inject private WiseOldMan wiseOldMan;
+	@Inject private BeginHintOverlay beginHintOverlay;
+	@Inject private ChatDialogue chatDialogue;
+	@Inject private EventBus eventBus;
 
 	/** Side panel and its toolbar button, built in startUp so the panel can reach the plugin. */
 	private BattleMagePanel panel;
@@ -485,11 +493,25 @@ public class BattleMagePlugin extends Plugin
 		overlayManager.add(spellBlockOverlay);
 		overlayManager.add(combatLockOverlay);
 		overlayManager.add(onboardingOverlay);
+		overlayManager.add(beginHintOverlay);
+		beginHintOverlay.start();
 		log.info("[BATTLE-MAGE] Crests: {}", FactionSigils.crestReport());
 
-		// Finishing the oath flow (Lock-in, plus the one-time side-panel tip) makes the bar appear.
-		onboardingOverlay.setOnComplete(this::beginReveal);
-		panel = new BattleMagePanel(oath, rules, look, this::openOnboarding,
+		// Finishing the oath flow (Lock-in, plus the one-time side-panel tip) makes the bar appear,
+		// and the player is ordained into the god's service with that god's emote and effect.
+		onboardingOverlay.setOnComplete(() ->
+		{
+			beginReveal();
+			final Faction sworn = oath.getFaction();
+			clientThread.invoke(() -> ordain(sworn));
+		});
+		// The faction pop-up is reached only through the Wise Old Man: ring the Cowbell amulet beside
+		// him and choose Begin Battle-Mage Mode.
+		wiseOldMan.setOnBegin(this::openOnboarding);
+		wiseOldMan.setOnDenounce(this::denounceCeremony);
+		eventBus.register(wiseOldMan);
+		beginHintShown = false;
+		panel = new BattleMagePanel(oath, rules, look,
 			new AppearanceEditor.Previews()
 			{
 				@Override
@@ -514,11 +536,168 @@ public class BattleMagePlugin extends Plugin
 		panel.setOnTithesClick(this::tithesClicked);
 		refreshNavButton();
 
-		// No god chosen yet: show the chooser rather than silently enforcing nothing.
-		if (!oath.isSworn())
+		// No god chosen yet: point the way to the Wise Old Man, who is the only route to the chooser.
+		clientThread.invoke(this::showBeginHint);
+	}
+
+	/** Keys the ordination effects take in the player's spot-anim table; clear of the game's own. */
+	private static final int[] ORDAIN_SPOTANIM_KEYS = {0x0BA7, 0x0BA8, 0x0BA9, 0x0BAA, 0x0BAB};
+	/** How long Zamorak's flame burns, in client cycles (20ms each); the finale starts as it ends. */
+	private static final int FLAME_CYCLES = 70;
+	/** When Excalibur's glow rises on Saradomin's ordination: as the head slap ends. */
+	private static final int SARADOMIN_GLOW_DELAY_CYCLES = 75;
+	/** The gap between Guthix's Earth Blast impacts, in client cycles (20ms each). */
+	private static final int EARTH_BLAST_GAP_CYCLES = 30;
+
+	/**
+	 * The ordination: the moment a god is sworn, the player performs that god's emote inside that
+	 * god's effects, drawn from the game's own animations. Only emotes are used - nothing borrowed
+	 * from a weapon's attack, and nothing (like a teleport cast) that hides the player - so whatever is
+	 * held stays as it is. Client-side only: nobody else sees it and nothing is sent to the game.
+	 * Client thread only.
+	 *
+	 * <ul>
+	 *   <li>Saradomin - a slap of the head, crowned by the Saradomin sword's special-attack light,
+	 *       ending in Excalibur's blue glow.</li>
+	 *   <li>Zamorak - beckons in a pillar of Zamorak's flame and a swirl of Blood Barrage, then bursts
+	 *       into a Fire Blast impact and the dragon battleaxe special's red glow.</li>
+	 *   <li>Guthix - kneels in a druidic bloom and the green burst of Earth's Fury while Earth Blast
+	 *       strikes three times.</li>
+	 *   <li>Zaros - arms raised, swallowed by the Mark of Darkness and a burst of shadow.</li>
+	 * </ul>
+	 */
+	private void ordain(Faction faction)
+	{
+		if (faction == null)
 		{
-			openOnboarding();
+			return;
 		}
+		switch (faction)
+		{
+			case SARADOMIN:
+				// EMOTE_SLAP_HEAD; Saradomin sword special attack, then Excalibur's blue glow as it ends
+				ordainBeat(4275, new int[][]{{1213, 0}, {247, SARADOMIN_GLOW_DELAY_CYCLES}});
+				break;
+			case ZAMORAK:
+				// EMOTE_BECKON in one pillar of ZAMORAK_FLAME and a SPELL_BLOOD_BARRAGE_IMPACT swirl of red;
+				// as the flame ends, a FIREBLAST_IMPACT and the dragon battleaxe special's red glow
+				// (SP_ATTACKGLOW_RED - the effect only, no shout)
+				ordainBeat(864, new int[][]{
+					{78, 0},
+					{377, 0},
+					{131, FLAME_CYCLES},
+					{246, FLAME_CYCLES}});
+				break;
+			case GUTHIX:
+				// HUMAN_PRAY; DRUIDICSPIRIT_BLOOM_PLAYER_SPOTANIM, XBOWS_EARTHS_FURY_SPOT_ANIM, and
+				// EARTHBLAST_IMPACT three times over
+				ordainBeat(645, new int[][]{
+					{264, 0},
+					{755, 0},
+					{140, 0},
+					{140, EARTH_BLAST_GAP_CYCLES},
+					{140, EARTH_BLAST_GAP_CYCLES * 2}});
+				break;
+			case ZAROS:
+				// EMOTE_CHEER (arms raised) - an emote, NOT the teleport cast, which ends by hiding the
+				// player model; MARK_OF_DARKNESS_CAST_SPOTANIM, SHADOW_BARRAGE_IMPACT
+				ordainBeat(862, new int[][]{{1852, 0}, {383, 0}});
+				break;
+			default:
+				break;
+		}
+	}
+
+	/**
+	 * Plays one emote on the local player with effects on top, each given as {spot-anim id, delay in
+	 * client cycles}. Clears any effect left from an earlier ordination first. Client thread only.
+	 */
+	private void ordainBeat(int anim, int[][] spots)
+	{
+		Player me = client.getLocalPlayer();
+		if (me == null)
+		{
+			return;
+		}
+		me.setAnimation(anim);
+		me.setAnimationFrame(0);
+		for (int i = 0; i < ORDAIN_SPOTANIM_KEYS.length; i++)
+		{
+			me.removeSpotAnim(ORDAIN_SPOTANIM_KEYS[i]);
+			if (i < spots.length)
+			{
+				me.createSpotAnim(ORDAIN_SPOTANIM_KEYS[i], spots[i][0], 0, spots[i][1]);
+			}
+		}
+	}
+
+	/** How long the denouncing plays before the faction is actually left, in milliseconds. */
+	private static final long DENOUNCE_AFTER_MS = 2600L;
+	/** When the curse lands on the player after he starts casting, in client cycles (20ms each). */
+	private static final int DENOUNCE_HIT_DELAY_CYCLES = 50;
+	/** The key the denouncing effect takes in the Wise Old Man's spot-anim table. */
+	private static final int DENOUNCE_NPC_SPOTANIM_KEY = 0x0BAC;
+
+	/**
+	 * The denouncing, from the Wise Old Man's Change of Heart menu: he casts Curse at the player,
+	 * who reels as it lands and the oath's power leaves them in a puff of smoke. Then the faction is
+	 * actually denounced - exactly as the side panel's Denounce button does. Client-side only;
+	 * nobody else sees it. Client thread only.
+	 */
+	private void denounceCeremony(NPC man)
+	{
+		Player me = client.getLocalPlayer();
+		if (man != null)
+		{
+			man.setAnimation(718);                     // HUMAN_CASTCURSE
+			man.setAnimationFrame(0);
+			man.removeSpotAnim(DENOUNCE_NPC_SPOTANIM_KEY);
+			man.createSpotAnim(DENOUNCE_NPC_SPOTANIM_KEY, 108, 92, 0);   // CURSE_CASTING
+		}
+		if (me != null)
+		{
+			// EMOTE_CRY; CURSE_IMPACT then SMOKE_BARRAGE_IMPACT, both as the curse arrives
+			me.setAnimation(860);
+			me.setAnimationFrame(0);
+			for (int key : ORDAIN_SPOTANIM_KEYS)
+			{
+				me.removeSpotAnim(key);
+			}
+			me.createSpotAnim(ORDAIN_SPOTANIM_KEYS[0], 110, 0, DENOUNCE_HIT_DELAY_CYCLES);
+			me.createSpotAnim(ORDAIN_SPOTANIM_KEYS[1], 391, 0, DENOUNCE_HIT_DELAY_CYCLES);
+		}
+		executor.schedule(() -> clientThread.invoke(() ->
+		{
+			if (oath.isSworn())
+			{
+				oath.clear();
+			}
+		}), DENOUNCE_AFTER_MS, java.util.concurrent.TimeUnit.MILLISECONDS);
+	}
+
+	/** Set once the "how to begin" chat line has been shown this session. */
+	private boolean beginHintShown;
+
+	@Subscribe
+	public void onGameStateChanged(GameStateChanged event)
+	{
+		if (event.getGameState() == GameState.LOGGED_IN)
+		{
+			showBeginHint();
+		}
+	}
+
+	/** One chat line per session telling an unsworn player how to begin. Client thread only. */
+	private void showBeginHint()
+	{
+		if (beginHintShown || oath.isSworn() || client.getGameState() != GameState.LOGGED_IN)
+		{
+			return;
+		}
+		beginHintShown = true;
+		client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
+			"<col=7f1fff>Battle-Mage Mode:</col> ring your Cowbell amulet south of the Wise Old Man"
+				+ " in Draynor Village to begin.", null);
 	}
 
 	/** Opens the oath screen over the game view. */
@@ -644,6 +823,12 @@ public class BattleMagePlugin extends Plugin
 		overlayManager.remove(combatLockOverlay);
 		onboardingOverlay.close();
 		overlayManager.remove(onboardingOverlay);
+		beginHintOverlay.stop();
+		overlayManager.remove(beginHintOverlay);
+		eventBus.unregister(wiseOldMan);
+		wiseOldMan.setOnBegin(null);
+		wiseOldMan.setOnDenounce(null);
+		chatDialogue.closeIfOpen();
 		oath.setChangeListener(null);
 		if (navButton != null)
 		{
@@ -2511,9 +2696,9 @@ public class BattleMagePlugin extends Plugin
 	 * Brings PKP back inside the maximum after the ceiling itself dropped.
 	 *
 	 * <p>Deliberately not routed through {@link #setPkp}, which is the path for PKP <i>transactions</i>
-	 * - a cost, a restore, a spec - and is blocked by a freeze and by depletion immunity. This is not
+	 * - a cost, a restore, a spec - and is blocked by a freeze. This is not
 	 * a transaction: the points are not being spent or lost, the pool that held them has shrunk, and a
-	 * frozen or immune player who took off a book would otherwise be left permanently above a ceiling
+	 * frozen player who took off a book would otherwise be left permanently above a ceiling
 	 * they can no longer reach. It is also silent: no popup and no gain/loss note, because the bar's
 	 * fill does not move - 150/150 and 100/100 are both a full bar - so announcing "-50" would
 	 * describe something the player cannot see and did not do.
@@ -2981,14 +3166,17 @@ public class BattleMagePlugin extends Plugin
 		return Math.min(rules.combatSpellCost(), rules.curseSpellCost());
 	}
 
+	// Immunity no longer hides a state that is already running: gaining an immunity while overloaded
+	// or depleted ends that state outright (see activateSpecEffect), and while an immunity is up the
+	// matching state can never be entered. So the latches are the whole answer.
 	boolean isDepleted()
 	{
-		return depletedLatch && !depletionImmune();
+		return depletedLatch;
 	}
 
 	boolean isOverloaded()
 	{
-		return overloadActive && !overloadImmune();
+		return overloadActive;
 	}
 
 	/** Eating is locked while overloaded, and for a short tail after the overload clears (e.g. via casting). */
@@ -3444,23 +3632,19 @@ public class BattleMagePlugin extends Plugin
 		{
 			return;
 		}
-		// The immunities are directional locks, not just state suppressors: depletion immunity stops PKP
-		// falling at all, overload immunity stops it rising at all. A change in the permitted direction
-		// still lands normally, so e.g. a depletion-immune player can keep building PKP while spending
-		// nothing.
-		if (depletionImmune() && v < pkp)
-		{
-			return;
-		}
-		if (overloadImmune() && v > pkp)
-		{
-			return;
-		}
+		// The immunities only keep the player out of the STATES. They are not a freeze: PKP is still spent
+		// and still earned while either is up.
+		//  - Depletion immunity: costs are paid in full down to empty, but the pool cannot go under 0 and
+		//    the DEPLETED latch cannot set.
+		//  - Overload immunity: gains still land (clamped at the max as usual, or the overcharge cap where
+		//    allowed); the OVERLOADED state is withheld where it is decided - handleAttackRestore and
+		//    addPkpSpec - so nothing extra is needed here.
+		boolean depImmune = depletionImmune();
 		int max = effectiveMax();
 		double hi = allowOver ? overchargeCap() : Math.max(max, pkp);
-		double lo = -max;
+		double lo = depImmune ? Math.min(0, pkp) : -max;
 		pkp = Math.max(lo, Math.min(hi, v));
-		updateLatches(canDeplete);
+		updateLatches(canDeplete && !depImmune);
 	}
 
 	private void updateLatches(boolean canDeplete)
@@ -3550,7 +3734,9 @@ public class BattleMagePlugin extends Plugin
 	 * <p>The PKP movements happen in a fixed sequence, and the sequence is the point of this method:
 	 *
 	 * <ol>
-	 *   <li><b>arm</b> the freeze and immunity timers - no PKP moves;</li>
+	 *   <li><b>arm</b> the freeze and immunity timers - no PKP moves - except that an immunity
+	 *       gained while overloaded or depleted ends that state instead (overload to max, depletion
+	 *       to 0) and is not granted;</li>
 	 *   <li><b>clear</b> an active overload or depletion, which RESETS the pool to 50% of max;</li>
 	 *   <li><b>pay</b> the flat delta;</li>
 	 *   <li><b>roll</b> the gamble.</li>
@@ -3602,21 +3788,45 @@ public class BattleMagePlugin extends Plugin
 		{
 			pendingSustainWeaponId = sourceItemId;
 		}
-		if (fx.overloadImmuneSeconds > 0)
+		// Any immunity (overload or depletion) gained while already OVERLOADED or DEPLETED is spent ending
+		// that state instead of being granted: an overload ends at the full maximum, a depletion ends at
+		// exactly 0. This is an assignment, made directly so a running freeze cannot swallow it.
+		boolean grantsImmunity = fx.overloadImmuneSeconds > 0 || fx.overloadImmuneAttacks > 0
+			|| fx.depletionImmuneSeconds > 0 || fx.depletionImmuneAttacks > 0;
+		if (grantsImmunity && (overloadActive || depletedLatch))
 		{
-			overloadImmuneUntilMs = Math.max(overloadImmuneUntilMs, now + fx.overloadImmuneSeconds * 1000L);
+			double beforeEnd = pkp;
+			if (overloadActive)
+			{
+				overloadActive = false;
+				overloadFoodUnlockMs = 0L;
+				pkp = effectiveMax();
+			}
+			else
+			{
+				depletedLatch = false;
+				pkp = 0;
+			}
+			notePkpChange(pkp - beforeEnd);
 		}
-		if (fx.overloadImmuneAttacks > 0)
+		else
 		{
-			overloadImmuneAttacks = Math.max(overloadImmuneAttacks, fx.overloadImmuneAttacks);
-		}
-		if (fx.depletionImmuneSeconds > 0)
-		{
-			depletionImmuneUntilMs = Math.max(depletionImmuneUntilMs, now + fx.depletionImmuneSeconds * 1000L);
-		}
-		if (fx.depletionImmuneAttacks > 0)
-		{
-			depletionImmuneAttacks = Math.max(depletionImmuneAttacks, fx.depletionImmuneAttacks);
+			if (fx.overloadImmuneSeconds > 0)
+			{
+				overloadImmuneUntilMs = Math.max(overloadImmuneUntilMs, now + fx.overloadImmuneSeconds * 1000L);
+			}
+			if (fx.overloadImmuneAttacks > 0)
+			{
+				overloadImmuneAttacks = Math.max(overloadImmuneAttacks, fx.overloadImmuneAttacks);
+			}
+			if (fx.depletionImmuneSeconds > 0)
+			{
+				depletionImmuneUntilMs = Math.max(depletionImmuneUntilMs, now + fx.depletionImmuneSeconds * 1000L);
+			}
+			if (fx.depletionImmuneAttacks > 0)
+			{
+				depletionImmuneAttacks = Math.max(depletionImmuneAttacks, fx.depletionImmuneAttacks);
+			}
 		}
 		// clear an active overload and/or depletion, resetting PKP to 50% of max
 		boolean doClearO = fx.clearOverload && overloadActive;

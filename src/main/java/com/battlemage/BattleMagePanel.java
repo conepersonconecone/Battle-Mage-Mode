@@ -37,7 +37,6 @@ class BattleMagePanel extends PluginPanel
 	private final Oath oath;
 	private final Rules rules;
 	private final Appearance look;
-	private final Runnable onChooseGod;
 	private final AppearanceEditor.Previews previews;
 
 	/** The normal panel contents, swapped out while the appearance editor is open. */
@@ -53,12 +52,14 @@ class BattleMagePanel extends PluginPanel
 	/** The rulebook, hosted with GitHub Pages from the plugin repo's docs/ folder. */
 	private static final String RULEBOOK_URL = "https://conepersonconecone.github.io/Battle-Mage-Mode/";
 
-	BattleMagePanel(Oath oath, Rules rules, Appearance look, Runnable onChooseGod, AppearanceEditor.Previews previews)
+	/** Where a faction is chosen from - the panel can only point there. */
+	static final String BEGIN_HINT = "Ring the Cowbell Amulet in front of the Wise Old Man";
+
+	BattleMagePanel(Oath oath, Rules rules, Appearance look, AppearanceEditor.Previews previews)
 	{
 		this.oath = oath;
 		this.rules = rules;
 		this.look = look;
-		this.onChooseGod = onChooseGod;
 		this.previews = previews;
 
 		setLayout(new BorderLayout());
@@ -129,11 +130,14 @@ class BattleMagePanel extends PluginPanel
 
 		if (f == null)
 		{
+			// room for the extra line on where to begin
+			godCard.setMaximumSize(new Dimension(Integer.MAX_VALUE, 118));
 			godCard.setBorder(BorderFactory.createCompoundBorder(
 				BorderFactory.createLineBorder(ColorScheme.MEDIUM_GRAY_COLOR),
 				BorderFactory.createEmptyBorder(10, 10, 10, 10)));
 			JLabel none = new JLabel("<html><body style='width:150px'><b>No god chosen.</b><br>"
-				+ "Nothing is restricted until you pick one.</body></html>");
+				+ "Nothing is restricted until you pick one. Ring the Cowbell Amulet in front of the "
+				+ "Wise Old Man in Draynor Village to begin.</body></html>");
 			none.setFont(FontManager.getRunescapeSmallFont());
 			none.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
 			godCard.add(none, BorderLayout.CENTER);
@@ -166,12 +170,12 @@ class BattleMagePanel extends PluginPanel
 	}
 
 	/**
-	 * The button back to the oath screen, at the very top of the panel.
+	 * The faction buttons, at the very top of the panel.
 	 *
-	 * <p>It only works once the current oath has been dropped: a faction is left, not swapped. While
-	 * one is in force the button greys but stays enabled, because a disabled button swallows the
-	 * click and tells the player nothing - pressing it is how they find out that
-	 * <b>Denounce Faction</b> comes first.
+	 * <p><b>Select faction</b> is always greyed: a faction is only ever chosen in front of the Wise
+	 * Old Man, by ringing the Cowbell amulet beside him. The button stays as the signpost - hovering
+	 * or clicking it says where to go (and, while sworn, that denouncing comes first). It is left
+	 * enabled because a disabled button swallows the click and tells the player nothing.
 	 *
 	 * <p>Below it sit the three buttons that are always available: denouncing (while sworn), the
 	 * rulebook, the creator's channel and the tithes (Ko-fi) link.
@@ -187,21 +191,15 @@ class BattleMagePanel extends PluginPanel
 		choose.setFocusPainted(false);
 		choose.setAlignmentX(Component.LEFT_ALIGNMENT);
 		choose.setMaximumSize(new Dimension(Integer.MAX_VALUE, 28));
-		// Greyed while an oath is in force so it reads as unavailable before it is clicked - but
-		// still enabled, because a disabled button swallows the click and the player learns nothing.
-		// Pressing it is how they find out why.
-		choose.setForeground(sworn ? ColorScheme.MEDIUM_GRAY_COLOR : Color.WHITE);
-		choose.addActionListener(e ->
-		{
-			if (oath.isSworn())
-			{
-				JOptionPane.showMessageDialog(BattleMagePanel.this,
-					"Denounce your faction first. A faction is left, not swapped.",
-					"Select faction", JOptionPane.WARNING_MESSAGE);
-				return;
-			}
-			onChooseGod.run();
-		});
+		// Always greyed: the Wise Old Man is the only way to choose. Still enabled, so a click explains
+		// itself instead of silently doing nothing.
+		final String where = sworn
+			? "Denounce your faction first, then " + BEGIN_HINT.substring(0, 1).toLowerCase() + BEGIN_HINT.substring(1)
+			: BEGIN_HINT;
+		choose.setForeground(ColorScheme.MEDIUM_GRAY_COLOR);
+		choose.setToolTipText(where);
+		choose.addActionListener(e -> JOptionPane.showMessageDialog(BattleMagePanel.this,
+			where + ".", "Select faction", JOptionPane.INFORMATION_MESSAGE));
 		reselect.add(choose);
 
 		if (sworn)
@@ -273,7 +271,8 @@ class BattleMagePanel extends PluginPanel
 			}
 			final String name = rules.lore(oath.getFaction()).displayName;
 			int first = JOptionPane.showConfirmDialog(BattleMagePanel.this,
-				"Denounce " + name + "? Nothing will be restricted until you choose a faction again.",
+				"Denounce " + name + "? Nothing will be restricted until you choose a faction again,\n"
+				+ "which you do by ringing the Cowbell Amulet in front of the Wise Old Man.",
 				"Denounce Faction", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
 			if (first != JOptionPane.YES_OPTION)
 			{
