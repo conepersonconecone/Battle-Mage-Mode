@@ -46,6 +46,30 @@
         "quests": [
           "Black Knights' Fortress"
         ]
+      },
+      {
+        "item": "Anger sword",
+        "quests": [
+          "A Soul's Bane"
+        ]
+      },
+      {
+        "item": "Anger mace",
+        "quests": [
+          "A Soul's Bane"
+        ]
+      },
+      {
+        "item": "Anger battleaxe",
+        "quests": [
+          "A Soul's Bane"
+        ]
+      },
+      {
+        "item": "Anger spear",
+        "quests": [
+          "A Soul's Bane"
+        ]
       }
     ],
     "rangedWeapons": [
@@ -153,14 +177,14 @@
       "3rd Age Kiteshield"
     ],
     "blockPenaltyItems": {
-      "Holy book": 20,
-      "Unholy book": 20,
-      "Book of balance": 20,
-      "Book of darkness": 20,
-      "Book of law": 20,
-      "Book of war": 20,
-      "Damaged book": 20,
-      "Mage's book": 20,
+      "Holy book": 0,
+      "Unholy book": 0,
+      "Book of balance": 0,
+      "Book of darkness": 0,
+      "Book of law": 0,
+      "Book of war": 0,
+      "Damaged book": 0,
+      "Mage's book": 0,
       "Antler guard": 25,
       "Fletching Knife": 15,
       "Falador Shield 1": 20,
@@ -259,7 +283,18 @@
       "Crystal harpoon",
       "Trailblazer harpoon",
       "Echo harpoon",
-      "Bruma torch"
+      "Bruma torch",
+      "Karamjan monkey greegree",
+      "Ninja monkey greegree",
+      "Ninja monkey greegree (small)",
+      "Ninja monkey greegree (medium)",
+      "Zombie monkey greegree",
+      "Zombie monkey greegree (small)",
+      "Zombie monkey greegree (big)",
+      "Gorilla greegree",
+      "Bearded gorilla greegree",
+      "Ancient gorilla greegree",
+      "Kruk monkey greegree"
     ],
     "blockedWeapons": [
       "Warped sceptre",
@@ -1360,6 +1395,7 @@
           "Steel kiteshield (g)"
         ],
         "magicGearForceBlock": [
+          "Rune kiteshield",
           "Zamorak monk top",
           "Zamorak monk bottom",
           "Unholy symbol",
@@ -1939,7 +1975,8 @@
           "Cup of Tea": 25,
           "Beer": -25,
           "Cider": -33,
-          "Keg of Beer": -100
+          "Keg of Beer": -100,
+          "Cooked t-bone steak": -50
         },
         "consumableEffects": [
           {
@@ -2114,6 +2151,7 @@
           "Armadyl kiteshield"
         ],
         "magicGearForceBlock": [
+          "Rune kiteshield",
           "Saradomin Platebody",
           "Saradomin Platelegs",
           "Saradomin Plateskirt",
@@ -2729,7 +2767,8 @@
           "Cup of Tea": 25,
           "Beer": -25,
           "Cider": -33,
-          "Keg of Beer": -100
+          "Keg of Beer": -100,
+          "Cooked t-bone steak": -50
         },
         "consumableEffects": [
           {
@@ -2930,6 +2969,7 @@
           "Black shield (h5)"
         ],
         "magicGearForceBlock": [
+          "Rune kiteshield",
           "Saradomin Platebody",
           "Saradomin Platelegs",
           "Saradomin Plateskirt",
@@ -3293,7 +3333,6 @@
           "Glacial temotli",
           "Dual Macuahuitl",
           "Abyssal Bludgeon",
-          "Crimson Kisten",
           "Elder maul",
           "Rune Scimitar (Guthix)",
           "Guthix mjolnir",
@@ -3353,6 +3392,7 @@
           "Dinh's blazing bulwark"
         ],
         "weaponExceptions": [
+          "Crimson Kisten",
           "Accursed sceptre (a)",
           "Accursed sceptre (au)",
           "Black Sword",
@@ -3520,7 +3560,8 @@
           "Cup of Tea": 25,
           "Beer": -25,
           "Cider": -33,
-          "Keg of Beer": -100
+          "Keg of Beer": -100,
+          "Cooked t-bone steak": -50
         },
         "consumableEffects": [
           {
@@ -3694,6 +3735,7 @@
           "Bandos kiteshield"
         ],
         "magicGearForceBlock": [
+          "Rune kiteshield",
           "Saradomin Platebody",
           "Saradomin Platelegs",
           "Saradomin Plateskirt",
@@ -4310,7 +4352,8 @@
           "Cup of Tea": 25,
           "Beer": -25,
           "Cider": -33,
-          "Keg of Beer": -100
+          "Keg of Beer": -100,
+          "Cooked t-bone steak": -50
         },
         "consumableEffects": [
           {
