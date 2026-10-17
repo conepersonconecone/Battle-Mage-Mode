@@ -1,6 +1,1230 @@
 {
-  "formatVersion": 13,
+  "formatVersion": 14,
   "shared": {
+    "consumableEffects": [
+      {
+        "name": "Keg of beer",
+        "delta": 0,
+        "effects": [
+          "DP"
+        ]
+      },
+      {
+        "name": "Guthix rest(1)",
+        "delta": 25,
+        "effects": []
+      },
+      {
+        "name": "Guthix rest(2)",
+        "delta": 25,
+        "effects": []
+      },
+      {
+        "name": "Guthix rest(3)",
+        "delta": 25,
+        "effects": []
+      },
+      {
+        "name": "Guthix rest(4)",
+        "delta": 25,
+        "effects": []
+      },
+      {
+        "name": "Forgotten brew(1)",
+        "delta": 0,
+        "effects": [
+          "D7s"
+        ]
+      },
+      {
+        "name": "Forgotten brew(2)",
+        "delta": 0,
+        "effects": [
+          "D7s"
+        ]
+      },
+      {
+        "name": "Forgotten brew(3)",
+        "delta": 0,
+        "effects": [
+          "D7s"
+        ]
+      },
+      {
+        "name": "Forgotten brew(4)",
+        "delta": 0,
+        "effects": [
+          "D7s"
+        ]
+      },
+      {
+        "name": "Honey locust",
+        "delta": 0,
+        "effects": [
+          "CO",
+          "CD",
+          "O3a",
+          "D3a"
+        ]
+      },
+      {
+        "name": "Ambrosia (2)",
+        "delta": 0,
+        "effects": [
+          "CO",
+          "CD",
+          "F5a"
+        ]
+      },
+      {
+        "name": "Ambrosia (1)",
+        "delta": 0,
+        "effects": [
+          "CO",
+          "CD",
+          "F5a"
+        ]
+      },
+      {
+        "name": "Blessed crystal scarab (2)",
+        "delta": 0,
+        "effects": [
+          "CO",
+          "CD",
+          "Z16s"
+        ]
+      },
+      {
+        "name": "Blessed crystal scarab (1)",
+        "delta": 0,
+        "effects": [
+          "CO",
+          "CD",
+          "Z16s"
+        ]
+      },
+      {
+        "name": "Liquid adrenaline (2)",
+        "delta": 0,
+        "effects": [
+          "F75s"
+        ]
+      },
+      {
+        "name": "Liquid adrenaline (1)",
+        "delta": 0,
+        "effects": [
+          "F75s"
+        ]
+      },
+      {
+        "name": "Nectar (4)",
+        "delta": -25,
+        "effects": [
+          "Z8s"
+        ]
+      },
+      {
+        "name": "Nectar (3)",
+        "delta": -25,
+        "effects": [
+          "Z8s"
+        ]
+      },
+      {
+        "name": "Nectar (2)",
+        "delta": -25,
+        "effects": [
+          "Z8s"
+        ]
+      },
+      {
+        "name": "Nectar (1)",
+        "delta": -25,
+        "effects": [
+          "Z8s"
+        ]
+      },
+      {
+        "name": "Silk dressing (2)",
+        "delta": 0,
+        "effects": [
+          "CO",
+          "CD",
+          "Z16s"
+        ]
+      },
+      {
+        "name": "Silk dressing (1)",
+        "delta": 0,
+        "effects": [
+          "CO",
+          "CD",
+          "Z16s"
+        ]
+      },
+      {
+        "name": "Smelling salts (2)",
+        "delta": 0,
+        "effects": [
+          "S50/480",
+          "G50/480",
+          "O50a",
+          "D50a"
+        ]
+      },
+      {
+        "name": "Smelling salts (1)",
+        "delta": 0,
+        "effects": [
+          "S50/480",
+          "G50/480",
+          "O50a",
+          "D50a"
+        ]
+      },
+      {
+        "name": "Tears of Elidinis (4)",
+        "delta": 25,
+        "effects": [
+          "CO",
+          "CD"
+        ]
+      },
+      {
+        "name": "Tears of Elidinis (3)",
+        "delta": 25,
+        "effects": [
+          "CO",
+          "CD"
+        ]
+      },
+      {
+        "name": "Tears of Elidinis (2)",
+        "delta": 25,
+        "effects": [
+          "CO",
+          "CD"
+        ]
+      },
+      {
+        "name": "Tears of Elidinis (1)",
+        "delta": 25,
+        "effects": [
+          "CO",
+          "CD"
+        ]
+      },
+      {
+        "name": "Overload (-)(4)",
+        "delta": 0,
+        "effects": [
+          "S50/480",
+          "G50/480",
+          "O60a",
+          "D60a"
+        ]
+      },
+      {
+        "name": "Overload (-)(3)",
+        "delta": 0,
+        "effects": [
+          "S50/480",
+          "G50/480",
+          "O60a",
+          "D60a"
+        ]
+      },
+      {
+        "name": "Overload (-)(2)",
+        "delta": 0,
+        "effects": [
+          "S50/480",
+          "G50/480",
+          "O60a",
+          "D60a"
+        ]
+      },
+      {
+        "name": "Overload (-)(1)",
+        "delta": 0,
+        "effects": [
+          "S50/480",
+          "G50/480",
+          "O60a",
+          "D60a"
+        ]
+      },
+      {
+        "name": "Overload (4)",
+        "delta": 0,
+        "effects": [
+          "S50/480",
+          "G50/480",
+          "O60a",
+          "D60a"
+        ]
+      },
+      {
+        "name": "Overload (3)",
+        "delta": 0,
+        "effects": [
+          "S50/480",
+          "G50/480",
+          "O60a",
+          "D60a"
+        ]
+      },
+      {
+        "name": "Overload (2)",
+        "delta": 0,
+        "effects": [
+          "S50/480",
+          "G50/480",
+          "O60a",
+          "D60a"
+        ]
+      },
+      {
+        "name": "Overload (1)",
+        "delta": 0,
+        "effects": [
+          "S50/480",
+          "G50/480",
+          "O60a",
+          "D60a"
+        ]
+      },
+      {
+        "name": "Overload (+)(4)",
+        "delta": 0,
+        "effects": [
+          "S50/480",
+          "G50/480",
+          "O60a",
+          "D60a"
+        ]
+      },
+      {
+        "name": "Overload (+)(3)",
+        "delta": 0,
+        "effects": [
+          "S50/480",
+          "G50/480",
+          "O60a",
+          "D60a"
+        ]
+      },
+      {
+        "name": "Overload (+)(2)",
+        "delta": 0,
+        "effects": [
+          "S50/480",
+          "G50/480",
+          "O60a",
+          "D60a"
+        ]
+      },
+      {
+        "name": "Overload (+)(1)",
+        "delta": 0,
+        "effects": [
+          "S50/480",
+          "G50/480",
+          "O60a",
+          "D60a"
+        ]
+      },
+      {
+        "name": "Xeric's aid (-)(4)",
+        "delta": 0,
+        "effects": [
+          "Z10s"
+        ]
+      },
+      {
+        "name": "Xeric's aid (-)(3)",
+        "delta": 0,
+        "effects": [
+          "Z10s"
+        ]
+      },
+      {
+        "name": "Xeric's aid (-)(2)",
+        "delta": 0,
+        "effects": [
+          "Z10s"
+        ]
+      },
+      {
+        "name": "Xeric's aid (-)(1)",
+        "delta": 0,
+        "effects": [
+          "Z10s"
+        ]
+      },
+      {
+        "name": "Xeric's aid (4)",
+        "delta": 0,
+        "effects": [
+          "Z10s"
+        ]
+      },
+      {
+        "name": "Xeric's aid (3)",
+        "delta": 0,
+        "effects": [
+          "Z10s"
+        ]
+      },
+      {
+        "name": "Xeric's aid (2)",
+        "delta": 0,
+        "effects": [
+          "Z10s"
+        ]
+      },
+      {
+        "name": "Xeric's aid (1)",
+        "delta": 0,
+        "effects": [
+          "Z10s"
+        ]
+      },
+      {
+        "name": "Xeric's aid (+)(4)",
+        "delta": 0,
+        "effects": [
+          "Z10s"
+        ]
+      },
+      {
+        "name": "Xeric's aid (+)(3)",
+        "delta": 0,
+        "effects": [
+          "Z10s"
+        ]
+      },
+      {
+        "name": "Xeric's aid (+)(2)",
+        "delta": 0,
+        "effects": [
+          "Z10s"
+        ]
+      },
+      {
+        "name": "Xeric's aid (+)(1)",
+        "delta": 0,
+        "effects": [
+          "Z10s"
+        ]
+      },
+      {
+        "name": "Revitalisation (-)(4)",
+        "delta": 25,
+        "effects": [
+          "CO",
+          "CD",
+          "O2a"
+        ]
+      },
+      {
+        "name": "Revitalisation (-)(3)",
+        "delta": 25,
+        "effects": [
+          "CO",
+          "CD",
+          "O2a"
+        ]
+      },
+      {
+        "name": "Revitalisation (-)(2)",
+        "delta": 25,
+        "effects": [
+          "CO",
+          "CD",
+          "O2a"
+        ]
+      },
+      {
+        "name": "Revitalisation (-)(1)",
+        "delta": 25,
+        "effects": [
+          "CO",
+          "CD",
+          "O2a"
+        ]
+      },
+      {
+        "name": "Revitalisation potion (4)",
+        "delta": 25,
+        "effects": [
+          "CO",
+          "CD",
+          "O2a"
+        ]
+      },
+      {
+        "name": "Revitalisation potion (3)",
+        "delta": 25,
+        "effects": [
+          "CO",
+          "CD",
+          "O2a"
+        ]
+      },
+      {
+        "name": "Revitalisation potion (2)",
+        "delta": 25,
+        "effects": [
+          "CO",
+          "CD",
+          "O2a"
+        ]
+      },
+      {
+        "name": "Revitalisation potion (1)",
+        "delta": 25,
+        "effects": [
+          "CO",
+          "CD",
+          "O2a"
+        ]
+      },
+      {
+        "name": "Revitalisation (+)(4)",
+        "delta": 25,
+        "effects": [
+          "CO",
+          "CD",
+          "O2a"
+        ]
+      },
+      {
+        "name": "Revitalisation (+)(3)",
+        "delta": 25,
+        "effects": [
+          "CO",
+          "CD",
+          "O2a"
+        ]
+      },
+      {
+        "name": "Revitalisation (+)(2)",
+        "delta": 25,
+        "effects": [
+          "CO",
+          "CD",
+          "O2a"
+        ]
+      },
+      {
+        "name": "Revitalisation (+)(1)",
+        "delta": 25,
+        "effects": [
+          "CO",
+          "CD",
+          "O2a"
+        ]
+      },
+      {
+        "name": "Prayer enhance (-)(4)",
+        "delta": 0,
+        "effects": [
+          "CO",
+          "CD",
+          "Z8s"
+        ]
+      },
+      {
+        "name": "Prayer enhance (-)(3)",
+        "delta": 0,
+        "effects": [
+          "CO",
+          "CD",
+          "Z8s"
+        ]
+      },
+      {
+        "name": "Prayer enhance (-)(2)",
+        "delta": 0,
+        "effects": [
+          "CO",
+          "CD",
+          "Z8s"
+        ]
+      },
+      {
+        "name": "Prayer enhance (-)(1)",
+        "delta": 0,
+        "effects": [
+          "CO",
+          "CD",
+          "Z8s"
+        ]
+      },
+      {
+        "name": "Prayer enhance (4)",
+        "delta": 0,
+        "effects": [
+          "CO",
+          "CD",
+          "Z16s"
+        ]
+      },
+      {
+        "name": "Prayer enhance (3)",
+        "delta": 0,
+        "effects": [
+          "CO",
+          "CD",
+          "Z16s"
+        ]
+      },
+      {
+        "name": "Prayer enhance (2)",
+        "delta": 0,
+        "effects": [
+          "CO",
+          "CD",
+          "Z16s"
+        ]
+      },
+      {
+        "name": "Prayer enhance (1)",
+        "delta": 0,
+        "effects": [
+          "CO",
+          "CD",
+          "Z16s"
+        ]
+      },
+      {
+        "name": "Prayer enhance (+)(4)",
+        "delta": 0,
+        "effects": [
+          "CO",
+          "CD",
+          "Z24s"
+        ]
+      },
+      {
+        "name": "Prayer enhance (+)(3)",
+        "delta": 0,
+        "effects": [
+          "CO",
+          "CD",
+          "Z24s"
+        ]
+      },
+      {
+        "name": "Prayer enhance (+)(2)",
+        "delta": 0,
+        "effects": [
+          "CO",
+          "CD",
+          "Z24s"
+        ]
+      },
+      {
+        "name": "Prayer enhance (+)(1)",
+        "delta": 0,
+        "effects": [
+          "CO",
+          "CD",
+          "Z24s"
+        ]
+      },
+      {
+        "name": "Elder (-)(4)",
+        "delta": -33,
+        "effects": [
+          "G50/240",
+          "O20a"
+        ]
+      },
+      {
+        "name": "Elder (-)(3)",
+        "delta": -33,
+        "effects": [
+          "G50/240",
+          "O20a"
+        ]
+      },
+      {
+        "name": "Elder (-)(2)",
+        "delta": -33,
+        "effects": [
+          "G50/240",
+          "O20a"
+        ]
+      },
+      {
+        "name": "Elder (-)(1)",
+        "delta": -33,
+        "effects": [
+          "G50/240",
+          "O20a"
+        ]
+      },
+      {
+        "name": "Elder potion (4)",
+        "delta": -33,
+        "effects": [
+          "G50/240",
+          "O20a"
+        ]
+      },
+      {
+        "name": "Elder potion (3)",
+        "delta": -33,
+        "effects": [
+          "G50/240",
+          "O20a"
+        ]
+      },
+      {
+        "name": "Elder potion (2)",
+        "delta": -33,
+        "effects": [
+          "G50/240",
+          "O20a"
+        ]
+      },
+      {
+        "name": "Elder potion (1)",
+        "delta": -33,
+        "effects": [
+          "G50/240",
+          "O20a"
+        ]
+      },
+      {
+        "name": "Elder (+)(4)",
+        "delta": -33,
+        "effects": [
+          "G50/240",
+          "O20a"
+        ]
+      },
+      {
+        "name": "Elder (+)(3)",
+        "delta": -33,
+        "effects": [
+          "G50/240",
+          "O20a"
+        ]
+      },
+      {
+        "name": "Elder (+)(2)",
+        "delta": -33,
+        "effects": [
+          "G50/240",
+          "O20a"
+        ]
+      },
+      {
+        "name": "Elder (+)(1)",
+        "delta": -33,
+        "effects": [
+          "G50/240",
+          "O20a"
+        ]
+      },
+      {
+        "name": "Twisted (-)(4)",
+        "delta": -33,
+        "effects": [
+          "G50/240",
+          "O20a"
+        ]
+      },
+      {
+        "name": "Twisted (-)(3)",
+        "delta": -33,
+        "effects": [
+          "G50/240",
+          "O20a"
+        ]
+      },
+      {
+        "name": "Twisted (-)(2)",
+        "delta": -33,
+        "effects": [
+          "G50/240",
+          "O20a"
+        ]
+      },
+      {
+        "name": "Twisted (-)(1)",
+        "delta": -33,
+        "effects": [
+          "G50/240",
+          "O20a"
+        ]
+      },
+      {
+        "name": "Twisted potion (4)",
+        "delta": -33,
+        "effects": [
+          "G50/240",
+          "O20a"
+        ]
+      },
+      {
+        "name": "Twisted potion (3)",
+        "delta": -33,
+        "effects": [
+          "G50/240",
+          "O20a"
+        ]
+      },
+      {
+        "name": "Twisted potion (2)",
+        "delta": -33,
+        "effects": [
+          "G50/240",
+          "O20a"
+        ]
+      },
+      {
+        "name": "Twisted potion (1)",
+        "delta": -33,
+        "effects": [
+          "G50/240",
+          "O20a"
+        ]
+      },
+      {
+        "name": "Twisted (+)(4)",
+        "delta": -33,
+        "effects": [
+          "G50/240",
+          "O20a"
+        ]
+      },
+      {
+        "name": "Twisted (+)(3)",
+        "delta": -33,
+        "effects": [
+          "G50/240",
+          "O20a"
+        ]
+      },
+      {
+        "name": "Twisted (+)(2)",
+        "delta": -33,
+        "effects": [
+          "G50/240",
+          "O20a"
+        ]
+      },
+      {
+        "name": "Twisted (+)(1)",
+        "delta": -33,
+        "effects": [
+          "G50/240",
+          "O20a"
+        ]
+      },
+      {
+        "name": "Kodai (-)(4)",
+        "delta": 33,
+        "effects": [
+          "S50/240",
+          "D20a"
+        ]
+      },
+      {
+        "name": "Kodai (-)(3)",
+        "delta": 33,
+        "effects": [
+          "S50/240",
+          "D20a"
+        ]
+      },
+      {
+        "name": "Kodai (-)(2)",
+        "delta": 33,
+        "effects": [
+          "S50/240",
+          "D20a"
+        ]
+      },
+      {
+        "name": "Kodai (-)(1)",
+        "delta": 33,
+        "effects": [
+          "S50/240",
+          "D20a"
+        ]
+      },
+      {
+        "name": "Kodai potion (4)",
+        "delta": 33,
+        "effects": [
+          "S50/240",
+          "D20a"
+        ]
+      },
+      {
+        "name": "Kodai potion (3)",
+        "delta": 33,
+        "effects": [
+          "S50/240",
+          "D20a"
+        ]
+      },
+      {
+        "name": "Kodai potion (2)",
+        "delta": 33,
+        "effects": [
+          "S50/240",
+          "D20a"
+        ]
+      },
+      {
+        "name": "Kodai potion (1)",
+        "delta": 33,
+        "effects": [
+          "S50/240",
+          "D20a"
+        ]
+      },
+      {
+        "name": "Kodai (+)(4)",
+        "delta": 33,
+        "effects": [
+          "S50/240",
+          "D20a"
+        ]
+      },
+      {
+        "name": "Kodai (+)(3)",
+        "delta": 33,
+        "effects": [
+          "S50/240",
+          "D20a"
+        ]
+      },
+      {
+        "name": "Kodai (+)(2)",
+        "delta": 33,
+        "effects": [
+          "S50/240",
+          "D20a"
+        ]
+      },
+      {
+        "name": "Kodai (+)(1)",
+        "delta": 33,
+        "effects": [
+          "S50/240",
+          "D20a"
+        ]
+      },
+      {
+        "name": "Pysk fish (0)",
+        "delta": 0,
+        "effects": [
+          "CO",
+          "CD",
+          "F3a"
+        ]
+      },
+      {
+        "name": "Suphi fish (1)",
+        "delta": 0,
+        "effects": [
+          "CO",
+          "CD",
+          "F3a"
+        ]
+      },
+      {
+        "name": "Leckish fish (2)",
+        "delta": 0,
+        "effects": [
+          "CO",
+          "CD",
+          "F3a"
+        ]
+      },
+      {
+        "name": "Brawk fish (3)",
+        "delta": 0,
+        "effects": [
+          "CO",
+          "CD",
+          "F3a"
+        ]
+      },
+      {
+        "name": "Mycil fish (4)",
+        "delta": 0,
+        "effects": [
+          "CO",
+          "CD",
+          "F3a"
+        ]
+      },
+      {
+        "name": "Roqed fish (5)",
+        "delta": 0,
+        "effects": [
+          "CO",
+          "CD",
+          "F3a"
+        ]
+      },
+      {
+        "name": "Kyren fish (6)",
+        "delta": 0,
+        "effects": [
+          "CO",
+          "CD",
+          "F3a"
+        ]
+      },
+      {
+        "name": "Guanic bat (0)",
+        "delta": 0,
+        "effects": [
+          "CO",
+          "CD",
+          "F3a"
+        ]
+      },
+      {
+        "name": "Prael bat (1)",
+        "delta": 0,
+        "effects": [
+          "CO",
+          "CD",
+          "F3a"
+        ]
+      },
+      {
+        "name": "Giral bat (2)",
+        "delta": 0,
+        "effects": [
+          "CO",
+          "CD",
+          "F3a"
+        ]
+      },
+      {
+        "name": "Phluxia bat (3)",
+        "delta": 0,
+        "effects": [
+          "CO",
+          "CD",
+          "F3a"
+        ]
+      },
+      {
+        "name": "Kryket bat (4)",
+        "delta": 0,
+        "effects": [
+          "CO",
+          "CD",
+          "F3a"
+        ]
+      },
+      {
+        "name": "Murng bat (5)",
+        "delta": 0,
+        "effects": [
+          "CO",
+          "CD",
+          "F3a"
+        ]
+      },
+      {
+        "name": "Psykk bat (6)",
+        "delta": 0,
+        "effects": [
+          "CO",
+          "CD",
+          "F3a"
+        ]
+      }
+    ],
+    "alcohol": {
+      "perSipPercent": 10,
+      "pkpPerSip": -25,
+      "maxSips": 5,
+      "seconds": 30,
+      "items": [
+        "Asgarnian ale",
+        "Asgarnian ale(m)",
+        "Asgarnian ale(1)",
+        "Asgarnian ale(2)",
+        "Asgarnian ale(3)",
+        "Asgarnian ale(4)",
+        "Asgarnian ale(m1)",
+        "Asgarnian ale(m2)",
+        "Asgarnian ale(m3)",
+        "Asgarnian ale(m4)",
+        "Axeman's folly",
+        "Axeman's folly(m)",
+        "Axeman's folly(1)",
+        "Axeman's folly(2)",
+        "Axeman's folly(3)",
+        "Axeman's folly(4)",
+        "Axeman's folly(m1)",
+        "Axeman's folly(m2)",
+        "Axeman's folly(m3)",
+        "Axeman's folly(m4)",
+        "Chef's delight",
+        "Chef's delight(m)",
+        "Chef's delight(1)",
+        "Chef's delight(2)",
+        "Chef's delight(3)",
+        "Chef's delight(4)",
+        "Chef's delight(m1)",
+        "Chef's delight(m2)",
+        "Chef's delight(m3)",
+        "Chef's delight(m4)",
+        "Cider",
+        "Cider(m)",
+        "Cider(1)",
+        "Cider(2)",
+        "Cider(3)",
+        "Cider(4)",
+        "Cider(m1)",
+        "Cider(m2)",
+        "Cider(m3)",
+        "Cider(m4)",
+        "Dragon bitter",
+        "Dragon bitter(m)",
+        "Dragon bitter(1)",
+        "Dragon bitter(2)",
+        "Dragon bitter(3)",
+        "Dragon bitter(4)",
+        "Dragon bitter(m1)",
+        "Dragon bitter(m2)",
+        "Dragon bitter(m3)",
+        "Dragon bitter(m4)",
+        "Dwarven stout",
+        "Dwarven stout(m)",
+        "Dwarven stout(1)",
+        "Dwarven stout(2)",
+        "Dwarven stout(3)",
+        "Dwarven stout(4)",
+        "Dwarven stout(m1)",
+        "Dwarven stout(m2)",
+        "Dwarven stout(m3)",
+        "Dwarven stout(m4)",
+        "Greenman's ale",
+        "Greenman's ale(m)",
+        "Greenman's ale(1)",
+        "Greenman's ale(2)",
+        "Greenman's ale(3)",
+        "Greenman's ale(4)",
+        "Greenman's ale(m1)",
+        "Greenman's ale(m2)",
+        "Greenman's ale(m3)",
+        "Greenman's ale(m4)",
+        "Moonlight mead",
+        "Moonlight mead(m)",
+        "Moonlight mead(1)",
+        "Moonlight mead(2)",
+        "Moonlight mead(3)",
+        "Moonlight mead(4)",
+        "Moonlight mead(m1)",
+        "Moonlight mead(m2)",
+        "Moonlight mead(m3)",
+        "Moonlight mead(m4)",
+        "Slayer's respite",
+        "Slayer's respite(m)",
+        "Slayer's respite(1)",
+        "Slayer's respite(2)",
+        "Slayer's respite(3)",
+        "Slayer's respite(4)",
+        "Slayer's respite(m1)",
+        "Slayer's respite(m2)",
+        "Slayer's respite(m3)",
+        "Slayer's respite(m4)",
+        "Mind bomb",
+        "Mind bomb(m)",
+        "Mind bomb(1)",
+        "Mind bomb(2)",
+        "Mind bomb(3)",
+        "Mind bomb(4)",
+        "Mind bomb(m1)",
+        "Mind bomb(m2)",
+        "Mind bomb(m3)",
+        "Mind bomb(m4)",
+        "Mature cider",
+        "Wizard's mind bomb",
+        "Mature wmb",
+        "Bandit's brew",
+        "Grog",
+        "Lizardkicker",
+        "Steamforge brew",
+        "Sunbeam ale",
+        "Trapper's tipple",
+        "Beer",
+        "Ahab's beer",
+        "Beer tankard",
+        "Blood pint",
+        "Bloody bracer",
+        "Elven dawn",
+        "Khali brew",
+        "Kovac's grog",
+        "Horizon's lure",
+        "Kraken ink stout",
+        "Perildance bitter",
+        "Trawler's trust",
+        "Whirlpool surprise",
+        "Kelda stout",
+        "Low alcohol keg",
+        "Brandy",
+        "Blurberry special",
+        "Chocolate saturday",
+        "Drunk dragon",
+        "Short green guy",
+        "Wizard blizzard",
+        "Premade blurb' sp.",
+        "Premade choc s'dy",
+        "Premade dr' dragon",
+        "Premade sgg",
+        "Premade wiz blz'd",
+        "Barnacle blaster",
+        "Kraken colada",
+        "Sailor's mirage",
+        "Garlic cocktail",
+        "Gin",
+        "Sun-shine",
+        "Rum",
+        "Braindeath 'rum'",
+        "Karamjan rum",
+        "Moon-lite",
+        "Jug of wine",
+        "Jug of bad wine",
+        "Half full wine jug",
+        "Bottle of wine",
+        "Wine of zamorak",
+        "Blackbird red",
+        "Chilhuac red",
+        "Eclipse red",
+        "Principum red",
+        "Ixcoztic white",
+        "Metztonalli white",
+        "Tonameyo white",
+        "Sherry",
+        "Fortis ash white",
+        "Chichilihui rosé",
+        "Imperial rosé",
+        "Xochipaltic rosé",
+        "Vodka",
+        "Whisky"
+      ]
+    },
+    "spellCostItems": {
+      "Cursed amulet of magic": 150
+    },
     "questItems": [
       {
         "item": "Dark squall hood",
@@ -73,6 +1297,12 @@
       }
     ],
     "rangedWeapons": [
+      "Karil's crossbow",
+      "Karil's crossbow 100",
+      "Karil's crossbow 75",
+      "Karil's crossbow 50",
+      "Karil's crossbow 25",
+      "Karil's crossbow 0",
       "Blisterwood Stake",
       "Rune Knife",
       "Adamant Knife",
@@ -97,9 +1327,72 @@
       "Magic Composite Bow",
       "Chinchompa",
       "Red Chinchompa",
-      "Black Chinchompa"
+      "Black Chinchompa",
+      "Light ballista",
+      "Heavy ballista",
+      "Crystal bow",
+      "Crystal bow (basic)",
+      "Crystal bow (attuned)",
+      "Crystal bow (perfected)",
+      "Corrupted bow (basic)",
+      "Corrupted bow (attuned)",
+      "Corrupted bow (perfected)"
     ],
     "gearExceptions": [
+      "Ahrim's hood",
+      "Ahrim's hood 100",
+      "Ahrim's hood 75",
+      "Ahrim's hood 50",
+      "Ahrim's hood 25",
+      "Ahrim's hood 0",
+      "Ahrim's robetop",
+      "Ahrim's robetop 100",
+      "Ahrim's robetop 75",
+      "Ahrim's robetop 50",
+      "Ahrim's robetop 25",
+      "Ahrim's robetop 0",
+      "Ahrim's robeskirt",
+      "Ahrim's robeskirt 100",
+      "Ahrim's robeskirt 75",
+      "Ahrim's robeskirt 50",
+      "Ahrim's robeskirt 25",
+      "Ahrim's robeskirt 0",
+      "Dharok's helm",
+      "Dharok's helm 100",
+      "Dharok's helm 75",
+      "Dharok's helm 50",
+      "Dharok's helm 25",
+      "Dharok's helm 0",
+      "Guthan's helm",
+      "Guthan's helm 100",
+      "Guthan's helm 75",
+      "Guthan's helm 50",
+      "Guthan's helm 25",
+      "Guthan's helm 0",
+      "Karil's coif",
+      "Karil's coif 100",
+      "Karil's coif 75",
+      "Karil's coif 50",
+      "Karil's coif 25",
+      "Karil's coif 0",
+      "Torag's helm",
+      "Torag's helm 100",
+      "Torag's helm 75",
+      "Torag's helm 50",
+      "Torag's helm 25",
+      "Torag's helm 0",
+      "Verac's helm",
+      "Verac's helm 100",
+      "Verac's helm 75",
+      "Verac's helm 50",
+      "Verac's helm 25",
+      "Verac's helm 0",
+      "Verac's brassard",
+      "Verac's brassard 100",
+      "Verac's brassard 75",
+      "Verac's brassard 50",
+      "Verac's brassard 25",
+      "Verac's brassard 0",
       "Gilded Platebody",
       "Gilded Platelegs",
       "Gilded Plateskirt",
@@ -132,7 +1425,15 @@
       "Broodoo shield (1)",
       "Blessed Spirit Shield",
       "elysian spirit shield",
-      "Book of the Dead"
+      "Book of the Dead",
+      "Tome of water",
+      "Tome of water (empty)",
+      "Tome of earth",
+      "Tome of earth (empty)",
+      "Tome of fire",
+      "Tome of fire (empty)",
+      "Malediction ward",
+      "Malediction ward (or)"
     ],
     "shieldBlockPkp": {
       "Broodoo shield": 25,
@@ -148,7 +1449,9 @@
       "Broodoo shield (1)": 25,
       "Blessed Spirit Shield": 33,
       "Elysian Spirit Shield": 50,
-      "Book of the Dead": 25
+      "Book of the Dead": 25,
+      "Malediction ward": 25,
+      "Malediction ward (or)": 25
     },
     "noBlockPkpItems": [
       "Saradomin d'hide shield",
@@ -174,7 +1477,13 @@
       "Ghommal's avernic defender 6",
       "Ghommal's avernic defender 5 (l)",
       "Ghommal's avernic defender 6 (l)",
-      "3rd Age Kiteshield"
+      "3rd Age Kiteshield",
+      "Tome of water",
+      "Tome of water (empty)",
+      "Tome of earth",
+      "Tome of earth (empty)",
+      "Tome of fire",
+      "Tome of fire (empty)"
     ],
     "blockPenaltyItems": {
       "Holy book": 0,
@@ -196,9 +1505,11 @@
       "Spectral Spirit Shield": 25,
       "Amy's saw (off-hand)": 15,
       "V's Shield": 33,
-      "Bruma torch (off-hand)": 15
+      "Bruma torch (off-hand)": 15,
+      "Odium Ward": 25,
+      "Odium ward (or)": 25
     },
-    "weaponExceptions": [
+    "weaponExceptions": ["Keris partisan of the sun", "Keris partisan of corruption", "Dawnbringer", "Abyssal dagger", "Abyssal dagger (p)", "Abyssal dagger (p+)", "Abyssal dagger (p++)", "Ahrim's staff", "Ahrim's staff 100", "Ahrim's staff 75", "Ahrim's staff 50", "Ahrim's staff 25", "Ahrim's staff 0", "Oak blackjack(d)", "Willow blackjack(d)", 
       "3rd Age Longsword",
       "Emberlight",
       "Arclight",
@@ -228,9 +1539,32 @@
       "Dragon Dagger(P++)",
       "Bone Dagger (p)",
       "Bone Dagger (p+)",
-      "Bone Dagger (P++)"
+      "Bone Dagger (P++)",
+      "Spork",
+      "Spatula",
+      "Frying pan",
+      "Skewer",
+      "Rolling pin",
+      "Kitchen knife",
+      "Meat tenderiser",
+      "Cleaver",
+      "Crystal halberd (basic)",
+      "Crystal halberd (attuned)",
+      "Crystal halberd (perfected)",
+      "Crystal staff (basic)",
+      "Crystal staff (attuned)",
+      "Crystal staff (perfected)",
+      "Corrupted halberd (basic)",
+      "Corrupted halberd (attuned)",
+      "Corrupted halberd (perfected)",
+      "Corrupted staff (basic)",
+      "Corrupted staff (attuned)",
+      "Corrupted staff (perfected)",
+      "Dragon scimitar (or)"
     ],
     "pacifistItems": [
+      "Oak blackjack",
+      "Willow blackjack",
       "Blessed Axe",
       "3rd Age Axe",
       "3rd Age Felling Axe",
@@ -318,8 +1652,7 @@
         "effects": [
           "CO",
           "CD",
-          "O2a",
-          "D2a"
+          "F3a"
         ]
       },
       {
@@ -369,27 +1702,35 @@
       },
       {
         "name": "Rosewood Blowpipe",
-        "delta": 0,
-        "effects": []
+        "delta": 66,
+        "effects": [
+          "O1a"
+        ]
       },
       {
         "name": "Eclipse Atlatl",
         "delta": -66,
-        "effects": []
+        "effects": [
+          "D2a"
+        ]
       },
       {
         "name": "Tonalztics of Ralos",
         "delta": 66,
-        "effects": []
+        "effects": [
+          "O2a"
+        ]
       },
       {
         "name": "Magic Shortbow",
         "delta": 66,
-        "effects": []
+        "effects": [
+          "CD"
+        ]
       },
       {
         "name": "Magic Longbow",
-        "delta": 0,
+        "delta": 100,
         "effects": []
       },
       {
@@ -402,7 +1743,9 @@
       {
         "name": "Dark Bow",
         "delta": -66,
-        "effects": []
+        "effects": [
+          "D2a"
+        ]
       },
       {
         "name": "Thammaron's sceptre (a)",
@@ -420,8 +1763,10 @@
       },
       {
         "name": "Accursed sceptre",
-        "delta": 0,
-        "effects": []
+        "delta": 50,
+        "effects": [
+          "O2a"
+        ]
       },
       {
         "name": "Accursed sceptre (a)",
@@ -439,18 +1784,28 @@
       },
       {
         "name": "Accursed sceptre (u)",
-        "delta": 0,
-        "effects": []
+        "delta": 50,
+        "effects": [
+          "O2a"
+        ]
       },
       {
         "name": "Eye of ayak",
-        "delta": 0,
-        "effects": []
+        "delta": -50,
+        "effects": [
+          "CO",
+          "CD",
+          "F16s"
+        ]
       },
       {
         "name": "Eye of ayak (uncharged)",
-        "delta": 0,
-        "effects": []
+        "delta": -50,
+        "effects": [
+          "CO",
+          "CD",
+          "F16s"
+        ]
       },
       {
         "name": "Dragon Sword",
@@ -461,17 +1816,21 @@
       },
       {
         "name": "Osmumten's fang",
-        "delta": 0,
-        "effects": []
+        "delta": 33,
+        "effects": [
+          "F9s"
+        ]
       },
       {
         "name": "Osmumten's fang (or)",
-        "delta": 0,
-        "effects": []
+        "delta": 33,
+        "effects": [
+          "F12s"
+        ]
       },
       {
         "name": "Dragon Spear",
-        "delta": 0,
+        "delta": -25,
         "effects": [
           "CO",
           "CD"
@@ -479,7 +1838,7 @@
       },
       {
         "name": "Dragon Spear(p)",
-        "delta": 0,
+        "delta": -25,
         "effects": [
           "CO",
           "CD"
@@ -487,7 +1846,7 @@
       },
       {
         "name": "Dragon Spear(p+)",
-        "delta": 0,
+        "delta": -25,
         "effects": [
           "CO",
           "CD"
@@ -495,7 +1854,7 @@
       },
       {
         "name": "Dragon Spear(p++)",
-        "delta": 0,
+        "delta": -25,
         "effects": [
           "CO",
           "CD"
@@ -503,7 +1862,7 @@
       },
       {
         "name": "Dragon Spear(kp)",
-        "delta": 0,
+        "delta": -25,
         "effects": [
           "CO",
           "CD"
@@ -511,55 +1870,55 @@
       },
       {
         "name": "Dragon Hasta",
-        "delta": 0,
+        "delta": 25,
         "effects": [
           "O1a"
         ]
       },
       {
         "name": "Dragon Hasta(p)",
-        "delta": 0,
+        "delta": 25,
         "effects": [
           "O1a"
         ]
       },
       {
         "name": "Dragon Hasta(p+)",
-        "delta": 0,
+        "delta": 25,
         "effects": [
           "O1a"
         ]
       },
       {
         "name": "Dragon Hasta(p++)",
-        "delta": 0,
+        "delta": 25,
         "effects": [
           "O1a"
         ]
       },
       {
         "name": "Dragon Hasta(kp)",
-        "delta": 0,
+        "delta": 25,
         "effects": [
           "O1a"
         ]
       },
       {
         "name": "Dragon Halberd",
-        "delta": 0,
-        "effects": [
-          "O1a"
-        ]
+        "delta": 66,
+        "effects": []
       },
       {
         "name": "Crystal Halberd",
-        "delta": 0,
+        "delta": 66,
         "effects": []
       },
       {
         "name": "Noxious Halberd",
         "delta": 0,
-        "effects": []
+        "effects": [
+          "S200/16"
+        ]
       },
       {
         "name": "Barrelchest anchor",
@@ -568,33 +1927,35 @@
       },
       {
         "name": "Saradomin godsword",
-        "delta": 0,
-        "effects": []
+        "delta": 100,
+        "effects": [
+          "F3a"
+        ]
       },
       {
         "name": "Saradomin Sword",
-        "delta": 0,
+        "delta": -50,
         "effects": [
           "D20s"
         ]
       },
       {
         "name": "Saradomin's blessed sword",
-        "delta": 0,
+        "delta": -50,
         "effects": [
           "D40s"
         ]
       },
       {
         "name": "Sunspear",
-        "delta": 0,
+        "delta": 25,
         "effects": [
           "O3a"
         ]
       },
       {
         "name": "Zamorakian Spear",
-        "delta": 0,
+        "delta": -50,
         "effects": [
           "CO",
           "CD"
@@ -602,7 +1963,7 @@
       },
       {
         "name": "Zamorakian Hasta",
-        "delta": 0,
+        "delta": -50,
         "effects": [
           "CO",
           "CD"
@@ -623,16 +1984,21 @@
       {
         "name": "Rune claws",
         "delta": 100,
-        "effects": []
+        "effects": [
+          "F1a"
+        ]
       },
       {
         "name": "Granite Longsword",
         "delta": 0,
-        "effects": []
+        "effects": [
+          "CO",
+          "O2a"
+        ]
       },
       {
         "name": "Dragon 2h sword",
-        "delta": 0,
+        "delta": -66,
         "effects": []
       },
       {
@@ -659,36 +2025,46 @@
       {
         "name": "Burning Claws",
         "delta": -33,
-        "effects": []
+        "effects": [
+          "G50/8"
+        ]
       },
       {
         "name": "Viggora's chainmace",
         "delta": 0,
-        "effects": []
+        "effects": [
+          "CO"
+        ]
       },
       {
         "name": "Ursine Chainmace",
         "delta": 0,
-        "effects": []
+        "effects": [
+          "CO"
+        ]
       },
       {
         "name": "Ancient godsword",
-        "delta": 0,
+        "delta": -33,
         "effects": [
-          "D3A"
+          "D3a"
         ]
       },
       {
         "name": "Armadyl godsword",
         "delta": 0,
         "effects": [
-          "R50/25"
+          "R50/25",
+          "CO",
+          "CD"
         ]
       },
       {
         "name": "Zamorak godsword",
         "delta": 0,
-        "effects": []
+        "effects": [
+          "F20s"
+        ]
       },
       {
         "name": "Soulreaper axe",
@@ -702,12 +2078,18 @@
       {
         "name": "Granite Maul",
         "delta": 0,
-        "effects": []
+        "effects": [
+          "CO",
+          "O2a"
+        ]
       },
       {
         "name": "Granite Hammer",
         "delta": 0,
-        "effects": []
+        "effects": [
+          "CO",
+          "O2a"
+        ]
       },
       {
         "name": "Dragon Mace",
@@ -727,16 +2109,22 @@
       {
         "name": "Viggora's chainmace (u)",
         "delta": 0,
-        "effects": []
+        "effects": [
+          "CO",
+          "CD"
+        ]
       },
       {
         "name": "Ursine chainmace (u)",
         "delta": 0,
-        "effects": []
+        "effects": [
+          "CO",
+          "CD"
+        ]
       },
       {
         "name": "Dual Macuahuitl",
-        "delta": -50,
+        "delta": -33,
         "effects": [
           "CO"
         ]
@@ -750,8 +2138,10 @@
       },
       {
         "name": "Crimson Kisten",
-        "delta": 0,
-        "effects": []
+        "delta": 75,
+        "effects": [
+          "O8s"
+        ]
       },
       {
         "name": "Elder maul",
@@ -770,7 +2160,7 @@
       },
       {
         "name": "Abyssal Whip",
-        "delta": 0,
+        "delta": 50,
         "effects": [
           "CO",
           "CD",
@@ -779,7 +2169,7 @@
       },
       {
         "name": "Abyssal Tentacle",
-        "delta": 0,
+        "delta": 50,
         "effects": [
           "CO",
           "CD",
@@ -790,7 +2180,7 @@
         "name": "Voidwaker",
         "delta": -50,
         "effects": [
-          "D1A"
+          "D1a"
         ]
       },
       {
@@ -808,12 +2198,14 @@
         "delta": 0,
         "effects": [
           "CO",
-          "CD"
+          "CD",
+          "S50/12",
+          "G50/12"
         ]
       },
       {
         "name": "Arkan Blade",
-        "delta": -50,
+        "delta": -33,
         "effects": []
       },
       {
@@ -854,12 +2246,16 @@
       {
         "name": "Scorching Bow",
         "delta": 66,
-        "effects": []
+        "effects": [
+          "O2a"
+        ]
       },
       {
         "name": "Bone Dagger",
         "delta": 25,
-        "effects": []
+        "effects": [
+          "F1a"
+        ]
       },
       {
         "name": "Dragon Dagger(p)",
@@ -885,17 +2281,23 @@
       {
         "name": "Bone Dagger (p)",
         "delta": 25,
-        "effects": []
+        "effects": [
+          "F1a"
+        ]
       },
       {
         "name": "Bone Dagger (p+)",
         "delta": 25,
-        "effects": []
+        "effects": [
+          "F1a"
+        ]
       },
       {
         "name": "Bone Dagger (P++)",
         "delta": 25,
-        "effects": []
+        "effects": [
+          "F1a"
+        ]
       },
       {
         "name": "Dinh's bulwark",
@@ -945,9 +2347,102 @@
         "effects": [
           "R50/50"
         ]
+      },
+      {
+        "name": "Dragon scimitar (or)",
+        "delta": 0,
+        "effects": [
+          "S50/7",
+          "G50/7"
+        ]
+      },
+      {
+        "name": "Dragon crossbow",
+        "delta": 66,
+        "effects": [
+          "O2a"
+        ]
+      },
+      {
+        "name": "Dorgeshuun crossbow",
+        "delta": 0,
+        "effects": [
+          "R50/25",
+          "F1a"
+        ]
+      },
+      {
+        "name": "Light ballista",
+        "delta": 75,
+        "effects": []
+      },
+      {
+        "name": "Heavy ballista",
+        "delta": 100,
+        "effects": []
+      },
+      {
+        "name": "Magic composite bow",
+        "delta": 100,
+        "effects": [
+          "F3a"
+        ]
+      },
+      {
+        "name": "Brine sabre",
+        "delta": 0,
+        "effects": [
+          "CO"
+        ]
+      },
+      {
+        "name": "Volatile nightmare staff",
+        "delta": -50,
+        "effects": []
+      },
+      {
+        "name": "Eldritch nightmare staff",
+        "delta": -50,
+        "effects": []
+      },
+      {
+        "name": "Purging staff",
+        "delta": 0,
+        "effects": [
+          "CO",
+          "CD"
+        ]
+      },
+      {
+        "name": "Keris partisan of the sun",
+        "delta": 0,
+        "effects": [
+          "CO",
+          "CD",
+          "F1a"
+        ]
+      },
+      {
+        "name": "Keris partisan of corruption",
+        "delta": 0,
+        "effects": [
+          "G50/15",
+          "S50/15"
+        ]
+      },
+      {
+        "name": "Dawnbringer",
+        "delta": 0,
+        "effects": []
       }
     ],
     "pkpRangedWeapons": {
+      "Karil's crossbow": 50,
+      "Karil's crossbow 100": 50,
+      "Karil's crossbow 75": 50,
+      "Karil's crossbow 50": 50,
+      "Karil's crossbow 25": 50,
+      "Karil's crossbow 0": 50,
       "Blisterwood Stake": 25,
       "Rune Knife": 25,
       "Adamant Knife": 25,
@@ -961,9 +2456,20 @@
       "Armadyl Crossbow": 50,
       "Yew Composite Bow": 50,
       "Magic Composite Bow": 50,
-      "Dragon Hunter Crossbow": 50,
       "3rd Age Bow": 0,
-      "Dorgeshuun crossbow": 50
+      "Dorgeshuun crossbow": 50,
+      "Light ballista": 50,
+      "Heavy ballista": 66,
+      "Crystal bow": 50,
+      "Dragon crossbow": 50,
+      "Bow of faerdhinen": 40,
+      "Bow of faerdhinen (c)": 40,
+      "Dragon Hunter Crossbow": 50,
+      "Dragon hunter crossbow (t)": 50,
+      "Dragon hunter crossbow (b)": 50,
+      "Corrupted bow (basic)": 50,
+      "Corrupted bow (attuned)": 50,
+      "Corrupted bow (perfected)": 50
     },
     "sustainedFreeze": [
       {
@@ -1279,7 +2785,7 @@
           "Proselyte Hauberk",
           "Proselyte Cuisse",
           "Proselyte Tasset",
-          "Verac's Plateskirt",
+          "Verac's plateskirt",
           "Justiciar chestguard",
           "Justiciar legguards",
           "Saradomin monk top",
@@ -1605,7 +3111,13 @@
           "Void melee helm (l)",
           "Void ranger helm (l)",
           "Elite void top (l)",
-          "Elite void robe (l)"
+          "Elite void robe (l)",
+          "Bronze kiteshield",
+          "Iron kiteshield",
+          "Steel kiteshield",
+          "Mithril kiteshield",
+          "Adamant kiteshield",
+          "Odium ward (or)"
         ]
       },
       "weapons": {
@@ -1723,7 +3235,6 @@
           "Guthix crozier",
           "Guthix banner",
           "Ancient crozier",
-          "Black scimitar",
           "Black spear",
           "Black halberd",
           "Black Knife",
@@ -1744,7 +3255,8 @@
           "Toxic Blowpipe",
           "Scorching Bow",
           "Dinh's bulwark",
-          "Dinh's blazing bulwark"
+          "Dinh's blazing bulwark",
+          "Black scimitar"
         ],
         "weaponExceptions": [
           "Bronze Sword",
@@ -1894,13 +3406,9 @@
           "Webweaver bow",
           "Webweaver bow (u)",
           "Armadyl Crossbow",
-          "Karil's crossbow",
-          "Karil's crossbow 100",
-          "Karil's crossbow 75",
-          "Karil's crossbow 50",
-          "Karil's crossbow 25",
-          "Karil's crossbow 0",
-          "Hunters' Crossbow"
+          "Hunters' Crossbow",
+          "Bow of faerdhinen",
+          "Bow of faerdhinen (c)"
         ],
         "rangedRestoreEnabled": true,
         "rangedRestore": 33
@@ -1929,7 +3437,8 @@
         "meleeRestore": 50,
         "blockRestore": 15,
         "poisonCostEnabled": true,
-        "poisonCostPercent": 100,
+        "poisonCostPercent": 50,
+        "poisonRestorePercent": 100,
         "maxPkpItems": {
           "Holy book": 50
         }
@@ -1974,7 +3483,7 @@
           "Pineapple pizza": 25,
           "Cup of Tea": 25,
           "Beer": -25,
-          "Cider": -33,
+          "Cider": -25,
           "Keg of Beer": -100,
           "Cooked t-bone steak": -50
         },
@@ -1995,44 +3504,72 @@
             ]
           },
           {
-            "name": "Guthix Rest (1)",
-            "delta": 0,
-            "effects": [
-              "CO",
-              "R25/25"
-            ]
-          },
-          {
-            "name": "Guthix Rest (2)",
-            "delta": 0,
-            "effects": [
-              "CO",
-              "R25/25"
-            ]
-          },
-          {
-            "name": "Guthix Rest (3)",
-            "delta": 0,
-            "effects": [
-              "CO",
-              "R25/25"
-            ]
-          },
-          {
-            "name": "Guthix Rest (4)",
-            "delta": 0,
-            "effects": [
-              "CO",
-              "R25/25"
-            ]
-          },
-          {
             "name": "Poison Chalice",
             "delta": 0,
             "effects": [
               "CO",
               "CD",
               "R33/33"
+            ]
+          },
+          {
+            "name": "Saradomin brew(1)",
+            "delta": 0,
+            "effects": [
+              "O1a",
+              "D1a"
+            ]
+          },
+          {
+            "name": "Saradomin brew(2)",
+            "delta": 0,
+            "effects": [
+              "O1a",
+              "D1a"
+            ]
+          },
+          {
+            "name": "Saradomin brew(3)",
+            "delta": 0,
+            "effects": [
+              "O1a",
+              "D1a"
+            ]
+          },
+          {
+            "name": "Saradomin brew(4)",
+            "delta": 0,
+            "effects": [
+              "O1a",
+              "D1a"
+            ]
+          },
+          {
+            "name": "Zamorak brew(1)",
+            "delta": 0,
+            "effects": [
+              "KO"
+            ]
+          },
+          {
+            "name": "Zamorak brew(2)",
+            "delta": 0,
+            "effects": [
+              "KO"
+            ]
+          },
+          {
+            "name": "Zamorak brew(3)",
+            "delta": 0,
+            "effects": [
+              "KO"
+            ]
+          },
+          {
+            "name": "Zamorak brew(4)",
+            "delta": 0,
+            "effects": [
+              "KO"
             ]
           }
         ]
@@ -2058,7 +3595,7 @@
       },
       "gear": {
         "magicGearExceptions": [
-          "Verac's Plateskirt",
+          "Verac's plateskirt",
           "Guthix max cape",
           "Guthix Cape",
           "Imbued Guthix cape (l)",
@@ -2397,7 +3934,13 @@
           "Eclipse Moon Tassets",
           "Iron Chainbody",
           "Imbued ancient cape",
-          "Imbued ancient max cape"
+          "Imbued ancient max cape",
+          "Bronze kiteshield",
+          "Iron kiteshield",
+          "Steel kiteshield",
+          "Mithril kiteshield",
+          "Adamant kiteshield",
+          "Odium ward (or)"
         ]
       },
       "weapons": {
@@ -2588,7 +4131,6 @@
           "Saradomin staff",
           "Staff of Light",
           "Ancient crozier",
-          "Black scimitar",
           "Black spear",
           "Black halberd",
           "White dagger",
@@ -2602,13 +4144,6 @@
           "White halberd",
           "White magic staff",
           "Black Knife",
-          "Armadyl Crossbow",
-          "Karil's crossbow",
-          "Karil's crossbow 100",
-          "Karil's crossbow 75",
-          "Karil's crossbow 50",
-          "Karil's crossbow 25",
-          "Karil's crossbow 0",
           "Guthan's warspear 100",
           "Guthan's warspear 75",
           "Guthan's warspear 50",
@@ -2621,9 +4156,14 @@
           "Dharok's greataxe 0",
           "Scythe of Vitur",
           "Bandos Godsword",
-          "Toxic Blowpipe"
+          "Toxic Blowpipe",
+          "Black scimitar"
         ],
         "weaponExceptions": [
+          "Oak blackjack(o)",
+          "Willow blackjack(o)",
+          "Maple blackjack(o)",
+          "Maple blackjack(d)",
           "Verac's flail",
           "Guthix Staff",
           "Void Knight Mace",
@@ -2680,7 +4220,9 @@
           "Verac's flail 0",
           "Dinh's bulwark",
           "Dinh's blazing bulwark",
-          "Dragon Dagger"
+          "Dragon Dagger",
+          "Blade of saeldor",
+          "Blade of saeldor (c)"
         ],
         "weaponExceptionDefaultPkp": 50,
         "pkpWeapons": {
@@ -2692,7 +4234,12 @@
           "Dark Bow",
           "Dragon Hunter Crossbow",
           "Scorching Bow",
-          "Hunters' Crossbow"
+          "Hunters' Crossbow",
+          "Armadyl Crossbow",
+          "Bow of faerdhinen",
+          "Bow of faerdhinen (c)",
+          "Dragon hunter crossbow (t)",
+          "Dragon hunter crossbow (b)"
         ],
         "rangedRestoreEnabled": true,
         "rangedRestore": 33
@@ -2721,7 +4268,8 @@
         "meleeRestore": 50,
         "blockRestore": 0,
         "poisonCostEnabled": true,
-        "poisonCostPercent": 100,
+        "poisonCostPercent": 50,
+        "poisonRestorePercent": 100,
         "maxPkpItems": {
           "Book of Balance": 50
         }
@@ -2766,7 +4314,7 @@
           "Pineapple pizza": 25,
           "Cup of Tea": 25,
           "Beer": -25,
-          "Cider": -33,
+          "Cider": -25,
           "Keg of Beer": -100,
           "Cooked t-bone steak": -50
         },
@@ -2787,44 +4335,40 @@
             ]
           },
           {
-            "name": "Guthix Rest (1)",
-            "delta": 0,
-            "effects": [
-              "CO",
-              "R25/25"
-            ]
-          },
-          {
-            "name": "Guthix Rest (2)",
-            "delta": 0,
-            "effects": [
-              "CO",
-              "R25/25"
-            ]
-          },
-          {
-            "name": "Guthix Rest (3)",
-            "delta": 0,
-            "effects": [
-              "CO",
-              "R25/25"
-            ]
-          },
-          {
-            "name": "Guthix Rest (4)",
-            "delta": 0,
-            "effects": [
-              "CO",
-              "R25/25"
-            ]
-          },
-          {
             "name": "Poison Chalice",
             "delta": 0,
             "effects": [
               "CO",
               "CD",
               "R33/33"
+            ]
+          },
+          {
+            "name": "Guthix rest(1)",
+            "delta": 25,
+            "effects": [
+              "Z2s"
+            ]
+          },
+          {
+            "name": "Guthix rest(2)",
+            "delta": 25,
+            "effects": [
+              "Z2s"
+            ]
+          },
+          {
+            "name": "Guthix rest(3)",
+            "delta": 25,
+            "effects": [
+              "Z2s"
+            ]
+          },
+          {
+            "name": "Guthix rest(4)",
+            "delta": 25,
+            "effects": [
+              "Z2s"
             ]
           }
         ]
@@ -2839,7 +4383,7 @@
         ]
       },
       "pacifist": {
-        "pacifistItems": []
+        "pacifistItems": ["Maple blackjack"]
       }
     },
     "ZAMORAK": {
@@ -2850,6 +4394,18 @@
       },
       "gear": {
         "magicGearExceptions": [
+          "Karil's leathertop",
+          "Karil's leathertop 100",
+          "Karil's leathertop 75",
+          "Karil's leathertop 50",
+          "Karil's leathertop 25",
+          "Karil's leathertop 0",
+          "Karil's leatherskirt",
+          "Karil's leatherskirt 100",
+          "Karil's leatherskirt 75",
+          "Karil's leatherskirt 50",
+          "Karil's leatherskirt 25",
+          "Karil's leatherskirt 0",
           "Zamorak monk top",
           "Zamorak monk bottom",
           "Unholy symbol",
@@ -2988,7 +4544,7 @@
           "Steel Kiteshield (Saradomin)",
           "Adamant Kiteshield (Saradomin)",
           "Rune Kiteshield (Saradomin)",
-          "Verac's Plateskirt",
+          "Verac's plateskirt",
           "Justiciar chestguard",
           "Justiciar legguards",
           "Guthix max cape",
@@ -3134,18 +4690,6 @@
           "Steel plateskirt (g)",
           "Steel kiteshield (t)",
           "Steel kiteshield (g)",
-          "Karil's leathertop",
-          "Karil's leathertop 100",
-          "Karil's leathertop 75",
-          "Karil's leathertop 50",
-          "Karil's leathertop 25",
-          "Karil's leathertop 0",
-          "Karil's leatherskirt",
-          "Karil's leatherskirt 100",
-          "Karil's leatherskirt 75",
-          "Karil's leatherskirt 50",
-          "Karil's leatherskirt 25",
-          "Karil's leatherskirt 0",
           "Guthan's platebody",
           "Guthan's platebody 100",
           "Guthan's platebody 75",
@@ -3189,7 +4733,13 @@
           "Void melee helm (l)",
           "Void ranger helm (l)",
           "Elite void top (l)",
-          "Elite void robe (l)"
+          "Elite void robe (l)",
+          "Bronze kiteshield",
+          "Iron kiteshield",
+          "Steel kiteshield",
+          "Mithril kiteshield",
+          "Adamant kiteshield",
+          "Odium ward (or)"
         ]
       },
       "weapons": {
@@ -3300,7 +4850,6 @@
           "Sunspear",
           "Holy scythe of vitur",
           "Holy ghrazi rapier",
-          "Rune scimitar (saradomin)",
           "Hallowfell",
           "Saradomin mjolnir",
           "Banner (Saradomin)",
@@ -3334,7 +4883,6 @@
           "Dual Macuahuitl",
           "Abyssal Bludgeon",
           "Elder maul",
-          "Rune Scimitar (Guthix)",
           "Guthix mjolnir",
           "Banner (Guthix)",
           "Abyssal Whip",
@@ -3356,7 +4904,6 @@
           "White dagger",
           "White longsword",
           "White 2h sword",
-          "White scimitar",
           "White mace",
           "White warhammer",
           "White battleaxe",
@@ -3364,12 +4911,6 @@
           "White halberd",
           "White magic staff",
           "Armadyl Crossbow",
-          "Karil's crossbow",
-          "Karil's crossbow 100",
-          "Karil's crossbow 75",
-          "Karil's crossbow 50",
-          "Karil's crossbow 25",
-          "Karil's crossbow 0",
           "Guthan's warspear 100",
           "Guthan's warspear 75",
           "Guthan's warspear 50",
@@ -3389,9 +4930,16 @@
           "Toxic Blowpipe",
           "Scorching Bow",
           "Dinh's bulwark",
-          "Dinh's blazing bulwark"
+          "Dinh's blazing bulwark",
+          "Rune scimitar (guthix)",
+          "Rune scimitar (saradomin)",
+          "White scimitar"
         ],
         "weaponExceptions": [
+          "Oak blackjack(o)",
+          "Willow blackjack(o)",
+          "Maple blackjack(o)",
+          "Maple blackjack(d)",
           "Crimson Kisten",
           "Accursed sceptre (a)",
           "Accursed sceptre (au)",
@@ -3462,7 +5010,6 @@
           "Ursine chainmace (u)",
           "Ancient Mace",
           "Arkan Blade",
-          "Black scimitar",
           "Black spear",
           "Black halberd",
           "Dharok's greataxe 100",
@@ -3472,7 +5019,11 @@
           "Dharok's greataxe 0",
           "Scythe of Vitur",
           "Bandos Godsword",
-          "Dragon Dagger"
+          "Dragon Dagger",
+          "Blade of saeldor",
+          "Blade of saeldor (c)",
+          "Brine sabre",
+          "Black scimitar"
         ],
         "weaponExceptionDefaultPkp": 50,
         "pkpWeapons": {
@@ -3484,7 +5035,10 @@
           "Dark Bow",
           "Black Knife",
           "Dragon Hunter Crossbow",
-          "Hunters' Crossbow"
+          "Hunters' Crossbow",
+          "Dragon crossbow",
+          "Dragon hunter crossbow (t)",
+          "Dragon hunter crossbow (b)"
         ],
         "rangedRestoreEnabled": true,
         "rangedRestore": 33
@@ -3513,7 +5067,8 @@
         "meleeRestore": 50,
         "blockRestore": -15,
         "poisonCostEnabled": true,
-        "poisonCostPercent": 100,
+        "poisonCostPercent": 50,
+        "poisonRestorePercent": 100,
         "maxPkpItems": {
           "Unholy book": 50
         }
@@ -3559,7 +5114,7 @@
           "Pineapple pizza": 25,
           "Cup of Tea": 25,
           "Beer": -25,
-          "Cider": -33,
+          "Cider": -25,
           "Keg of Beer": -100,
           "Cooked t-bone steak": -50
         },
@@ -3580,44 +5135,76 @@
             ]
           },
           {
-            "name": "Guthix Rest (1)",
-            "delta": 0,
-            "effects": [
-              "CO",
-              "R25/25"
-            ]
-          },
-          {
-            "name": "Guthix Rest (2)",
-            "delta": 0,
-            "effects": [
-              "CO",
-              "R25/25"
-            ]
-          },
-          {
-            "name": "Guthix Rest (3)",
-            "delta": 0,
-            "effects": [
-              "CO",
-              "R25/25"
-            ]
-          },
-          {
-            "name": "Guthix Rest (4)",
-            "delta": 0,
-            "effects": [
-              "CO",
-              "R25/25"
-            ]
-          },
-          {
             "name": "Poison Chalice",
             "delta": 0,
             "effects": [
               "CO",
               "CD",
               "R33/33"
+            ]
+          },
+          {
+            "name": "Saradomin brew(1)",
+            "delta": 0,
+            "effects": [
+              "G200/8",
+              "S200/8"
+            ]
+          },
+          {
+            "name": "Saradomin brew(2)",
+            "delta": 0,
+            "effects": [
+              "G200/8",
+              "S200/8"
+            ]
+          },
+          {
+            "name": "Saradomin brew(3)",
+            "delta": 0,
+            "effects": [
+              "G200/8",
+              "S200/8"
+            ]
+          },
+          {
+            "name": "Saradomin brew(4)",
+            "delta": 0,
+            "effects": [
+              "G200/8",
+              "S200/8"
+            ]
+          },
+          {
+            "name": "Zamorak brew(1)",
+            "delta": 0,
+            "effects": [
+              "O3a",
+              "D3a"
+            ]
+          },
+          {
+            "name": "Zamorak brew(2)",
+            "delta": 0,
+            "effects": [
+              "O3a",
+              "D3a"
+            ]
+          },
+          {
+            "name": "Zamorak brew(3)",
+            "delta": 0,
+            "effects": [
+              "O3a",
+              "D3a"
+            ]
+          },
+          {
+            "name": "Zamorak brew(4)",
+            "delta": 0,
+            "effects": [
+              "O3a",
+              "D3a"
             ]
           }
         ]
@@ -3632,7 +5219,7 @@
         ]
       },
       "pacifist": {
-        "pacifistItems": []
+        "pacifistItems": ["Maple blackjack"]
       }
     },
     "ZAROS": {
@@ -3643,7 +5230,7 @@
       },
       "gear": {
         "magicGearExceptions": [
-          "Verac's Plateskirt",
+          "Verac's plateskirt",
           "Dagon'hai hat",
           "Dagon'hai robe top",
           "Dagon'hai robe bottom",
@@ -3732,7 +5319,8 @@
           "Ancient D'hide Shield",
           "Odium Ward",
           "Bandos d'hide shield",
-          "Bandos kiteshield"
+          "Bandos kiteshield",
+          "Odium ward (or)"
         ],
         "magicGearForceBlock": [
           "Rune kiteshield",
@@ -3984,7 +5572,12 @@
           "Void melee helm (l)",
           "Void ranger helm (l)",
           "Elite void top (l)",
-          "Elite void robe (l)"
+          "Elite void robe (l)",
+          "Bronze kiteshield",
+          "Iron kiteshield",
+          "Steel kiteshield",
+          "Mithril kiteshield",
+          "Adamant kiteshield"
         ]
       },
       "weapons": {
@@ -4181,7 +5774,6 @@
           "Staff of Balance",
           "Guthix crozier",
           "Guthix banner",
-          "Black scimitar",
           "Black spear",
           "Black halberd",
           "White dagger",
@@ -4195,7 +5787,6 @@
           "White halberd",
           "White magic staff",
           "Black Knife",
-          "Armadyl Crossbow",
           "Guthan's warspear 100",
           "Guthan's warspear 75",
           "Guthan's warspear 50",
@@ -4213,9 +5804,9 @@
           "Dharok's greataxe 25",
           "Dharok's greataxe 0",
           "Scythe of Vitur",
-          "Dragon Hunter Crossbow",
           "Dinh's bulwark",
-          "Dinh's blazing bulwark"
+          "Dinh's blazing bulwark",
+          "Black scimitar"
         ],
         "weaponExceptions": [
           "Thammaron's sceptre (a)",
@@ -4271,15 +5862,16 @@
           "Hunters' sunlight crossbow",
           "Venator Bow",
           "Zaryte Crossbow",
-          "Karil's crossbow",
-          "Karil's crossbow 100",
-          "Karil's crossbow 75",
-          "Karil's crossbow 50",
-          "Karil's crossbow 25",
-          "Karil's crossbow 0",
           "Toxic Blowpipe",
           "Scorching Bow",
-          "Dark Bow"
+          "Dark Bow",
+          "Dragon crossbow",
+          "Dragon Hunter Crossbow",
+          "Dragon hunter crossbow (t)",
+          "Dragon hunter crossbow (b)",
+          "Armadyl Crossbow",
+          "Bow of faerdhinen",
+          "Bow of faerdhinen (c)"
         ],
         "rangedRestoreEnabled": true,
         "rangedRestore": 33
@@ -4308,7 +5900,8 @@
         "meleeRestore": 50,
         "blockRestore": 0,
         "poisonCostEnabled": true,
-        "poisonCostPercent": 100,
+        "poisonCostPercent": 50,
+        "poisonRestorePercent": 100,
         "maxPkpItems": {
           "Book of Darkness": 50
         }
@@ -4351,7 +5944,7 @@
           "Pineapple pizza": 25,
           "Cup of Tea": 25,
           "Beer": -25,
-          "Cider": -33,
+          "Cider": -25,
           "Keg of Beer": -100,
           "Cooked t-bone steak": -50
         },
@@ -4372,35 +5965,523 @@
             ]
           },
           {
-            "name": "Guthix Rest (1)",
+            "name": "Poison Chalice",
             "delta": 0,
             "effects": [
               "CO",
-              "R25/25"
+              "CD",
+              "R33/33"
             ]
           },
           {
-            "name": "Guthix Rest (2)",
+            "name": "Ancient brew(1)",
             "delta": 0,
             "effects": [
-              "CO",
-              "R25/25"
+              "D8s"
             ]
           },
           {
-            "name": "Guthix Rest (3)",
+            "name": "Ancient brew(2)",
             "delta": 0,
             "effects": [
-              "CO",
-              "R25/25"
+              "D8s"
             ]
           },
           {
-            "name": "Guthix Rest (4)",
+            "name": "Ancient brew(3)",
+            "delta": 0,
+            "effects": [
+              "D8s"
+            ]
+          },
+          {
+            "name": "Ancient brew(4)",
+            "delta": 0,
+            "effects": [
+              "D8s"
+            ]
+          },
+          {
+            "name": "Forgotten brew(1)",
+            "delta": 0,
+            "effects": [
+              "D14s"
+            ]
+          },
+          {
+            "name": "Forgotten brew(2)",
+            "delta": 0,
+            "effects": [
+              "D14s"
+            ]
+          },
+          {
+            "name": "Forgotten brew(3)",
+            "delta": 0,
+            "effects": [
+              "D14s"
+            ]
+          },
+          {
+            "name": "Forgotten brew(4)",
+            "delta": 0,
+            "effects": [
+              "D14s"
+            ]
+          }
+        ]
+      },
+      "overcharge": {
+        "overchargeEnabled": true,
+        "overchargeHeadroom": 100,
+        "overchargeItems": [
+          "Wizard's mind bomb",
+          "Barrelchest Anchor",
+          "Saradomin godsword"
+        ]
+      },
+      "pacifist": {
+        "pacifistItems": []
+      }
+    },
+    "FACTIONLESS": {
+      "faction": "FACTIONLESS",
+      "lore": {
+        "displayName": "Faction-less",
+        "epithet": "Unbound"
+      },
+      "gear": {
+        "magicGearExceptions": [],
+        "shields": [
+          "Saradomin Kiteshield",
+          "Saradomin d'hide Shield",
+          "Steel Kiteshield (Saradomin)",
+          "Adamant Kiteshield (Saradomin)",
+          "Rune Kiteshield (Saradomin)",
+          "Armadyl d'hide shield",
+          "Armadyl kiteshield",
+          "White kiteshield",
+          "White sq shield",
+          "Steel kiteshield (t)",
+          "Steel kiteshield (g)",
+          "Adamant Kiteshield (Guthix)",
+          "Guthix kiteshield",
+          "Guthix d'hide shield",
+          "Steel kiteshield (Guthix)",
+          "Rune kiteshield (Guthix)",
+          "Steel Kiteshield (Zamorak)",
+          "Adamant Kiteshield (Zamorak)",
+          "Rune Kiteshield (Zamorak)",
+          "Zamorak d'hide shield",
+          "Zamorak kiteshield",
+          "Bandos d'hide shield",
+          "Bandos kiteshield",
+          "Black kiteshield",
+          "Black kiteshield (t)",
+          "Black kiteshield (g)",
+          "Black shield (h1)",
+          "Black shield (h2)",
+          "Black shield (h3)",
+          "Black shield (h4)",
+          "Black shield (h5)",
+          "Ancient Kiteshield",
+          "Ancient D'hide Shield",
+          "Odium Ward",
+          "Odium ward (or)"
+        ],
+        "magicGearForceBlock": []
+      },
+      "weapons": {
+        "blockedWeapons": [],
+        "weaponExceptions": [
+          "Bronze Sword",
+          "Training Sword",
+          "Iron Sword",
+          "White Sword",
+          "Mithril Sword",
+          "Adamant Sword",
+          "Rune Sword",
+          "Dragon Sword",
+          "Leaf-bladed Sword",
+          "Toktz-xil-ak",
+          "Belle's folly",
+          "Ghrazi Rapier",
+          "Osmumten's fang",
+          "Osmumten's fang (or)",
+          "Bronze Spear",
+          "Bronze Spear(p)",
+          "Bronze Spear(p+)",
+          "Bronze Spear(p++)",
+          "Bronze Spear(kp)",
+          "Bronze Hasta",
+          "Bronze Hasta(p)",
+          "Bronze Hasta(p+)",
+          "Bronze Hasta(p++)",
+          "Bronze Hasta(kp)",
+          "Iron Spear",
+          "Iron Spear(p)",
+          "Iron Spear(p+)",
+          "Iron Spear(p++)",
+          "Iron Spear(kp)",
+          "Iron Hasta",
+          "Iron Hasta(p)",
+          "Iron Hasta(p+)",
+          "Iron Hasta(p++)",
+          "Iron Hasta(kp)",
+          "Steel Spear",
+          "Steel Spear(p)",
+          "Steel Spear(p+)",
+          "Steel Spear(p++)",
+          "Steel Spear(kp)",
+          "Steel Hasta",
+          "Steel Hasta(p)",
+          "Steel Hasta(p+)",
+          "Steel Hasta(p++)",
+          "Steel Hasta(kp)",
+          "Mithril Spear",
+          "Mithril Spear(p)",
+          "Mithril Spear(p+)",
+          "Mithril Spear(p++)",
+          "Mithril Spear(kp)",
+          "Mithril Hasta",
+          "Mithril Hasta(p)",
+          "Mithril Hasta(p+)",
+          "Mithril Hasta(p++)",
+          "Mithril Hasta(kp)",
+          "Adamant Spear",
+          "Adamant Spear(p)",
+          "Adamant Spear(p+)",
+          "Adamant Spear(p++)",
+          "Adamant Spear(kp)",
+          "Adamant Hasta",
+          "Adamant Hasta(p)",
+          "Adamant Hasta(p+)",
+          "Adamant Hasta(p++)",
+          "Adamant Hasta(kp)",
+          "Rune Spear",
+          "Rune Spear(p)",
+          "Rune Spear(p+)",
+          "Rune Spear(p++)",
+          "Rune Spear(kp)",
+          "Rune Hasta",
+          "Rune Hasta(p)",
+          "Rune Hasta(p+)",
+          "Rune Hasta(p++)",
+          "Rune Hasta(kp)",
+          "Dragon Spear",
+          "Dragon Spear(p)",
+          "Dragon Spear(p+)",
+          "Dragon Spear(p++)",
+          "Dragon Spear(kp)",
+          "Dragon Hasta",
+          "Dragon Hasta(p)",
+          "Dragon Hasta(p+)",
+          "Dragon Hasta(p++)",
+          "Dragon Hasta(kp)",
+          "Bronze Halberd",
+          "Iron Halberd",
+          "Steel Halberd",
+          "Mithril Halberd",
+          "Adamant Halberd",
+          "Rune Halberd",
+          "Dragon Halberd",
+          "Crystal Halberd",
+          "Noxious Halberd",
+          "Bone Spear",
+          "Guthan's warspear",
+          "Verac's flail",
+          "Leaf-bladed Spear",
+          "Earthbound tecpatl",
+          "Barrelchest anchor",
+          "Saradomin godsword",
+          "Saradomin Sword",
+          "Saradomin's blessed sword",
+          "Sunspear",
+          "Holy scythe of vitur",
+          "Holy ghrazi rapier",
+          "Rune scimitar (saradomin)",
+          "Hallowfell",
+          "Saradomin mjolnir",
+          "Banner (Saradomin)",
+          "Saradomin Crozier",
+          "Saradomin staff",
+          "Staff of Light",
+          "White dagger",
+          "White longsword",
+          "White 2h sword",
+          "White scimitar",
+          "White mace",
+          "White warhammer",
+          "White battleaxe",
+          "White claws",
+          "White halberd",
+          "White magic staff",
+          "Guthan's warspear 100",
+          "Guthan's warspear 75",
+          "Guthan's warspear 50",
+          "Guthan's warspear 25",
+          "Guthan's warspear 0",
+          "Verac's flail 100",
+          "Verac's flail 75",
+          "Verac's flail 50",
+          "Verac's flail 25",
+          "Verac's flail 0",
+          "Dragon Dagger",
+          "Arkan Blade",
+          "Oak blackjack(o)",
+          "Willow blackjack(o)",
+          "Maple blackjack(o)",
+          "Maple blackjack(d)",
+          "Guthix Staff",
+          "Void Knight Mace",
+          "Viggora's chainmace",
+          "Ursine Chainmace",
+          "Inquisitor's Mace",
+          "Bronze Mace",
+          "Bronze Warhammer",
+          "Iron Mace",
+          "Iron Warhammer",
+          "Steel Mace",
+          "Steel Warhammer",
+          "Mithril Mace",
+          "Mithril Warhammer",
+          "Adamant Mace",
+          "Adamant Warhammer",
+          "Rune Mace",
+          "Rune Warhammer",
+          "Hill Giant Club",
+          "Barronite Mace",
+          "Bone Mace",
+          "Granite Maul",
+          "Granite Hammer",
+          "Tzhaar-ket-em",
+          "Tzhaar-ket-om",
+          "Sarachnis Cudgel",
+          "Dragon Mace",
+          "Dragon Warhammer",
+          "Glacial temotli",
+          "Viggora's chainmace (u)",
+          "Ursine chainmace (u)",
+          "Dual Macuahuitl",
+          "Abyssal Bludgeon",
+          "Crimson Kisten",
+          "Elder maul",
+          "Rune Scimitar (Guthix)",
+          "Guthix mjolnir",
+          "Banner (Guthix)",
+          "Ancient Mace",
+          "Staff of Balance",
+          "Guthix crozier",
+          "Guthix banner",
+          "Torag's hammers",
+          "Torag's hammers 100",
+          "Torag's hammers 75",
+          "Torag's hammers 50",
+          "Torag's hammers 25",
+          "Torag's hammers 0",
+          "Dinh's bulwark",
+          "Dinh's blazing bulwark",
+          "Blade of saeldor",
+          "Blade of saeldor (c)",
+          "Accursed sceptre (a)",
+          "Accursed sceptre (au)",
+          "Black Sword",
+          "Zamorak Staff",
+          "Iban's staff",
+          "Iban's staff (u)",
+          "Zamorakian Spear",
+          "Zamorakian Hasta",
+          "Dragon hunter lance",
+          "Staff of the Dead",
+          "Toxic staff of the dead",
+          "Toxic staff (uncharged)",
+          "Bronze 2h sword",
+          "Bronze battleaxe",
+          "Bronze Longsword",
+          "Bronze Claws",
+          "Iron 2h sword",
+          "Iron battleaxe",
+          "Iron Longsword",
+          "Iron Claws",
+          "Steel 2h sword",
+          "Steel battleaxe",
+          "Steel Longsword",
+          "Steel Claws",
+          "Black 2h sword",
+          "Black battleaxe",
+          "Black longsword",
+          "Black Claws",
+          "Mithril 2h sword",
+          "Mithril battleaxe",
+          "Mithril Longsword",
+          "Mithril Claws",
+          "Adamant 2h sword",
+          "Adamant battleaxe",
+          "Adamant longsword",
+          "Adamant Claws",
+          "Rune 2h sword",
+          "Rune battleaxe",
+          "Rune Longsword",
+          "Rune claws",
+          "Sulphur blades",
+          "Granite Longsword",
+          "Leaf-bladed battleaxe",
+          "Dragon 2h sword",
+          "Dragon battleaxe",
+          "Dragon longsword",
+          "Dragon Claws",
+          "Colossal blade",
+          "Zombie axe",
+          "Burning Claws",
+          "Dharok's greataxe",
+          "Armadyl godsword",
+          "Zamorak godsword",
+          "Soulreaper axe",
+          "Sanguine Scythe of Vitur",
+          "Banner (Zamorak)",
+          "Rune scimitar (Zamorak)",
+          "Zamorak mjolnir",
+          "Zamorak Crozier",
+          "Black Mace",
+          "Black Warhammer",
+          "Black spear",
+          "Black halberd",
+          "Dharok's greataxe 100",
+          "Dharok's greataxe 75",
+          "Dharok's greataxe 50",
+          "Dharok's greataxe 25",
+          "Dharok's greataxe 0",
+          "Scythe of Vitur",
+          "Bandos Godsword",
+          "Brine sabre",
+          "Black scimitar",
+          "Thammaron's sceptre (a)",
+          "Thammaron's sceptre (au)",
+          "Ancient godsword",
+          "Abyssal Whip",
+          "Abyssal Tentacle",
+          "Voidwaker",
+          "Ancient crozier"
+        ],
+        "weaponExceptionDefaultPkp": 50,
+        "pkpWeapons": {
+          "3rd Age Longsword": 0
+        }
+      },
+      "ranged": {
+        "rangedWeapons": [
+          "Craw's Bow",
+          "Craw's Bow (u)",
+          "Webweaver bow",
+          "Webweaver bow (u)",
+          "Armadyl Crossbow",
+          "Hunters' Crossbow",
+          "Bow of faerdhinen",
+          "Bow of faerdhinen (c)",
+          "Dark Bow",
+          "Dragon Hunter Crossbow",
+          "Scorching Bow",
+          "Dragon hunter crossbow (t)",
+          "Dragon hunter crossbow (b)",
+          "Black Knife",
+          "Dragon crossbow",
+          "Hunters' sunlight crossbow",
+          "Venator Bow",
+          "Zaryte Crossbow",
+          "Toxic Blowpipe"
+        ],
+        "rangedRestoreEnabled": true,
+        "rangedRestore": 33
+      },
+      "spec": {
+        "illegalClearSeconds": 5,
+        "illegalRepeatActions": true,
+        "bigMoveTriggers": true
+      },
+      "pool": {
+        "maxPkp": 100,
+        "combatSpellCost": 50,
+        "curseSpellCost": 25,
+        "curseSpells": [
+          "Confuse",
+          "Weaken",
+          "Curse",
+          "Vulnerability",
+          "Enfeeble",
+          "Stun",
+          "Bind",
+          "Snare",
+          "Entangle",
+          "Teleport Block"
+        ],
+        "meleeRestore": 50,
+        "blockRestore": 0,
+        "poisonCostEnabled": true,
+        "poisonCostPercent": 50,
+        "poisonRestorePercent": 100,
+        "maxPkpItems": {
+          "Holy book": 50,
+          "Book of Balance": 50,
+          "Unholy book": 50,
+          "Book of Darkness": 50
+        }
+      },
+      "scaling": {
+        "magicScalingEnabled": true,
+        "magicBonus50": 0,
+        "magicBonus75": 0,
+        "magicBonus85": 0,
+        "magicBonus88": 50,
+        "magicBonus90": 0,
+        "magicBonus95": 0,
+        "magicBonus99": 0
+      },
+      "regen": {
+        "oocRegenEnabled": true,
+        "oocThresholdTicks": 7,
+        "overloadClearTicks": 7,
+        "oocRestoreSeconds": 9,
+        "sitDoublesRegen": true
+      },
+      "restrict": {
+        "godSpells": [],
+        "overloadBlocksAttack": true,
+        "blockFoodWhenOverloaded": true,
+        "blockPotionsWhenDepleted": true,
+        "consumableExceptions": [
+          "Tea flask"
+        ],
+        "illegalDefaultUse": true,
+        "blockCastWhileSeated": true,
+        "blockAttackWhileSeated": true,
+        "restrictionExemptItems": [
+          "Cowbell amulet"
+        ]
+      },
+      "consumables": {
+        "pkpRestoreItems": {
+          "Wizard's mind bomb": 50,
+          "Pineapple pizza": 25,
+          "Cup of Tea": 25,
+          "Beer": -25,
+          "Cider": -25,
+          "Keg of Beer": -100,
+          "Cooked t-bone steak": -50
+        },
+        "consumableEffects": [
+          {
+            "name": "Tea flask",
             "delta": 0,
             "effects": [
               "CO",
-              "R25/25"
+              "CD"
+            ]
+          },
+          {
+            "name": "Jangerberries",
+            "delta": 0,
+            "effects": [
+              "F8s"
             ]
           },
           {
