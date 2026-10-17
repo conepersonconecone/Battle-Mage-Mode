@@ -39,6 +39,23 @@ public class ContentPack
 	public static class Shared
 	{
 		/**
+		 * Consumable effects that apply under every god, in the same shape as a profile's
+		 * {@link Consumables#consumableEffects}. A god that lists the same item in its own profile
+		 * replaces this entry for that god, which is how a drink acts one way for most gods and
+		 * another way for one.
+		 */
+		public List<Effect> consumableEffects = new ArrayList<>();
+
+		/** Drinks that blunt PKP gain for a while - see {@link Alcohol}. */
+		public Alcohol alcohol = new Alcohol();
+
+		/**
+		 * Equipment that makes every spell cost more while it is worn, as {@code name -> percent of
+		 * the normal cost} (150 = one and a half times). Several worn at once multiply.
+		 */
+		public Map<String, Integer> spellCostItems = new LinkedHashMap<>();
+
+		/**
 		 * Equipment every god lets you wear, whatever else the pack says.
 		 *
 		 * <p>Quest gear: the flail a quest hands you, the staff a teleport needs, the amulet that
@@ -392,7 +409,10 @@ public class ContentPack
 		 */
 		public int blockRestore = 0;
 		public boolean poisonCostEnabled = true;
+		/** While poisoned, spells and PKP costs are this much MORE expensive (50 = 1.5x). */
 		public int poisonCostPercent = 50;
+		/** While poisoned, PKP gained from consumables and specs is cut by this much (100 = none). */
+		public int poisonRestorePercent = 100;
 
 		/**
 		 * Equipment that raises the ceiling while it is worn, as {@code name -> extra PKP}.
@@ -547,14 +567,35 @@ public class ContentPack
 	 * <p>{@code delta} is PKP gained (+) or removed (-). {@code effects} holds the tokens the
 	 * plugin's effect parser understands, joined with {@code +}: {@code F<n>s}/{@code F<n>a} freeze
 	 * for n seconds / attacks, {@code O<n>s}/{@code O<n>a} overload immunity, {@code D<n>s}/
-	 * {@code D<n>a} depletion immunity, {@code R<gain>/<loss>} a coin flip for +gain or -loss, and
-	 * {@code CO}/{@code CD} to clear an active overload/depletion. Unknown tokens are ignored.
+	 * {@code D<n>a} depletion immunity, {@code R<gain>/<loss>} a coin flip for +gain or -loss,
+	 * {@code CO}/{@code CD} to clear an active overload/depletion, {@code Z<n>s} freeze PKP at once
+	 * for n seconds (after this item's own PKP lands), {@code G<pct>/<n>} and {@code S<pct>/<n>} PKP
+	 * gained / spent at pct percent for n seconds, {@code KO} critical overload and {@code DP}
+	 * forced depletion that breaks depletion immunity. Unknown tokens are ignored.
 	 */
 	public static class Effect
 	{
 		public String name;
 		public int delta;
 		public List<String> effects = new ArrayList<>();
+	}
+
+	/**
+	 * Alcoholic drinks. Every sip cuts the PKP gained from melee, ranged and blocking by
+	 * {@link #perSipPercent}, up to {@link #maxSips} sips stacked, for {@link #seconds} after the last
+	 * sip. Each sip restarts the timer; sips beyond the cap only restart it.
+	 */
+	public static class Alcohol
+	{
+		public int perSipPercent = 10;
+		/**
+		 * PKP each sip costs (negative) or gives. A drink that has its own amount in a god's
+		 * {@link Consumables#pkpRestoreItems} uses that instead - Wizard's mind bomb keeps its +50.
+		 */
+		public int pkpPerSip = 0;
+		public int maxSips = 5;
+		public int seconds = 30;
+		public List<String> items = new ArrayList<>();
 	}
 
 	/**

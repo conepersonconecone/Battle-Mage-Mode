@@ -27,6 +27,12 @@ public class Oath
 
 	private Faction faction;
 
+	/**
+	 * True between leaving a god and becoming faction-less in front of the Wise Old Man, so the
+	 * "how to begin" prompts stay away for the moment the player is briefly unsworn.
+	 */
+	private volatile boolean ceremony;
+
 	/** Called after any change that alters which rules apply, so the plugin can rebuild caches. */
 	private Runnable changeListener = () ->
 	{
@@ -52,6 +58,16 @@ public class Oath
 	public boolean isSworn()
 	{
 		return faction != null;
+	}
+
+	boolean inCeremony()
+	{
+		return ceremony;
+	}
+
+	void setCeremony(boolean on)
+	{
+		ceremony = on;
 	}
 
 	public Faction getFaction()

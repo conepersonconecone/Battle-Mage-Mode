@@ -85,7 +85,7 @@ final class FactionSigils
 	static String crestReport()
 	{
 		StringBuilder sb = new StringBuilder();
-		for (Faction f : Faction.values())
+		for (Faction f : Faction.GODS)
 		{
 			sb.append(sb.length() == 0 ? "" : "  ")
 				.append(f.name().toLowerCase(Locale.ROOT))

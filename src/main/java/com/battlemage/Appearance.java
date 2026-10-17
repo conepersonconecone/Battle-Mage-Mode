@@ -58,6 +58,7 @@ public class Appearance
 		DEFAULTS.put("barGlow", 0);
 		DEFAULTS.put("barPulse", true);
 		DEFAULTS.put("showCostTicks", true);
+		DEFAULTS.put("barExhaust", true);
 		DEFAULTS.put("barColorFull", new Color(0x46C8FF));
 		DEFAULTS.put("barColorLow", new Color(0xFF4040));
 		DEFAULTS.put("overchargeColor", new Color(0x9CFF57));
@@ -90,12 +91,72 @@ public class Appearance
 		DEFAULTS.put("curseSpellColor", new Color(0xFF4FD8));
 		DEFAULTS.put("illegalInventoryShade", new Color(0xFFB300));
 		DEFAULTS.put("illegalExemptOutline", new Color(0x39FF14));
+		DEFAULTS.put("auraMode", AuraMode.XRAY);
+	}
+
+	/** The colour settings each faction's look sets. Everything else comes from {@link #DEFAULTS}. */
+	static final String[] PALETTE_KEYS = {
+		"barColorFull", "barColorLow", "overchargeColor", "depletedColor", "overloadColor",
+		"criticalColor", "meleeColor", "combatSpellColor", "curseSpellColor",
+		"illegalInventoryShade", "illegalExemptOutline"};
+
+	/**
+	 * The default look for a sworn faction, or the plain defaults when there is none.
+	 *
+	 * <p>Every colour is worked out from the god's own colour by its place on the colour wheel, so
+	 * the four looks follow one logic:
+	 * <ul>
+	 *   <li>the faction hue itself: the full bar; a near-white tint of it for melee</li>
+	 *   <li>its neighbours (30 degrees either side): combat spells and curses</li>
+	 *   <li>its complement (opposite, 180 degrees): the low end of the bar and the DEPLETED text,
+	 *       so running dry always reads as the opposite of your god</li>
+	 *   <li>its triad (120 and 240 degrees): the overcharge, the exempt-item outline and the
+	 *       OVERLOAD text</li>
+	 *   <li>its split complement (150 and 210 degrees): CRITICAL OVERLOAD and the lockdown wash</li>
+	 * </ul>
+	 */
+	static Map<String, Object> defaultsFor(Faction f)
+	{
+		Map<String, Object> out = new LinkedHashMap<>(DEFAULTS);
+		if (f == null)
+		{
+			return out;
+		}
+		float[] hsb = Color.RGBtoHSB(f.getPrimary().getRed(), f.getPrimary().getGreen(), f.getPrimary().getBlue(), null);
+		float h = hsb[0];
+		out.put("barColorFull", wheel(h, 0, 0.72f, 1.00f));
+		out.put("meleeColor", wheel(h, 0, 0.08f, 0.96f));
+		out.put("combatSpellColor", wheel(h, 30, 0.70f, 1.00f));
+		out.put("curseSpellColor", wheel(h, -30, 0.70f, 1.00f));
+		out.put("barColorLow", wheel(h, 180, 0.75f, 1.00f));
+		out.put("depletedColor", wheel(h, 180, 0.88f, 1.00f));
+		out.put("overchargeColor", wheel(h, 120, 0.65f, 1.00f));
+		out.put("illegalExemptOutline", wheel(h, 120, 0.92f, 1.00f));
+		out.put("overloadColor", wheel(h, 240, 0.72f, 1.00f));
+		out.put("criticalColor", wheel(h, 150, 0.90f, 1.00f));
+		out.put("illegalInventoryShade", wheel(h, 210, 0.90f, 1.00f));
+		return out;
+	}
+
+	/** A colour the given number of degrees round the wheel from hue h (0..1). */
+	private static Color wheel(float h, int degrees, float sat, float bright)
+	{
+		float hue = h + degrees / 360f;
+		hue -= (float) Math.floor(hue);
+		return new Color(Color.HSBtoRGB(hue, sat, bright));
 	}
 
 	private final BattleMageConfig config;
 	private final ConfigManager configManager;
 	private final MouseManager mouseManager;
 	private final Client client;
+	private final Oath oath;
+
+	/**
+	 * The faction whose look the stored colours were last switched to. Starts empty, so the first
+	 * {@link #followFaction()} gives a sworn player who never touched the colours their god's look.
+	 */
+	private Faction lookFaction;
 
 	private final Map<String, Object> draft = new ConcurrentHashMap<>();
 	private volatile boolean editing;
@@ -154,12 +215,42 @@ public class Appearance
 	};
 
 	@Inject
-	Appearance(BattleMageConfig config, ConfigManager configManager, MouseManager mouseManager, Client client)
+	Appearance(BattleMageConfig config, ConfigManager configManager, MouseManager mouseManager, Client client, Oath oath)
 	{
 		this.config = config;
 		this.configManager = configManager;
 		this.mouseManager = mouseManager;
 		this.client = client;
+		this.oath = oath;
+	}
+
+	/**
+	 * Follows a change of god: every colour still at the old faction's look (or the plain defaults)
+	 * moves to the new faction's look. A colour the player picked themselves is left alone.
+	 */
+	void followFaction()
+	{
+		Faction next = oath.getFaction();
+		if (next == lookFaction)
+		{
+			return;
+		}
+		Map<String, Object> was = defaultsFor(lookFaction);
+		Map<String, Object> now = defaultsFor(next);
+		for (String key : PALETTE_KEYS)
+		{
+			Color stored = configManager.getConfiguration(BattleMageConfig.GROUP, key, Color.class);
+			if (stored == null || sameRgb(stored, was.get(key)) || sameRgb(stored, DEFAULTS.get(key)))
+			{
+				configManager.setConfiguration(BattleMageConfig.GROUP, key, now.get(key));
+			}
+		}
+		lookFaction = next;
+	}
+
+	private static boolean sameRgb(Color c, Object o)
+	{
+		return o instanceof Color && ((Color) o).getRGB() == c.getRGB();
 	}
 
 	// ------------------------------------------------------------------ editing
@@ -209,12 +300,15 @@ public class Appearance
 		end();
 	}
 
-	/** Puts every default into the draft. Still needs {@link #apply()} to stick. */
+	/**
+	 * Puts every default into the draft - the sworn faction's look, with the X-Ray aura. Still
+	 * needs {@link #apply()} to stick.
+	 */
 	void resetDraftToDefaults()
 	{
 		if (editing)
 		{
-			draft.putAll(DEFAULTS);
+			draft.putAll(defaultsFor(oath.getFaction()));
 		}
 	}
 
@@ -337,6 +431,18 @@ public class Appearance
 		return stored.get();
 	}
 
+	/** The aura under your character. Set straight from the side panel's slider, not the editor. */
+	AuraMode auraMode()
+	{
+		AuraMode m = get("auraMode", config::auraMode);
+		return m == null ? AuraMode.XRAY : m;
+	}
+
+	void setAuraMode(AuraMode mode)
+	{
+		configManager.setConfiguration(BattleMageConfig.GROUP, "auraMode", mode);
+	}
+
 	boolean showBar()
 	{
 		return get("showBar", config::showBar);
@@ -375,6 +481,11 @@ public class Appearance
 	boolean barPulse()
 	{
 		return get("barPulse", config::barPulse);
+	}
+
+	boolean barExhaust()
+	{
+		return get("barExhaust", config::barExhaust);
 	}
 
 	boolean showCostTicks()

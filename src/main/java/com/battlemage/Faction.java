@@ -31,7 +31,20 @@ public enum Faction
 	ZAROS(
 		"Zaros",
 		"Darkness",
-		new Color(0x8367BE));
+		new Color(0x8367BE)),
+
+	/**
+	 * Not a god: the PKP system on its own, taken from the Wise Old Man by a player who was sworn
+	 * to one. Every PKP rule applies and every god's spells stay barred, but nothing restricts
+	 * gear, weapons or the cannon. Gold, like the toolbar icon and the shrine before any oath.
+	 */
+	FACTIONLESS(
+		"Faction-less",
+		"Unbound",
+		new Color(0xE3B93B));
+
+	/** The four gods, in the order the oath screen shows them - never {@link #FACTIONLESS}. */
+	static final Faction[] GODS = {SARADOMIN, GUTHIX, ZAMORAK, ZAROS};
 
 	private final String displayName;
 	private final String epithet;
@@ -55,6 +68,12 @@ public enum Faction
 		return epithet;
 	}
 
+
+	/** One of the four gods, rather than the faction-less PKP system. */
+	public boolean isGod()
+	{
+		return this != FACTIONLESS;
+	}
 
 	/** The faction's crest and accent colour. */
 	public Color getPrimary()

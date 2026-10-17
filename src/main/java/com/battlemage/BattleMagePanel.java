@@ -7,6 +7,7 @@ import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
+import java.util.Hashtable;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -16,6 +17,7 @@ import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JSlider;
 import javax.swing.SwingUtilities;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.util.LinkBrowser;
@@ -148,7 +150,9 @@ class BattleMagePanel extends PluginPanel
 			BorderFactory.createMatteBorder(0, 3, 0, 0, f.getPrimary()),
 			BorderFactory.createEmptyBorder(9, 9, 9, 9)));
 
-		godCard.add(new JLabel(new ImageIcon(factionIcon(f, 38))), BorderLayout.WEST);
+		// faction-less has no crest: it shows the gold partyhat from the toolbar instead
+		godCard.add(new JLabel(new ImageIcon(f.isGod() ? factionIcon(f, 38)
+			: navIcon(null).getScaledInstance(38, 38, java.awt.Image.SCALE_SMOOTH))), BorderLayout.WEST);
 
 		JPanel text = new JPanel();
 		text.setLayout(new BoxLayout(text, BoxLayout.Y_AXIS));
@@ -206,6 +210,8 @@ class BattleMagePanel extends PluginPanel
 		{
 			reselect.add(Box.createVerticalStrut(4));
 			reselect.add(denounceButton());
+			reselect.add(Box.createVerticalStrut(6));
+			reselect.add(auraSlider());
 		}
 
 		// the faction card sits between the oath buttons and the rest
@@ -284,6 +290,52 @@ class BattleMagePanel extends PluginPanel
 		return clear;
 	}
 
+	/**
+	 * The aura under your character: three stops, None, X-Ray (a ring drawn over everything, so it
+	 * shows through walls) and Soul (the game's own Soul Wars glow in your god's colour). Saved the
+	 * moment the slider settles.
+	 */
+	private JComponent auraSlider()
+	{
+		JPanel box = new JPanel(new BorderLayout(0, 2));
+		box.setOpaque(false);
+		box.setAlignmentX(Component.LEFT_ALIGNMENT);
+		box.setMaximumSize(new Dimension(Integer.MAX_VALUE, 58));
+
+		JLabel title = new JLabel("Aura");
+		title.setFont(FontManager.getRunescapeSmallFont());
+		title.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+		box.add(title, BorderLayout.NORTH);
+
+		final AuraMode[] modes = AuraMode.values();
+		JSlider slider = new JSlider(0, modes.length - 1, look.auraMode().ordinal());
+		slider.setOpaque(false);
+		slider.setMajorTickSpacing(1);
+		slider.setSnapToTicks(true);
+		slider.setPaintTicks(true);
+		slider.setPaintLabels(true);
+		slider.setFocusable(false);
+		Hashtable<Integer, JComponent> labels = new Hashtable<>();
+		for (AuraMode m : modes)
+		{
+			JLabel l = new JLabel(m.label());
+			l.setFont(FontManager.getRunescapeSmallFont());
+			l.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+			labels.put(m.ordinal(), l);
+		}
+		slider.setLabelTable(labels);
+		slider.setToolTipText("None: no aura. X-Ray: a ring that shows through walls. Soul: the Soul Wars glow in your god's colour.");
+		slider.addChangeListener(e ->
+		{
+			if (!slider.getValueIsAdjusting())
+			{
+				look.setAuraMode(modes[slider.getValue()]);
+			}
+		});
+		box.add(slider, BorderLayout.CENTER);
+		return box;
+	}
+
 	/** Opens the bundled rulebook in the player's browser. */
 	private JButton rulesButton()
 	{
@@ -328,7 +380,7 @@ class BattleMagePanel extends PluginPanel
 	private Color factionAccent()
 	{
 		Faction f = oath.getFaction();
-		if (f == null)
+		if (f == null || f == Faction.FACTIONLESS)
 		{
 			return UNSWORN_ACCENT;
 		}
@@ -380,7 +432,7 @@ class BattleMagePanel extends PluginPanel
 
 	private BufferedImage figureFor(Faction f)
 	{
-		String key = f == null ? "none" : f.name().toLowerCase(java.util.Locale.ROOT);
+		String key = f == null || f == Faction.FACTIONLESS ? "none" : f.name().toLowerCase(java.util.Locale.ROOT);
 		if (figures.containsKey(key))
 		{
 			return figures.get(key);

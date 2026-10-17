@@ -149,7 +149,8 @@ public class OnboardingOverlay extends Overlay
 		screen = Screen.GODS;
 		// Start on whatever god is already in force, so changing your mind is a one-click edit
 		// rather than starting from a blank screen.
-		selected = oath.getFaction();
+		Faction current = oath.getFaction();
+		selected = current != null && current.isGod() ? current : null;
 		mouseManager.registerMouseListener(mouseAdapter);
 	}
 

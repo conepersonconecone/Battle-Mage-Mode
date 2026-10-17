@@ -26,6 +26,7 @@ import net.runelite.api.ItemContainer;
 import net.runelite.api.MenuAction;
 import net.runelite.api.MenuEntry;
 import net.runelite.api.NPC;
+import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.Player;
 import net.runelite.api.Quest;
 import net.runelite.api.QuestState;
@@ -33,9 +34,11 @@ import net.runelite.api.Skill;
 import net.runelite.api.events.AnimationChanged;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.events.ChatMessage;
+import net.runelite.api.events.ClientTick;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.HitsplatApplied;
+import net.runelite.api.events.ItemContainerChanged;
 import net.runelite.api.events.MenuEntryAdded;
 import net.runelite.api.events.MenuOptionClicked;
 import net.runelite.api.events.PostMenuSort;
@@ -108,6 +111,8 @@ public class BattleMagePlugin extends Plugin
 	@Inject private CombatLockOverlay combatLockOverlay;
 	@Inject private WiseOldMan wiseOldMan;
 	@Inject private BeginHintOverlay beginHintOverlay;
+	@Inject private FactionAuraOverlay factionAuraOverlay;
+	@Inject private SoulAura soulAura;
 	@Inject private ChatDialogue chatDialogue;
 	@Inject private EventBus eventBus;
 
@@ -259,6 +264,9 @@ public class BattleMagePlugin extends Plugin
 	private String pendingCastSpell;
 	private long pendingCastMs;
 	private int pendingTeaItemId = -1;
+	/** Eat/Drink clicks awaiting a real bite or sip: item id -> {count held at the click, click time}. */
+	private final Map<Integer, long[]> pendingConsumes = new HashMap<>();
+	private static final long CONSUME_CONFIRM_MS = 3000L;
 	private long pendingTeaMs;
 	private long poisonAnimAccumMs;
 	private long poisonAnimLastMs;
@@ -279,6 +287,18 @@ public class BattleMagePlugin extends Plugin
 
 	/** Wall-clock deadline for CRITICAL OVERLOAD; 0 when the state is not running. */
 	private long criticalUntilMs;
+	/** A timed scale on PKP gained / spent (the G and S effect codes), and when each ends. */
+	private double gainScale = 1.0;
+	private long gainScaleUntilMs;
+	private double spendScale = 1.0;
+	private long spendScaleUntilMs;
+	/** Alcohol: sips stacked so far and when the last one wears off. */
+	private int drunkSips;
+	private long drunkUntilMs;
+	private final Set<String> alcoholNames = new HashSet<>();
+	private final Set<Integer> alcoholIds = new HashSet<>();
+	private final Map<String, Integer> spellCostItemNames = new HashMap<>();
+	private final Map<Integer, Integer> spellCostItemIds = new HashMap<>();
 
 	/** A floating +/- PKP change notification. */
 	static final class PkpPopup
@@ -339,7 +359,11 @@ public class BattleMagePlugin extends Plugin
 		/** Shield + up chevron: immune to being pushed into the overloaded state. */
 		OVERLOAD_IMMUNE,
 		/** Shield + down chevron: immune to being pushed into the depleted state. */
-		DEPLETION_IMMUNE
+		DEPLETION_IMMUNE,
+		/** Gold beer mug with the sip count above it: alcohol is cutting PKP gain. */
+		DRUNK,
+		/** A multiplier such as "x2": a drink is scaling PKP gained and/or spent. */
+		SURGE
 	}
 
 	/**
@@ -356,14 +380,26 @@ public class BattleMagePlugin extends Plugin
 		final int attacks;      // 0 when this effect has no attack-count component
 		/** Armed but not started - a freeze waiting for the next attack or cast to trigger it. */
 		final boolean pending;
+		/** DRUNK: sips stacked. SURGE: unused. */
+		final int stacks;
+		/** SURGE: the multiplier as drawn, e.g. "x2". Empty otherwise. */
+		final String label;
 
 		ActiveEffect(EffectKind kind, Color color, long remainingMs, int attacks, boolean pending)
+		{
+			this(kind, color, remainingMs, attacks, pending, 0, "");
+		}
+
+		ActiveEffect(EffectKind kind, Color color, long remainingMs, int attacks, boolean pending, int stacks,
+			String label)
 		{
 			this.kind = kind;
 			this.color = color;
 			this.remainingMs = remainingMs;
 			this.attacks = attacks;
 			this.pending = pending;
+			this.stacks = stacks;
+			this.label = label == null ? "" : label;
 		}
 
 		/** e.g. "4.2s", or "" when this effect has no timed component. */
@@ -382,6 +418,25 @@ public class BattleMagePlugin extends Plugin
 	/** True while the player's current NPC intent is to attack (Attack option / combat cast), not pickpocket etc. */
 	private boolean attackMode = true;
 	private long freezeUntilMs;
+
+	// spills: a move that would carry the bar past full or below empty without tipping it into
+	// overload or depletion vents out of that end, and what spilled is caught in the Cowbell amulet
+	static final int SPILL_STORE_MAX = 75;
+	private int swellSide;
+	private double swellFraction;
+	private long swellStartMs;
+	/** PKP caught spilling past full, and past empty (kept as a positive amount). */
+	private double storedOver;
+	private double storedUnder;
+	/** After a release, that side catches nothing for this long. */
+	static final long COWBELL_COOLDOWN_MS = 15000L;
+	private long overCooldownUntilMs;
+	private long underCooldownUntilMs;
+	/** The latest release: when, and which side (1 replenish, -1 exhume). */
+	private long zapStartMs;
+	private int zapSide;
+	/** Where the PKP bar was last drawn, for the release bolt to aim at. */
+	private java.awt.Rectangle barScreenBounds;
 	private int freezeAttacks;
 	/** Freeze granted but not started yet - it begins on the next attack or cast, not when it was granted. */
 	private int pendingFreezeSeconds;
@@ -416,6 +471,8 @@ public class BattleMagePlugin extends Plugin
 		oath.setChangeListener(() ->
 		{
 			rules.refresh();
+			// the colours follow the god, unless the player picked their own
+			look.followFaction();
 			// Standing down hides the bar again, so choosing a god later gets the pop-in a
 			// second time.
 			if (!oath.isSworn())
@@ -430,6 +487,7 @@ public class BattleMagePlugin extends Plugin
 			refreshNavButton();
 		});
 		rules.refresh();
+		look.followFaction();
 		rebuildCaches();
 		// startUp does NOT run on the client thread, and the starting pool is read off the player's
 		// Magic level, which does. Asking here would either throw - taking the plugin down with it -
@@ -455,6 +513,13 @@ public class BattleMagePlugin extends Plugin
 		pendingCastFamily = null;
 		pendingCastSpell = null;
 		pendingTeaItemId = -1;
+		swellSide = 0;
+		swellStartMs = 0L;
+		storedOver = 0;
+		storedUnder = 0;
+		overCooldownUntilMs = 0L;
+		underCooldownUntilMs = 0L;
+		zapStartMs = 0L;
 		poisonAnimAccumMs = 0L;
 		poisonAnimInit = false;
 		pkpPopups.clear();
@@ -464,6 +529,13 @@ public class BattleMagePlugin extends Plugin
 		lastSprite.clear();
 		illegalActive = false;
 		criticalUntilMs = 0L;
+		pendingConsumes.clear();
+		gainScale = 1.0;
+		gainScaleUntilMs = 0L;
+		spendScale = 1.0;
+		spendScaleUntilMs = 0L;
+		drunkSips = 0;
+		drunkUntilMs = 0L;
 		// An oath already sworn means the reveal happened in some earlier session; show the bar
 		// straight away rather than replaying the animation on every login.
 		revealStartMs = oath.isSworn() ? 1L : 0L;
@@ -481,6 +553,7 @@ public class BattleMagePlugin extends Plugin
 		overloadImmuneAttacks = 0;
 		depletionImmuneUntilMs = 0L;
 		depletionImmuneAttacks = 0;
+		overlayManager.add(factionAuraOverlay);
 		overlayManager.add(barOverlay);
 		overlayManager.add(effectTimerOverlay);
 		overlayManager.add(stateOverlay);
@@ -503,12 +576,13 @@ public class BattleMagePlugin extends Plugin
 		{
 			beginReveal();
 			final Faction sworn = oath.getFaction();
-			clientThread.invoke(() -> ordain(sworn));
+			clientThread.invoke(() -> vengeanceOrdain(null, sworn));
 		});
 		// The faction pop-up is reached only through the Wise Old Man: ring the Cowbell amulet beside
 		// him and choose Begin Battle-Mage Mode.
 		wiseOldMan.setOnBegin(this::openOnboarding);
 		wiseOldMan.setOnDenounce(this::denounceCeremony);
+		wiseOldMan.setOnFactionless(this::factionlessCeremony);
 		eventBus.register(wiseOldMan);
 		beginHintShown = false;
 		panel = new BattleMagePanel(oath, rules, look,
@@ -546,6 +620,61 @@ public class BattleMagePlugin extends Plugin
 	private static final int FLAME_CYCLES = 70;
 	/** When Excalibur's glow rises on Saradomin's ordination: as the head slap ends. */
 	private static final int SARADOMIN_GLOW_DELAY_CYCLES = 75;
+	/** The gap between the two gold glows on the faction-less ordination, in client cycles. */
+	private static final int FACTIONLESS_GLOW_GAP_CYCLES = 45;
+	/** QUEST_LUNAR_PUSHING_MAGIC_ANIMATION: the Wise Old Man casting Vengeance Other. */
+	private static final int VENGEANCE_OTHER_CAST_ANIM = 4411;
+	/** From his cast to the ordination starting on the player, in milliseconds. */
+	private static final long VENGEANCE_LAND_MS = 600L;
+	/** How far away the Wise Old Man can be and still seal the oath, in tiles. */
+	private static final int WISE_OLD_MAN_REACH = 12;
+
+	/**
+	 * Seals an oath: the Wise Old Man casts Vengeance Other at the player, and the god's ordination
+	 * plays as it lands. If he cannot be found nearby the ordination simply plays on its own.
+	 * Client thread only.
+	 */
+	private void vengeanceOrdain(NPC man, Faction faction)
+	{
+		NPC caster = man != null ? man : nearbyWiseOldMan();
+		if (caster == null)
+		{
+			ordain(faction);
+			return;
+		}
+		caster.setAnimation(VENGEANCE_OTHER_CAST_ANIM);
+		caster.setAnimationFrame(0);
+		executor.schedule(() -> clientThread.invoke(() -> ordain(faction)),
+			VENGEANCE_LAND_MS, java.util.concurrent.TimeUnit.MILLISECONDS);
+	}
+
+	/** The nearest Wise Old Man within reach of the player, or null. */
+	private NPC nearbyWiseOldMan()
+	{
+		Player me = client.getLocalPlayer();
+		if (me == null)
+		{
+			return null;
+		}
+		WorldPoint at = me.getWorldLocation();
+		NPC best = null;
+		int bestDist = Integer.MAX_VALUE;
+		for (NPC npc : client.getNpcs())
+		{
+			if (npc == null || !WiseOldMan.NAME.equalsIgnoreCase(npc.getName()))
+			{
+				continue;
+			}
+			int d = npc.getWorldLocation().distanceTo(at);
+			if (d <= WISE_OLD_MAN_REACH && d < bestDist)
+			{
+				best = npc;
+				bestDist = d;
+			}
+		}
+		return best;
+	}
+
 	/** The gap between Guthix's Earth Blast impacts, in client cycles (20ms each). */
 	private static final int EARTH_BLAST_GAP_CYCLES = 30;
 
@@ -564,7 +693,11 @@ public class BattleMagePlugin extends Plugin
 	 *   <li>Guthix - kneels in a druidic bloom and the green burst of Earth's Fury while Earth Blast
 	 *       strikes three times.</li>
 	 *   <li>Zaros - arms raised, swallowed by the Mark of Darkness and a burst of shadow.</li>
+	 *   <li>Faction-less - jumps for joy in the gold special-attack glow, twice over.</li>
 	 * </ul>
+	 *
+	 * <p>Every oath is sealed by the Wise Old Man, so this is normally reached through
+	 * {@link #vengeanceOrdain}, which has him cast Vengeance Other at the player first.
 	 */
 	private void ordain(Faction faction)
 	{
@@ -602,6 +735,10 @@ public class BattleMagePlugin extends Plugin
 				// EMOTE_CHEER (arms raised) - an emote, NOT the teleport cast, which ends by hiding the
 				// player model; MARK_OF_DARKNESS_CAST_SPOTANIM, SHADOW_BARRAGE_IMPACT
 				ordainBeat(862, new int[][]{{1852, 0}, {383, 0}});
+				break;
+			case FACTIONLESS:
+				// EMOTE_JUMP_WITH_JOY in SP_ATTACKGLOW_YELLOW, rising again as the jump lands
+				ordainBeat(2109, new int[][]{{2112, 0}, {2112, FACTIONLESS_GLOW_GAP_CYCLES}});
 				break;
 			default:
 				break;
@@ -646,6 +783,12 @@ public class BattleMagePlugin extends Plugin
 	 */
 	private void denounceCeremony(NPC man)
 	{
+		denounceCeremony(man, null);
+	}
+
+	/** The denouncing, then {@code after} (if any) on the client thread once the faction is left. */
+	private void denounceCeremony(NPC man, Runnable after)
+	{
 		Player me = client.getLocalPlayer();
 		if (man != null)
 		{
@@ -672,7 +815,40 @@ public class BattleMagePlugin extends Plugin
 			{
 				oath.clear();
 			}
+			if (after != null)
+			{
+				after.run();
+			}
 		}), DENOUNCE_AFTER_MS, java.util.concurrent.TimeUnit.MILLISECONDS);
+	}
+
+	/** Pause after the denouncing before he raises his hands again, in milliseconds. */
+	private static final long VENGEANCE_PAUSE_MS = 700L;
+	/** From the cast to the new PKP bar popping in, in milliseconds. */
+	private static final long VENGEANCE_AFTER_MS = 1800L;
+
+	/**
+	 * The Wise Old Man's answer to "Can I try the PKP System without a faction?": the denouncing,
+	 * then he casts Vengeance Other on the player and the faction-less ordination plays in gold,
+	 * and the PKP bar pops back in. Client-side only; nobody else sees it. Client thread only.
+	 */
+	private void factionlessCeremony(NPC man)
+	{
+		oath.setCeremony(true);
+		denounceCeremony(man, () -> executor.schedule(() -> clientThread.invoke(() ->
+		{
+			if (man != null)
+			{
+				man.removeSpotAnim(DENOUNCE_NPC_SPOTANIM_KEY);
+			}
+			vengeanceOrdain(man, Faction.FACTIONLESS);
+			executor.schedule(() -> clientThread.invoke(() ->
+			{
+				oath.setCeremony(false);
+				oath.swear(Faction.FACTIONLESS);
+				beginReveal();
+			}), VENGEANCE_AFTER_MS, java.util.concurrent.TimeUnit.MILLISECONDS);
+		}), VENGEANCE_PAUSE_MS, java.util.concurrent.TimeUnit.MILLISECONDS));
 	}
 
 	/** Set once the "how to begin" chat line has been shown this session. */
@@ -810,6 +986,8 @@ public class BattleMagePlugin extends Plugin
 		tithesChoir(false);
 		// an editor left open must not leave its preview (or its mouse listener) behind
 		look.cancel();
+		overlayManager.remove(factionAuraOverlay);
+		clientThread.invoke(soulAura::remove);
 		overlayManager.remove(barOverlay);
 		overlayManager.remove(effectTimerOverlay);
 		overlayManager.remove(stateOverlay);
@@ -828,6 +1006,7 @@ public class BattleMagePlugin extends Plugin
 		eventBus.unregister(wiseOldMan);
 		wiseOldMan.setOnBegin(null);
 		wiseOldMan.setOnDenounce(null);
+		wiseOldMan.setOnFactionless(null);
 		chatDialogue.closeIfOpen();
 		oath.setChangeListener(null);
 		if (navButton != null)
@@ -847,6 +1026,31 @@ public class BattleMagePlugin extends Plugin
 
 		final String option = event.getOption();
 		final MenuEntry me = event.getMenuEntry();
+
+		// the Cowbell amulet holds what spilled past either end of the bar
+		if (oath.isSworn() && "Examine".equalsIgnoreCase(option))
+		{
+			int bell = resolveItemId(event);
+			if (isCowbell(bell))
+			{
+				if (storedUnder >= 1 && !isPkpFrozen())
+				{
+					client.getMenu().createMenuEntry(-2)
+						.setOption("Exhume PKP")
+						.setTarget(event.getTarget())
+						.setType(MenuAction.RUNELITE)
+						.onClick(e -> exhumePkp());
+				}
+				if (storedOver >= 1 && !isPkpFrozen())
+				{
+					client.getMenu().createMenuEntry(-2)
+						.setOption("Replenish PKP")
+						.setTarget(event.getTarget())
+						.setType(MenuAction.RUNELITE)
+						.onClick(e -> replenishPkp());
+				}
+			}
+		}
 
 		// 1. gear / weapon equip block
 		if (isEquipOption(option))
@@ -943,16 +1147,18 @@ public class BattleMagePlugin extends Plugin
 		// 5. overload (or ILLEGAL): hide food (eat) while overloaded/illegal, and for a few seconds after overload clears
 		if (rules.blockFoodWhenOverloaded() && (foodLockedByOverload() || illegal)
 			&& option != null && option.equalsIgnoreCase("Eat")
-			&& !isConsumableException(resolveItemId(event)))
+			&& (illegal || !isConsumableException(resolveItemId(event))))
 		{
 			removeEntry(me);
 			return;
 		}
 
 		// 6. depletion (or ILLEGAL): hide potions (drink) while depleted/illegal
+		// The always-allowed consumables (the Tea flask) beat Overloaded and Depleted, never a lockdown:
+		// clearing the overload under CRITICAL OVERLOAD would end it without the Cowbell amulet.
 		if (rules.blockPotionsWhenDepleted() && (isDepleted() || illegal)
 			&& option != null && option.equalsIgnoreCase("Drink")
-			&& !isConsumableException(resolveItemId(event)))
+			&& (illegal || !isConsumableException(resolveItemId(event))))
 		{
 			removeEntry(me);
 		}
@@ -1428,6 +1634,12 @@ public class BattleMagePlugin extends Plugin
 	 */
 	private BlockKind blockKind(int itemId)
 	{
+		// Faction-less: the bar, its costs and every item effect stay, but no gear or weapon is barred.
+		if (oath.getFaction() == Faction.FACTIONLESS)
+		{
+			return BlockKind.NONE;
+		}
+
 		final ItemComposition comp = itemManager.getItemComposition(itemId);
 		final String name = comp == null ? "" : comp.getName().toLowerCase(Locale.ROOT);
 
@@ -1511,14 +1723,128 @@ public class BattleMagePlugin extends Plugin
 		client.setMenuEntries(kept);
 	}
 
+	/**
+	 * A sip of alcohol: one more stack of the gain penalty, up to the cap, and the timer starts over.
+	 * A sip at the cap only restarts the timer. A lapsed timer starts the count again from one.
+	 */
+	private void noteAlcohol(int itemId)
+	{
+		ContentPack.Alcohol booze = rules.alcohol();
+		if (booze == null || itemId <= 0
+			|| !(alcoholIds.contains(itemId) || alcoholNames.contains(itemName(itemId))))
+		{
+			return;
+		}
+		long now = System.currentTimeMillis();
+		int sips = now < drunkUntilMs ? drunkSips : 0;
+		drunkSips = Math.min(Math.max(1, booze.maxSips), sips + 1);
+		drunkUntilMs = now + Math.max(1, booze.seconds) * 1000L;
+	}
+
+	/** Is this drink on the alcohol list? */
+	private boolean isAlcohol(int itemId)
+	{
+		return itemId > 0 && (alcoholIds.contains(itemId) || alcoholNames.contains(itemName(itemId)));
+	}
+
+	/** Ends any depletion immunity, timed or counted. */
+	private void clearDepletionImmunity()
+	{
+		depletionImmuneUntilMs = 0L;
+		depletionImmuneAttacks = 0;
+	}
+
+	/** The PKP a sip of this drink costs or gives under the alcohol rule, or null when it is not alcohol. */
+	private Integer alcoholPkp(int itemId)
+	{
+		ContentPack.Alcohol booze = rules.alcohol();
+		if (booze == null || booze.pkpPerSip == 0 || itemId <= 0
+			|| !(alcoholIds.contains(itemId) || alcoholNames.contains(itemName(itemId))))
+		{
+			return null;
+		}
+		return booze.pkpPerSip;
+	}
+
+	/** Sips of alcohol still in effect, or 0. */
+	int drunkSipsActive()
+	{
+		return System.currentTimeMillis() < drunkUntilMs ? drunkSips : 0;
+	}
+
+	/**
+	 * What PKP gained from melee, ranged and blocking is multiplied by right now: alcohol's stacked
+	 * penalty, times any timed gain scale from a drink.
+	 */
+	double gainMultiplier()
+	{
+		long now = System.currentTimeMillis();
+		double m = now < gainScaleUntilMs ? gainScale : 1.0;
+		ContentPack.Alcohol booze = rules.alcohol();
+		int sips = drunkSipsActive();
+		if (booze != null && sips > 0)
+		{
+			m *= Math.max(0.0, 1.0 - sips * booze.perSipPercent / 100.0);
+		}
+		return m;
+	}
+
+	/**
+	 * What a spell's PKP cost is multiplied by right now: any timed spend scale from a drink, times
+	 * every worn spell-cost item (the Cursed amulet of magic).
+	 */
+	double spendMultiplier()
+	{
+		double m = System.currentTimeMillis() < spendScaleUntilMs ? spendScale : 1.0;
+		if (spellCostItemIds.isEmpty() && spellCostItemNames.isEmpty())
+		{
+			return m;
+		}
+		ItemContainer eq = client.getItemContainer(InventoryID.EQUIPMENT);
+		if (eq == null)
+		{
+			return m;
+		}
+		for (Item it : eq.getItems())
+		{
+			if (it == null || it.getId() <= 0)
+			{
+				continue;
+			}
+			Integer pct = spellCostItemIds.get(it.getId());
+			if (pct == null)
+			{
+				pct = spellCostItemNames.get(itemName(it.getId()));
+			}
+			if (pct != null && pct > 0)
+			{
+				m *= pct / 100.0;
+			}
+		}
+		return m;
+	}
+
 	/** Applies a consumable's PKP restore + configured delta/effects (poison-adjusted). */
 	private void applyConsumable(int itemId)
 	{
+		noteAlcohol(itemId);
 		Integer amount = restoreAmount(itemId);
+		if (amount == null)
+		{
+			amount = alcoholPkp(itemId);
+		}
+		SpecEffect preFx = consumableEffectFor(itemId);
+		boolean forcesDepletion = preFx != null && preFx.forceDepletion;
 		if (amount != null)
 		{
 			double beforeFood = pkp;
 			double restore = poisonAdjust(amount);
+			// Beer overrides depletion immunity: a sip that would take the bar below 0 (or the Keg,
+			// which always depletes) strips the immunity first, so the drink lands in full.
+			if (forcesDepletion || (restore < 0 && pkp + restore < 0 && isAlcohol(itemId)))
+			{
+				clearDepletionImmunity();
+			}
 			if (rules.overchargeEnabled() && isOverchargeSource(itemId))
 			{
 				addPkpOver(restore);
@@ -1542,6 +1868,67 @@ public class BattleMagePlugin extends Plugin
 				cDelta == null ? null : Double.valueOf(poisonAdjust(cDelta)),
 				cDelta != null && cDelta >= 0, itemId);
 		}
+	}
+
+	/** How many of this item the inventory holds (stack sizes counted). */
+	private int inventoryCount(int itemId)
+	{
+		ItemContainer inv = client.getItemContainer(InventoryID.INVENTORY);
+		if (inv == null)
+		{
+			return 0;
+		}
+		int n = 0;
+		for (Item it : inv.getItems())
+		{
+			if (it != null && it.getId() == itemId)
+			{
+				n += Math.max(1, it.getQuantity());
+			}
+		}
+		return n;
+	}
+
+	/**
+	 * A clicked bite or sip is confirmed when the inventory next changes with one fewer of that item:
+	 * the food is gone, the potion dropped a dose, the beer became an empty glass. Only then does the
+	 * consumable's effect apply, once per real consumption however many times it was clicked.
+	 */
+	@Subscribe
+	public void onItemContainerChanged(ItemContainerChanged event)
+	{
+		if (event.getContainerId() != InventoryID.INVENTORY.getId() || pendingConsumes.isEmpty())
+		{
+			return;
+		}
+		long now = System.currentTimeMillis();
+		List<Integer> eaten = new ArrayList<>();
+		for (Map.Entry<Integer, long[]> e : pendingConsumes.entrySet())
+		{
+			if (now - e.getValue()[1] <= CONSUME_CONFIRM_MS && inventoryCount(e.getKey()) < e.getValue()[0])
+			{
+				eaten.add(e.getKey());
+			}
+		}
+		for (int id : eaten)
+		{
+			pendingConsumes.remove(id);
+			applyConsumable(id);
+		}
+	}
+
+	/** Inventory options that use a supply up without being called Eat or Drink. */
+	private static boolean isUseUpOption(String option)
+	{
+		return option.equalsIgnoreCase("Apply") || option.equalsIgnoreCase("Crack")
+			|| option.equalsIgnoreCase("Crush");
+	}
+
+	/** Does the codex say anything about using this item: a PKP amount, a delta or an effect? */
+	private boolean hasConsumableRule(int itemId)
+	{
+		return itemId > 0 && (restoreAmount(itemId) != null || consumableDeltaFor(itemId) != null
+			|| consumableEffectFor(itemId) != null);
 	}
 
 	private boolean isTeaFlask(int itemId)
@@ -1601,15 +1988,21 @@ public class BattleMagePlugin extends Plugin
 		final MenuEntry entry = event.getMenuEntry();
 		final String option = entry.getOption();
 
-		// consumable restore
-		if (option != null
-			&& (option.equalsIgnoreCase("Eat") || option.equalsIgnoreCase("Drink")))
+		// consumable restore: Eat and Drink, plus the other ways a raid supply is used up (Apply a
+		// silk dressing, Crack a scarab, Crush smelling salts) when the codex gives that item an effect
+		int clickedItemId = entry.getItemId();
+		if (clickedItemId <= 0 && entry.getWidget() != null)
 		{
-			int itemId = entry.getItemId();
-			if (itemId <= 0 && entry.getWidget() != null)
-			{
-				itemId = entry.getWidget().getItemId();
-			}
+			clickedItemId = entry.getWidget().getItemId();
+		}
+		if (option != null
+			&& (option.equalsIgnoreCase("Eat") || option.equalsIgnoreCase("Drink")
+				|| (isUseUpOption(option) && hasConsumableRule(clickedItemId))))
+		{
+			int itemId = clickedItemId;
+			// Nothing applies on the click itself: spam-clicking a drink must not stack its effect. The
+			// click is remembered with how many of the item were held, and the effect lands only once the
+			// inventory shows one was really eaten or drunk (see onItemContainerChanged).
 			// The Tea flask always offers "Drink" even when empty, so applying its effect on the click would
 			// let an empty flask reset overload/depletion. Defer it and only apply once the game confirms a
 			// real sip with the "Ahhh, tea is so refreshing." message (see onChatMessage).
@@ -1618,9 +2011,9 @@ public class BattleMagePlugin extends Plugin
 				pendingTeaItemId = itemId;
 				pendingTeaMs = System.currentTimeMillis();
 			}
-			else
+			else if (itemId > 0)
 			{
-				applyConsumable(itemId);
+				pendingConsumes.put(itemId, new long[]{inventoryCount(itemId), System.currentTimeMillis()});
 			}
 		}
 
@@ -2024,6 +2417,10 @@ public class BattleMagePlugin extends Plugin
 	private void handleBlockRestore(int shieldId)
 	{
 		int gain = blockGain(shieldId);
+		if (gain > 0)
+		{
+			gain = (int) Math.round(gain * gainMultiplier());
+		}
 		if (gain == 0 || !rules.isActive())
 		{
 			return;
@@ -2078,6 +2475,11 @@ public class BattleMagePlugin extends Plugin
 	 */
 	private void handleAttackRestore(int gain, String kind)
 	{
+		// alcohol and drinks scale what an attack earns (a negative per-weapon amount is a cost, not a gain)
+		if (gain > 0)
+		{
+			gain = (int) Math.round(gain * gainMultiplier());
+		}
 		// another restoring attack while still overloaded, before resolving by casting (the resolution condition)
 		// any restoring attack while overloaded escalates - one the player clicked, or one auto-retaliate
 		// threw for them
@@ -2100,11 +2502,16 @@ public class BattleMagePlugin extends Plugin
 		boolean atMax = gain > 0 && pkp >= effectiveMax();
 		boolean bigGain = rules.bigMoveTriggers() && gain > 2 * Math.max(0, effectiveMax() - pkp);
 		boolean nowOverloaded = !isPkpFrozen() && !overloadImmune() && (atMax || bigGain);
+		double spill = gain > 0 && !isPkpFrozen() ? pkp + gain - effectiveMax() : 0;
 		if (nowOverloaded)
 		{
 			overloadActive = true;
 		}
 		addPkp(gain);
+		if (gain > 0 && !isPkpFrozen())
+		{
+			noteSpill(spill > 0 && !nowOverloaded, 1, spill);
+		}
 		// Entering the overloaded state voids any overcharge: the pool snaps straight back down to its
 		// normal max. Overcharge is otherwise permanent, so overloading is the one thing that burns it.
 		if (nowOverloaded)
@@ -2238,6 +2645,13 @@ public class BattleMagePlugin extends Plugin
 
 	// ============================================================ per-tick upkeep
 
+	/** Every client tick, so the Soul aura glides with the character rather than stepping per tile. */
+	@Subscribe
+	public void onClientTick(ClientTick event)
+	{
+		soulAura.update();
+	}
+
 	@Subscribe
 	public void onGameTick(GameTick event)
 	{
@@ -2282,6 +2696,8 @@ public class BattleMagePlugin extends Plugin
 		{
 			criticalUntilMs = 0L;
 		}
+		// an Eat/Drink click that never turned into a real bite or sip is forgotten
+		pendingConsumes.values().removeIf(p -> now - p[1] > CONSUME_CONFIRM_MS);
 		// the PSI overload lockout ends 3 seconds after combat ends
 		if (overloadActive && now - lastCombatMs >= rules.overloadClearMs())
 		{
@@ -3048,12 +3464,12 @@ public class BattleMagePlugin extends Plugin
 		{
 			return delta;
 		}
-		double pct = rules.poisonCostPercent() / 100.0;
 		if (delta > 0)
 		{
-			return delta * Math.max(0.0, 1.0 - pct); // restore less
+			// restore less: its own setting, so making poison cost less never quietly changes this
+			return delta * Math.max(0.0, 1.0 - rules.poisonRestorePercent() / 100.0);
 		}
-		return delta * (1.0 + pct); // cost more (delta is negative -> more negative)
+		return delta * (1.0 + rules.poisonCostPercent() / 100.0); // cost more (delta is negative -> more negative)
 	}
 
 	private int magicLevel()
@@ -3208,6 +3624,8 @@ public class BattleMagePlugin extends Plugin
 			out.add(new ActiveEffect(EffectKind.FREEZE, FROZEN_FRAME, 4200L, 0, false));
 			out.add(new ActiveEffect(EffectKind.OVERLOAD_IMMUNE, look.overloadColor(), 0L, 3, false));
 			out.add(new ActiveEffect(EffectKind.DEPLETION_IMMUNE, look.depletedColor(), 6000L, 2, false));
+			out.add(new ActiveEffect(EffectKind.DRUNK, DRUNK_GOLD, 21000L, 0, false, 3, ""));
+			out.add(new ActiveEffect(EffectKind.SURGE, SURGE_RED, 4800L, 0, false, 0, "x2"));
 			return out;
 		}
 
@@ -3234,7 +3652,38 @@ public class BattleMagePlugin extends Plugin
 		{
 			out.add(new ActiveEffect(EffectKind.DEPLETION_IMMUNE, look.depletedColor(), depMs, depletionImmuneAttacks, false));
 		}
+
+		int sips = drunkSipsActive();
+		if (sips > 0)
+		{
+			out.add(new ActiveEffect(EffectKind.DRUNK, DRUNK_GOLD, Math.max(0L, drunkUntilMs - now), 0, false, sips, ""));
+		}
+
+		// One SURGE badge for a drink's gain / spend scale, labelled with the gain multiplier when that
+		// is running and the spend one otherwise, and timed to whichever lasts longer.
+		boolean gainOn = now < gainScaleUntilMs && gainScale != 1.0;
+		boolean spendOn = now < spendScaleUntilMs && spendScale != 1.0;
+		if (gainOn || spendOn)
+		{
+			double shown = gainOn ? gainScale : spendScale;
+			long left = Math.max(gainOn ? gainScaleUntilMs - now : 0L, spendOn ? spendScaleUntilMs - now : 0L);
+			out.add(new ActiveEffect(EffectKind.SURGE, SURGE_RED, left, 0, false, 0, multiplierLabel(shown)));
+		}
 		return out;
+	}
+
+	/** Gold for the alcohol badge and its bar segment. */
+	static final Color DRUNK_GOLD = new Color(0xF2, 0xB8, 0x2B);
+	/** Red for a drink's gain / spend surge. */
+	static final Color SURGE_RED = new Color(0xFF, 0x4A, 0x3A);
+
+	/** "x2", "x1.5", "x0.5" - a multiplier without a trailing ".0". */
+	private static String multiplierLabel(double m)
+	{
+		String n = Math.abs(m - Math.round(m)) < 0.001
+			? Long.toString(Math.round(m))
+			: String.format(Locale.ROOT, "%.2f", m).replaceAll("0+$", "");
+		return "x" + n;
 	}
 
 	/** True while the bank interface is open - the PKP bar steps out of its way. Client thread. */
@@ -3349,6 +3798,10 @@ public class BattleMagePlugin extends Plugin
 		}
 
 		Integer restore = restoreAmount(itemId);
+		if (restore == null)
+		{
+			restore = alcoholPkp(itemId);
+		}
 		Integer adv = weaponAdvAmount(itemId);
 		Integer spec = specDeltaFor(itemId);
 		Integer cDelta = consumableDeltaFor(itemId);
@@ -3423,6 +3876,21 @@ public class BattleMagePlugin extends Plugin
 		// Status effects (freeze / immunity / multiplier / clear) from consumables and spec weapons.
 		// Shown even with no numeric PKP change, e.g. the Tea flask (restores 0 but clears states).
 		addEffectLines(lines, consumableEffectFor(itemId), itemId, " on use");
+		ContentPack.Alcohol booze = rules.alcohol();
+		if (booze != null && (alcoholIds.contains(itemId) || alcoholNames.contains(name)))
+		{
+			lines.add("<col=f2b82b>Alcohol: PKP gain -" + booze.perSipPercent + "% per sip for " + booze.seconds
+				+ "s (up to -" + booze.perSipPercent * booze.maxSips + "%)</col>");
+		}
+		Integer spellCost = spellCostItemIds.get(itemId);
+		if (spellCost == null)
+		{
+			spellCost = spellCostItemNames.get(name);
+		}
+		if (spellCost != null && spellCost != 100)
+		{
+			lines.add("<col=ff7a6a>Spells cost " + multiplierLabel(spellCost / 100.0) + " PKP while worn</col>");
+		}
 		addEffectLines(lines, specEffectFor(itemId), itemId, " on special attack");
 		if (isPacifistItem(itemId))
 		{
@@ -3520,6 +3988,28 @@ public class BattleMagePlugin extends Plugin
 				lines.add("<col=ffd34d>Gamble: +" + fx.randomGain + " PKP / -" + fx.randomLoss + " PKP" + when + "</col>");
 			}
 		}
+		if (fx.freezeNowSeconds > 0)
+		{
+			lines.add("<col=9cd6ff>Freezes PKP for " + fx.freezeNowSeconds + "s" + when + "</col>");
+		}
+		if (fx.gainSeconds > 0)
+		{
+			lines.add("<col=ff7a6a>PKP gain " + multiplierLabel(fx.gainPercent / 100.0) + " for "
+				+ fx.gainSeconds + "s (sips stack)" + when + "</col>");
+		}
+		if (fx.spendSeconds > 0)
+		{
+			lines.add("<col=ff7a6a>PKP spend " + multiplierLabel(fx.spendPercent / 100.0) + " for "
+				+ fx.spendSeconds + "s (sips stack)" + when + "</col>");
+		}
+		if (fx.criticalOverload)
+		{
+			lines.add("<col=ff2a2a>Causes CRITICAL OVERLOAD" + when + "</col>");
+		}
+		if (fx.forceDepletion)
+		{
+			lines.add("<col=ff2a2a>Causes DEPLETION, breaking depletion immunity" + when + "</col>");
+		}
 	}
 
 	private static String plural(int n, String unit)
@@ -3554,6 +4044,8 @@ public class BattleMagePlugin extends Plugin
 	 */
 	private void applyCast(int cost, String spellName)
 	{
+		// drinks and the Cursed amulet of magic scale what this cast costs
+		cost = (int) Math.round(cost * spendMultiplier());
 		// an armed freeze starts here, before any PKP moves, so this cast's cost is the one it cancels
 		startPendingFreeze();
 		// ...and this cast either renews a sustained freeze or breaks it
@@ -3566,6 +4058,8 @@ public class BattleMagePlugin extends Plugin
 		}
 		lastCastMs = System.currentTimeMillis();
 		double before = pkp;
+		boolean wasDepleted = depletedLatch;
+		double spill = cost > 0 && !isPkpFrozen() ? cost - pkp : 0;
 		if (pkp > 0)
 		{
 			// a cast costing more than twice your remaining PKP triggers depletion outright
@@ -3581,6 +4075,11 @@ public class BattleMagePlugin extends Plugin
 		{
 			// already empty: the cast goes negative and triggers the depletion punishment
 			setPkp(pkp - cost, false);
+		}
+		if (cost > 0 && !isPkpFrozen())
+		{
+			boolean wentUnder = !wasDepleted && depletedLatch;
+			noteSpill(spill > 0 && !wentUnder, -1, spill);
 		}
 		// casting clears the overload lockout instantly, but eating stays locked for a few more seconds
 		if (overloadActive)
@@ -3868,6 +4367,55 @@ public class BattleMagePlugin extends Plugin
 			addPkpSpec(amount, win);
 			notePkpChange(pkp - beforeRoll);
 		}
+
+		applyTimedEffects(fx, now);
+	}
+
+	/**
+	 * The effects that land last, after every PKP movement above: an immediate freeze (so it locks in
+	 * the PKP this item just gave), the timed gain / spend scales, and the critical states.
+	 */
+	private void applyTimedEffects(SpecEffect fx, long now)
+	{
+		if (fx.freezeNowSeconds > 0)
+		{
+			freezeUntilMs = Math.max(freezeUntilMs, now + fx.freezeNowSeconds * 1000L);
+		}
+		// A second dose of the same scale while it is still running adds its time to what is left,
+		// rather than restarting the clock. A different scale replaces it.
+		if (fx.gainSeconds > 0)
+		{
+			double scale = fx.gainPercent / 100.0;
+			boolean running = now < gainScaleUntilMs && gainScale == scale;
+			gainScale = scale;
+			gainScaleUntilMs = (running ? gainScaleUntilMs : now) + fx.gainSeconds * 1000L;
+		}
+		if (fx.spendSeconds > 0)
+		{
+			double scale = fx.spendPercent / 100.0;
+			boolean running = now < spendScaleUntilMs && spendScale == scale;
+			spendScale = scale;
+			spendScaleUntilMs = (running ? spendScaleUntilMs : now) + fx.spendSeconds * 1000L;
+		}
+		// CRITICAL OVERLOAD from a drink: straight into overload with the bar full, then the lockdown.
+		// Overload immunity keeps the player out of it, exactly as it keeps them out of overload.
+		if (fx.criticalOverload && !overloadImmune())
+		{
+			depletedLatch = false;
+			overloadActive = true;
+			pkp = Math.max(pkp, effectiveMax());
+			fireCriticalOverload("drink");
+		}
+		// DP (the Keg of beer): straight into ordinary DEPLETION, whatever immunity was up. It lasts
+		// exactly as long as any depletion: until the bar recovers to full.
+		if (fx.forceDepletion && !isPkpFrozen())
+		{
+			clearDepletionImmunity();
+			overloadActive = false;
+			criticalUntilMs = 0L;
+			depletedLatch = true;
+			lastCombatMs = now;
+		}
 	}
 
 	/**
@@ -3904,6 +4452,145 @@ public class BattleMagePlugin extends Plugin
 	private boolean freezePending()
 	{
 		return (pendingFreezeSeconds > 0 || pendingFreezeAttacks > 0 || pendingSustainWeaponId > 0);
+	}
+
+	/**
+	 * A gain or cost that landed: a clean spill past either end is caught in full by the Cowbell
+	 * amulet, if that side is neither full nor cooling down. Only a catch makes the amulet glint.
+	 */
+	private void noteSpill(boolean spilled, int side, double amount)
+	{
+		if (!spilled || amount <= 0 || !cowbellCatching(side))
+		{
+			return;
+		}
+		swellSide = side;
+		swellFraction = Math.min(0.6, amount / Math.max(1.0, effectiveMax()));
+		swellStartMs = System.currentTimeMillis();
+		// the amulet takes in everything that spilled
+		double caught = amount;
+		if (side > 0)
+		{
+			storedOver = Math.min(SPILL_STORE_MAX, storedOver + caught);
+		}
+		else
+		{
+			storedUnder = Math.min(SPILL_STORE_MAX, storedUnder + caught);
+		}
+	}
+
+	/** Can this side of the amulet take in a spill right now? */
+	boolean cowbellCatching(int side)
+	{
+		long now = System.currentTimeMillis();
+		return side > 0
+			? now >= overCooldownUntilMs && storedOver < SPILL_STORE_MAX
+			: now >= underCooldownUntilMs && storedUnder < SPILL_STORE_MAX;
+	}
+
+	/** How much of this side's cooldown is left, 0..1 (0 when it is catching again). */
+	double cowbellCooldown(int side)
+	{
+		long until = side > 0 ? overCooldownUntilMs : underCooldownUntilMs;
+		long left = until - System.currentTimeMillis();
+		return left <= 0 ? 0.0 : Math.min(1.0, left / (double) COWBELL_COOLDOWN_MS);
+	}
+
+	/** PKP caught past full, 0..SPILL_STORE_MAX. */
+	double storedOver()
+	{
+		return storedOver;
+	}
+
+	/** PKP caught past empty, 0..SPILL_STORE_MAX. */
+	double storedUnder()
+	{
+		return storedUnder;
+	}
+
+	/** Whether the Cowbell amulet shows its two spill gauges: only while sworn. */
+	boolean showCowbellGauges()
+	{
+		return oath.isSworn();
+	}
+
+	static boolean isCowbell(int itemId)
+	{
+		return WiseOldMan.isCowbellId(itemId);
+	}
+
+	long zapStartMs()
+	{
+		return zapStartMs;
+	}
+
+	int zapSide()
+	{
+		return zapSide;
+	}
+
+	void noteBarBounds(java.awt.Rectangle r)
+	{
+		barScreenBounds = r == null ? null : new java.awt.Rectangle(r);
+	}
+
+	java.awt.Rectangle barScreenBounds()
+	{
+		return barScreenBounds;
+	}
+
+	/** Replenish: the whole full-side store is spent, filling the bar as far as it goes (never past full). */
+	private void replenishPkp()
+	{
+		if (storedOver < 1 || isPkpFrozen())
+		{
+			return;
+		}
+		double before = pkp;
+		pkp = Math.max(pkp, Math.min(effectiveMax(), pkp + storedOver));
+		storedOver = 0;
+		overCooldownUntilMs = System.currentTimeMillis() + COWBELL_COOLDOWN_MS;
+		zap(1);
+		notePkpChange(pkp - before);
+	}
+
+	/** Exhume: the whole empty-side store is spent, draining the bar as far as it goes (never below zero). */
+	private void exhumePkp()
+	{
+		if (storedUnder < 1 || isPkpFrozen())
+		{
+			return;
+		}
+		double before = pkp;
+		pkp = Math.min(pkp, Math.max(0, pkp - storedUnder));
+		storedUnder = 0;
+		underCooldownUntilMs = System.currentTimeMillis() + COWBELL_COOLDOWN_MS;
+		zap(-1);
+		notePkpChange(pkp - before);
+	}
+
+	private void zap(int side)
+	{
+		zapSide = side;
+		zapStartMs = System.currentTimeMillis();
+	}
+
+	/** When the latest spill happened (0 for none): the bar overlay watches this for new ones. */
+	long spillStartMs()
+	{
+		return swellStartMs;
+	}
+
+	/** Which end the latest spill left by: 1 the full end, -1 the empty end. */
+	int spillSide()
+	{
+		return swellSide;
+	}
+
+	/** How far the latest spill went past the end, as a share of the bar. */
+	double spillAmount()
+	{
+		return swellFraction;
 	}
 
 	boolean isPkpFrozen()
@@ -4057,6 +4744,18 @@ public class BattleMagePlugin extends Plugin
 		int randomGain;
 		/** ...and on a loss it spends this much. Set from the same token as {@link #randomGain}. */
 		int randomLoss;
+		/** Z: freeze the bar at once, after this item's own PKP has landed. */
+		int freezeNowSeconds;
+		/** G: PKP gained is scaled to this percent for {@link #gainSeconds}. 0 = no change. */
+		int gainPercent;
+		int gainSeconds;
+		/** S: PKP spent is scaled to this percent for {@link #spendSeconds}. 0 = no change. */
+		int spendPercent;
+		int spendSeconds;
+		/** KO: throws the player into CRITICAL OVERLOAD. */
+		boolean criticalOverload;
+		/** DP: throws the player into DEPLETION, breaking any depletion immunity. */
+		boolean forceDepletion;
 
 		boolean hasGamble()
 		{
@@ -4067,7 +4766,9 @@ public class BattleMagePlugin extends Plugin
 		{
 			return freezeSeconds > 0 || freezeAttacks > 0 || overloadImmuneSeconds > 0 || overloadImmuneAttacks > 0
 				|| depletionImmuneSeconds > 0 || depletionImmuneAttacks > 0
-				|| clearOverload || clearDepletion || hasGamble();
+				|| clearOverload || clearDepletion || hasGamble()
+				|| freezeNowSeconds > 0 || gainSeconds > 0 || spendSeconds > 0
+				|| criticalOverload || forceDepletion;
 		}
 	}
 
@@ -4142,6 +4843,9 @@ public class BattleMagePlugin extends Plugin
 		parseConsumables(rules.consumableEffects());
 		parseSustainedFreeze(rules.sustainedFreeze());
 		parsePairs(rules.maxPkpItems(), maxPkpItemNames, maxPkpItemIds);
+		parsePairs(rules.spellCostItems(), spellCostItemNames, spellCostItemIds);
+		ContentPack.Alcohol booze = rules.alcohol();
+		parseList(booze == null ? "" : String.join(",", booze.items), alcoholNames, alcoholIds);
 		// the sheet just changed, so what is worn may be worth a different amount now
 		recomputeWornMaxPkpBonus();
 
@@ -4353,6 +5057,20 @@ public class BattleMagePlugin extends Plugin
 	}
 
 	/** Parses effect codes like "F5", "O3a", "D10s" joined with '+'. */
+	/** A whole number above zero, or 0 for anything else. */
+	private static int parsePositive(String raw)
+	{
+		try
+		{
+			int n = Integer.parseInt(raw.trim());
+			return Math.max(0, n);
+		}
+		catch (NumberFormatException e)
+		{
+			return 0;
+		}
+	}
+
 	private SpecEffect parseSpecEffect(String raw)
 	{
 		SpecEffect fx = new SpecEffect();
@@ -4380,6 +5098,38 @@ public class BattleMagePlugin extends Plugin
 			if (upper.equals("CD"))
 			{
 				fx.clearDepletion = true;
+				continue;
+			}
+			// KO: critical overload. DP: straight into depletion, breaking any depletion immunity.
+			if (upper.equals("KO"))
+			{
+				fx.criticalOverload = true;
+				continue;
+			}
+			if (upper.equals("DP"))
+			{
+				fx.forceDepletion = true;
+				continue;
+			}
+			// G<pct>/<n> and S<pct>/<n>: PKP gained / spent at pct percent for n seconds.
+			if ((type == 'G' || type == 'S') && rest.indexOf('/') > 0)
+			{
+				int slash = rest.indexOf('/');
+				int pct = parsePositive(rest.substring(0, slash));
+				int secs = parsePositive(rest.substring(slash + 1).toLowerCase(Locale.ROOT).replace("s", ""));
+				if (pct > 0 && secs > 0)
+				{
+					if (type == 'G')
+					{
+						fx.gainPercent = pct;
+						fx.gainSeconds = secs;
+					}
+					else
+					{
+						fx.spendPercent = pct;
+						fx.spendSeconds = secs;
+					}
+				}
 				continue;
 			}
 
@@ -4469,6 +5219,9 @@ public class BattleMagePlugin extends Plugin
 					{
 						fx.depletionImmuneSeconds = n;
 					}
+					break;
+				case 'Z':
+					fx.freezeNowSeconds = n;
 					break;
 				default:
 					break;

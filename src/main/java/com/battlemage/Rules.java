@@ -313,7 +313,7 @@ public class Rules
 	 */
 	public boolean enforceCannonLevel()
 	{
-		return isActive() && cannon().enforceCannonLevel;
+		return isActive() && oath.getFaction() != Faction.FACTIONLESS && cannon().enforceCannonLevel;
 	}
 
 	/** The first Ranged level at which a cannon may no longer be placed. */
@@ -806,6 +806,8 @@ public class Rules
 	 * case in the code.
 	 *
 	 * <p>Empty with no god in force: this is a faction rule.
+	 *
+	 * <p>Faction-less claims no spells of its own, so every god's spells are barred to it.
 	 */
 	public String blockedGodSpells()
 	{
@@ -887,9 +889,41 @@ public class Rules
 		return active == null ? "" : joinPairs(active.consumables.pkpRestoreItems);
 	}
 
+	/**
+	 * The shared consumable effects first, then this god's own: the plugin reads them in order and a
+	 * later entry for the same item replaces an earlier one, so the god's version wins.
+	 */
 	public String consumableEffects()
 	{
-		return active == null ? "" : joinEffects(active.consumables.consumableEffects);
+		if (active == null)
+		{
+			return "";
+		}
+		String shared = pack.shared == null ? "" : joinEffects(pack.shared.consumableEffects);
+		String own = joinEffects(active.consumables.consumableEffects);
+		if (shared.isEmpty())
+		{
+			return own;
+		}
+		return own.isEmpty() ? shared : shared + "," + own;
+	}
+
+	/** While poisoned, PKP gained from consumables and specs is cut by this percent. */
+	public int poisonRestorePercent()
+	{
+		return active == null ? 0 : active.pool.poisonRestorePercent;
+	}
+
+	/** The alcohol rules, or null before a god is sworn. */
+	public ContentPack.Alcohol alcohol()
+	{
+		return active == null || pack.shared == null ? null : pack.shared.alcohol;
+	}
+
+	/** Spell-cost equipment as {@code name:percent}, joined like the other pair lists. */
+	public String spellCostItems()
+	{
+		return active == null || pack.shared == null ? "" : joinPairs(pack.shared.spellCostItems);
 	}
 
 	// -------------------------------------------------------------- overcharge

@@ -62,7 +62,244 @@ class OffLimitItemOverlay extends Overlay
 		{
 			renderNormal(g);
 		}
+		if (plugin.showCowbellGauges())
+		{
+			renderCowbellGauges(g);
+		}
 		return null;
+	}
+
+	// ---------------------------------------------------------------- Cowbell gauges
+
+	/** The two slim gauges either side of the Cowbell amulet: caught-below-empty left, caught-above-full right. */
+	private void renderCowbellGauges(Graphics2D g)
+	{
+		List<Rectangle> bells = new ArrayList<>();
+		Widget inv = client.getWidget(INVENTORY_GROUP, 0);
+		if (inv != null && !inv.isHidden() && inv.getDynamicChildren() != null)
+		{
+			for (Widget item : inv.getDynamicChildren())
+			{
+				if (item != null && !item.isHidden() && BattleMagePlugin.isCowbell(item.getItemId()))
+				{
+					bells.add(item.getBounds());
+				}
+			}
+		}
+		Widget[] roots = client.getWidgetRoots();
+		if (roots != null)
+		{
+			for (Widget root : roots)
+			{
+				findWornBell(root, 0, bells);
+			}
+		}
+		double under = plugin.storedUnder() / BattleMagePlugin.SPILL_STORE_MAX;
+		double over = plugin.storedOver() / BattleMagePlugin.SPILL_STORE_MAX;
+		boolean underCooling = plugin.cowbellCooldown(-1) > 0;
+		boolean overCooling = plugin.cowbellCooldown(1) > 0;
+		Rectangle source = null;
+		for (Rectangle b : bells)
+		{
+			if (b == null || b.width <= 0 || b.height <= 0)
+			{
+				continue;
+			}
+			if (source == null)
+			{
+				source = b;
+			}
+			drawGauge(g, b.x - 1, b.y + 2, b.height - 4, under, look.barColorLow(), underCooling);
+			drawGauge(g, b.x + b.width - 6, b.y + 2, b.height - 4, over, look.barColorFull(), overCooling);
+			drawTwinkle(g, b);
+		}
+		drawZap(g, source);
+	}
+
+	// ---------------------------------------------------------------- absorbing and releasing
+
+	/** How long the amulet glints after it catches a spill. */
+	private static final long SPARKLE_MS = 700L;
+
+	/** When the amulet catches a spill, it glints in that side's colour. */
+	private void drawTwinkle(Graphics2D g, Rectangle b)
+	{
+		long now = System.currentTimeMillis();
+		long start = plugin.spillStartMs();
+		int side = plugin.spillSide();
+		long age = now - start;
+		if (start == 0 || side == 0 || age < 0 || age >= SPARKLE_MS || !look.barExhaust())
+		{
+			return;
+		}
+		double life = 1.0 - age / (double) SPARKLE_MS;
+		Color c = side > 0 ? look.barColorFull() : look.barColorLow();
+		java.util.Random r = new java.util.Random(start * 17 + age / 90);
+		for (int k = 0; k < 3; k++)
+		{
+			double phase = Math.sin((age / 90.0) + k * 2.1);
+			double size = (2.5 + 2.5 * Math.abs(phase)) * life;
+			if (size < 1)
+			{
+				continue;
+			}
+			int cx = b.x + 6 + r.nextInt(Math.max(1, b.width - 12));
+			int cy = b.y + 6 + r.nextInt(Math.max(1, b.height - 12));
+			int a = (int) Math.round(255 * life);
+			g.setStroke(new BasicStroke(1.4f));
+			g.setColor(new Color(c.getRed(), c.getGreen(), c.getBlue(), Math.min(255, a)));
+			g.drawLine((int) (cx - size), cy, (int) (cx + size), cy);
+			g.drawLine(cx, (int) (cy - size), cx, (int) (cy + size));
+			g.setColor(new Color(255, 255, 255, Math.min(255, a)));
+			g.fillOval(cx - 1, cy - 1, 2, 2);
+		}
+	}
+
+	private static final long ZAP_MS = 420L;
+	private static final long ZAP_SPARK_MS = 650L;
+
+	/** A release: a bolt from the amulet into the PKP bar, throwing sparks where it lands. */
+	private void drawZap(Graphics2D g, Rectangle bell)
+	{
+		long now = System.currentTimeMillis();
+		long start = plugin.zapStartMs();
+		long age = now - start;
+		Rectangle bar = plugin.barScreenBounds();
+		if (start == 0 || age < 0 || age >= ZAP_SPARK_MS || bar == null || bell == null)
+		{
+			return;
+		}
+		int side = plugin.zapSide();
+		Color c = side > 0 ? look.barColorFull() : look.barColorLow();
+		double sx = bell.getCenterX();
+		double sy = bell.getCenterY();
+		double ex = bar.x + bar.width * (side > 0 ? 0.75 : 0.25);
+		double ey = bar.getCenterY();
+		java.awt.Stroke old = g.getStroke();
+
+		if (age < ZAP_MS)
+		{
+			double life = 1.0 - age / (double) ZAP_MS;
+			java.util.Random r = new java.util.Random(start * 13 + age / 40);
+			java.util.List<double[]> pts = new ArrayList<>();
+			pts.add(new double[]{sx, sy});
+			pts.add(new double[]{ex, ey});
+			double spread = Math.hypot(ex - sx, ey - sy) / 6.0;
+			for (int pass = 0; pass < 5; pass++)
+			{
+				java.util.List<double[]> next = new ArrayList<>();
+				for (int i = 0; i < pts.size() - 1; i++)
+				{
+					double[] p0 = pts.get(i);
+					double[] p1 = pts.get(i + 1);
+					next.add(p0);
+					next.add(new double[]{
+						(p0[0] + p1[0]) / 2 + (r.nextDouble() - 0.5) * spread,
+						(p0[1] + p1[1]) / 2 + (r.nextDouble() - 0.5) * spread});
+				}
+				next.add(pts.get(pts.size() - 1));
+				pts = next;
+				spread /= 2;
+			}
+			java.awt.geom.Path2D.Double path = new java.awt.geom.Path2D.Double();
+			path.moveTo(pts.get(0)[0], pts.get(0)[1]);
+			for (int i = 1; i < pts.size(); i++)
+			{
+				path.lineTo(pts.get(i)[0], pts.get(i)[1]);
+			}
+			int a = (int) Math.round(255 * Math.min(1.0, life * 1.6));
+			g.setStroke(new BasicStroke(7f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+			g.setColor(new Color(c.getRed(), c.getGreen(), c.getBlue(), Math.min(255, a / 3)));
+			g.draw(path);
+			g.setStroke(new BasicStroke(3f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+			g.setColor(new Color(c.getRed(), c.getGreen(), c.getBlue(), Math.min(255, a)));
+			g.draw(path);
+			g.setStroke(new BasicStroke(1.2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+			g.setColor(new Color(255, 255, 255, Math.min(255, a)));
+			g.draw(path);
+		}
+
+		// sparks thrown from where the bolt hits
+		double t = age / 1000.0;
+		double life = 1.0 - age / (double) ZAP_SPARK_MS;
+		java.util.Random r = new java.util.Random(start);
+		for (int k = 0; k < 16; k++)
+		{
+			double ang = r.nextDouble() * Math.PI * 2;
+			double speed = 60 + 160 * r.nextDouble();
+			double px = ex + Math.cos(ang) * speed * t;
+			double py = ey + Math.sin(ang) * speed * t + 260 * t * t;
+			double d = 1.5 + 2.5 * life;
+			g.setColor(new Color(
+				k % 3 == 0 ? 255 : c.getRed(), k % 3 == 0 ? 255 : c.getGreen(), k % 3 == 0 ? 255 : c.getBlue(),
+				Math.max(0, Math.min(255, (int) Math.round(255 * life)))));
+			g.fill(new java.awt.geom.Ellipse2D.Double(px - d / 2, py - d / 2, d, d));
+		}
+		g.setStroke(old);
+	}
+
+	private void findWornBell(Widget w, int depth, List<Rectangle> out)
+	{
+		if (w == null || depth > 8 || w.isHidden())
+		{
+			return;
+		}
+		if ((w.getId() >>> 16) == EQUIPMENT_GROUP && BattleMagePlugin.isCowbell(w.getItemId()))
+		{
+			out.add(w.getBounds());
+		}
+		for (Widget[] kids : new Widget[][]{w.getStaticChildren(), w.getDynamicChildren(), w.getNestedChildren()})
+		{
+			if (kids != null)
+			{
+				for (Widget k : kids)
+				{
+					findWornBell(k, depth + 1, out);
+				}
+			}
+		}
+	}
+
+	/** A 4px-wide vertical gauge filling from the bottom; grey with a small red X while cooling down. */
+	private static void drawGauge(Graphics2D g, int x, int y, int h, double frac, Color c, boolean cooling)
+	{
+		if (h < 6)
+		{
+			return;
+		}
+		if (cooling)
+		{
+			g.setColor(new Color(0, 0, 0, 170));
+			g.fillRoundRect(x, y, 4, h, 3, 3);
+			g.setColor(new Color(120, 120, 120, 230));
+			g.fillRoundRect(x + 1, y + 1, 2, h - 2, 2, 2);
+			int cx = x + 2;
+			int cy = y + h / 2;
+			g.setStroke(new BasicStroke(1.3f));
+			g.setColor(new Color(0, 0, 0, 200));
+			g.drawLine(cx - 3, cy - 3, cx + 3, cy + 3);
+			g.drawLine(cx - 3, cy + 3, cx + 3, cy - 3);
+			g.setColor(new Color(230, 30, 30));
+			g.drawLine(cx - 2, cy - 2, cx + 2, cy + 2);
+			g.drawLine(cx - 2, cy + 2, cx + 2, cy - 2);
+			return;
+		}
+		double f = Math.max(0, Math.min(1, frac));
+		g.setColor(new Color(0, 0, 0, 170));
+		g.fillRoundRect(x, y, 4, h, 3, 3);
+		int fh = (int) Math.round((h - 2) * f);
+		if (fh > 0)
+		{
+			g.setColor(new Color(c.getRed(), c.getGreen(), c.getBlue(), f >= 1 ? 255 : 220));
+			g.fillRoundRect(x + 1, y + 1 + (h - 2 - fh), 2, fh, 2, 2);
+		}
+		if (f >= 1)
+		{
+			double blink = 0.5 + 0.5 * Math.sin(System.currentTimeMillis() / 220.0);
+			g.setColor(new Color(c.getRed(), c.getGreen(), c.getBlue(), (int) Math.round(60 + 120 * blink)));
+			g.setStroke(new BasicStroke(1.5f));
+			g.drawRoundRect(x - 1, y - 1, 6, h + 2, 4, 4);
+		}
 	}
 
 	// ---------------------------------------------------------------- ILLEGAL state

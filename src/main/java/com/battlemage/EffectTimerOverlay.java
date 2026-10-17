@@ -7,8 +7,11 @@ import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
+import java.awt.Stroke;
+import java.awt.geom.Ellipse2D;
 import java.awt.geom.Line2D;
 import java.awt.geom.Path2D;
+import java.awt.geom.Rectangle2D;
 import java.awt.geom.RoundRectangle2D;
 import java.util.List;
 import javax.inject.Inject;
@@ -117,20 +120,36 @@ class EffectTimerOverlay extends Overlay
 			: new BasicStroke(bw));
 		g.draw(box);
 
+		final boolean drunk = e.kind == BattleMagePlugin.EffectKind.DRUNK;
 		final String secs = e.secondsText();
-		final String atks = e.attacksText();
+		final String atks = drunk ? "" : e.attacksText();
 		// seconds take the bottom line when present; a lone attack count takes it instead
 		final String bottom = !secs.isEmpty() ? secs : atks;
 		// only when BOTH are running does the attack count get pushed into the corner
 		final boolean cornerBadge = !secs.isEmpty() && !atks.isEmpty();
 		final boolean hasBottom = !bottom.isEmpty();
 
-		// the symbol rides higher and shrinks a little when it has to share the square with a countdown
-		final double symY = size * (hasBottom ? 0.40 : 0.50);
-		final double symR = size * (hasBottom ? 0.23 : 0.30);
+		// the symbol rides higher and shrinks a little when it has to share the square with a countdown;
+		// the beer mug sits a touch lower and smaller still, to leave room for its sip count above it
+		final double symY = drunk ? size * 0.51 : size * (hasBottom ? 0.40 : 0.50);
+		final double symR = drunk ? size * 0.145 : size * (hasBottom ? 0.23 : 0.30);
 		g.setColor(new Color(c.getRed(), c.getGreen(), c.getBlue(), e.pending ? 130 : 255));
 		g.setStroke(new BasicStroke(Math.max(1.8f, size / 15f), BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-		drawSymbol(g, e.kind, size / 2.0, symY, symR);
+		drawSymbol(g, e, size / 2.0, symY, symR);
+
+		if (drunk && e.stacks > 0)
+		{
+			// the sip count, centred above the mug
+			final String n = Integer.toString(e.stacks);
+			g.setFont(new Font(Font.SANS_SERIF, Font.BOLD, Math.max(9, (int) Math.round(size * 0.26))));
+			final FontMetrics fm = g.getFontMetrics();
+			final int tx = (size - fm.stringWidth(n)) / 2;
+			final int ty = Math.max(2, size / 14) + fm.getAscent() - 1;
+			g.setColor(new Color(0, 0, 0, 235));
+			g.drawString(n, tx + 1, ty + 1);
+			g.setColor(Color.WHITE);
+			g.drawString(n, tx, ty);
+		}
 
 		if (hasBottom)
 		{
@@ -172,10 +191,16 @@ class EffectTimerOverlay extends Overlay
 
 	// ---------------------------------------------------------------- symbols
 
-	private void drawSymbol(Graphics2D g, BattleMagePlugin.EffectKind kind, double cx, double cy, double r)
+	private void drawSymbol(Graphics2D g, BattleMagePlugin.ActiveEffect e, double cx, double cy, double r)
 	{
-		switch (kind)
+		switch (e.kind)
 		{
+			case DRUNK:
+				drawBeer(g, cx, cy, r);
+				break;
+			case SURGE:
+				drawLabel(g, e.label, cx, cy, r);
+				break;
 			case FREEZE:
 				drawSnowflake(g, cx, cy, r);
 				break;
@@ -187,6 +212,47 @@ class EffectTimerOverlay extends Overlay
 				drawShieldChevron(g, cx, cy, r, false);
 				break;
 		}
+	}
+
+	/** A beer mug: a gold body with a frothy white head spilling over the rim, and a handle. */
+	private void drawBeer(Graphics2D g, double cx, double cy, double r)
+	{
+		final double w = r * 1.5;
+		final double h = r * 1.75;
+		final double l = cx - w / 2 - r * 0.22;
+		final double t = cy - h / 2 + r * 0.2;
+		final Color gold = g.getColor();
+		final Stroke stroke = g.getStroke();
+		// handle, then the body over it
+		g.setStroke(new BasicStroke((float) Math.max(1.6, r * 0.28)));
+		g.draw(new RoundRectangle2D.Double(l + w - r * 0.25, t + h * 0.22, r * 0.75, h * 0.5, r * 0.5, r * 0.5));
+		g.fill(new RoundRectangle2D.Double(l, t, w, h, r * 0.3, r * 0.3));
+		// darker glass edge so the body reads against the gold tint
+		g.setStroke(new BasicStroke((float) Math.max(1.0, r * 0.12)));
+		g.setColor(new Color(90, 55, 0, gold.getAlpha()));
+		g.draw(new RoundRectangle2D.Double(l, t, w, h, r * 0.3, r * 0.3));
+		// the head: three bubbles of foam riding over the rim
+		g.setColor(new Color(255, 250, 235, gold.getAlpha()));
+		final double fr = r * 0.42;
+		for (int i = 0; i < 3; i++)
+		{
+			double fx = l + w * (0.18 + i * 0.32);
+			g.fill(new Ellipse2D.Double(fx - fr, t - fr * 0.9 + (i == 1 ? -fr * 0.25 : 0), fr * 2, fr * 1.8));
+		}
+		g.setColor(gold);
+		g.setStroke(stroke);
+	}
+
+	/** Text in place of a symbol, sized to the badge - used for a multiplier such as "x2". */
+	private void drawLabel(Graphics2D g, String text, double cx, double cy, double r)
+	{
+		if (text == null || text.isEmpty())
+		{
+			return;
+		}
+		g.setFont(new Font(Font.SANS_SERIF, Font.BOLD, Math.max(9, (int) Math.round(r * (text.length() > 2 ? 1.1 : 1.45)))));
+		final FontMetrics fm = g.getFontMetrics();
+		g.drawString(text, (float) (cx - fm.stringWidth(text) / 2.0), (float) (cy + (fm.getAscent() - fm.getDescent()) / 2.0));
 	}
 
 	/** Six-spoke snowflake with barbed tips. */

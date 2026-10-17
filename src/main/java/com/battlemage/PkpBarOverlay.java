@@ -35,6 +35,63 @@ class PkpBarOverlay extends Overlay
 		setSnappable(true);
 	}
 
+	/** How long the bar glints after the amulet catches a spill (matches the amulet's own glint). */
+	private static final long SPARKLE_MS = 700L;
+
+	/**
+	 * When the Cowbell amulet catches a spill, a few of its glints show at that end of the bar too:
+	 * more of them, and further in, the bigger the spill - up to a quarter of the bar.
+	 */
+	private void drawSpillSparkles(Graphics2D g, int w, int h)
+	{
+		long now = System.currentTimeMillis();
+		long start = plugin.spillStartMs();
+		int side = plugin.spillSide();
+		long age = now - start;
+		if (start == 0 || side == 0 || age < 0 || age >= SPARKLE_MS)
+		{
+			return;
+		}
+		double life = 1.0 - age / (double) SPARKLE_MS;
+		double spill = Math.min(0.25, plugin.spillAmount());
+		double reach = Math.max(6, w * spill);
+		int count = 2 + (int) Math.round(spill / 0.25 * 6);
+		Color c = side > 0 ? look.barColorFull() : look.barColorLow();
+		java.util.Random r = new java.util.Random(start * 5 + 1);
+		java.awt.Stroke old = g.getStroke();
+		for (int k = 0; k < count; k++)
+		{
+			double in = reach * r.nextDouble();
+			int cx = (int) Math.round(side > 0 ? w - 3 - in : 3 + in);
+			int cy = 3 + r.nextInt(Math.max(1, h - 6));
+			double beat = 0.5 + 0.5 * Math.sin(age / (60.0 + r.nextInt(50)) + r.nextDouble() * 6.28);
+			double size = (1.5 + 2.5 * beat) * life;
+			if (size < 1)
+			{
+				continue;
+			}
+			int a = clamp((int) Math.round(255 * life * (0.55 + 0.45 * beat)));
+			int x0 = (int) Math.round(cx - size - 1);
+			int x1 = (int) Math.round(cx + size + 1);
+			int y0 = (int) Math.round(cy - size - 1);
+			int y1 = (int) Math.round(cy + size + 1);
+			// a dark edge first, so the star reads on its own colour of fill
+			g.setStroke(new BasicStroke(3f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+			g.setColor(new Color(0, 0, 0, clamp(a * 2 / 3)));
+			g.drawLine(x0, cy, x1, cy);
+			g.drawLine(cx, y0, cx, y1);
+			// a coloured halo, then a white core
+			g.setColor(new Color(c.getRed(), c.getGreen(), c.getBlue(), clamp(a / 2)));
+			g.fillOval(cx - 3, cy - 3, 6, 6);
+			g.setStroke(new BasicStroke(1.4f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+			g.setColor(new Color(255, 255, 255, a));
+			g.drawLine(x0, cy, x1, cy);
+			g.drawLine(cx, y0, cx, y1);
+			g.fillOval(cx - 1, cy - 1, 3, 3);
+		}
+		g.setStroke(old);
+	}
+
 	@Override
 	public Dimension render(Graphics2D g)
 	{
@@ -45,6 +102,7 @@ class PkpBarOverlay extends Overlay
 			return null;
 		}
 
+		plugin.noteBarBounds(getBounds());
 		final int w = look.barWidth();
 		final int h = look.barHeight();
 		final int max = Math.max(1, plugin.getMaxPkp());
@@ -185,6 +243,7 @@ class PkpBarOverlay extends Overlay
 			sb.append("FROZEN");
 		}
 		String label = sb.toString();
+		Color labelColor = Color.WHITE;
 		if (!label.isEmpty())
 		{
 			FontMetrics fm = g.getFontMetrics();
@@ -192,8 +251,13 @@ class PkpBarOverlay extends Overlay
 			int ty = (h - fm.getHeight()) / 2 + fm.getAscent();
 			g.setColor(Color.BLACK);
 			g.drawString(label, tx + 1, ty + 1);
-			g.setColor(Color.WHITE);
+			g.setColor(labelColor);
 			g.drawString(label, tx, ty);
+		}
+
+		if (look.barExhaust() && !look.isEditing())
+		{
+			drawSpillSparkles(g, w, h);
 		}
 
 		RevealAnim.restore(g, savedTransform, savedComposite);

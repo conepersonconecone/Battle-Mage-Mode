@@ -94,6 +94,7 @@ class AppearanceEditor extends JPanel
 		add(slider("Glow", "barGlow", 0, 12, look.barGlow(), v -> v == 0 ? "off" : v + " px", bar));
 		add(check("Pulse", "barPulse", look.barPulse(), bar));
 		add(check("Cost ticks", "showCostTicks", look.showCostTicks(), bar));
+		add(check("Cowbell sparkle", "barExhaust", look.barExhaust(), bar));
 		add(colour("Full colour", "barColorFull", look.barColorFull(), () -> sample(Appearance.Sample.NONE, 1.0, false, false)));
 		add(colour("Low colour", "barColorLow", look.barColorLow(), () -> sample(Appearance.Sample.NONE, 0.12, false, false)));
 		add(colour("Overcharge colour", "overchargeColor", look.overchargeColor(), () -> sample(Appearance.Sample.NONE, 1.0, true, false)));

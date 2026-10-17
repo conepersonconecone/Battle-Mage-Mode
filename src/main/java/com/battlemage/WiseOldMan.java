@@ -32,7 +32,9 @@ import net.runelite.client.util.Text;
  *   <li><b>Change of heart.</b> Ringing from the same spot while sworn asks whether to denounce;
  *       yes plays a short denouncing between him and the player, then leaves the faction.</li>
  *   <li><b>BMM.</b> Once a god is sworn he gains a <i>BMM</i> right-click option, which opens a
- *       question-and-answer conversation explaining the mode.</li>
+ *       question-and-answer conversation explaining the mode. Sworn to a god, it also offers the
+ *       PKP system without one: after a warning and a yes, he denounces the player's god and then
+ *       casts Vengeance Other on them, leaving them faction-less.</li>
  * </ul>
  *
  * <p>The ring itself is left alone - the game still plays it - the conversation simply starts
@@ -47,6 +49,18 @@ public class WiseOldMan
 	/** The Cowbell amulet: uncharged, charged, and the bank placeholder (harmless to include). */
 	private static final int[] COWBELL_IDS = {33103, 33104, 33105};
 	private static final String COWBELL_NAME = "cowbell amulet";
+
+	static boolean isCowbellId(int itemId)
+	{
+		for (int id : COWBELL_IDS)
+		{
+			if (id == itemId)
+			{
+				return true;
+			}
+		}
+		return false;
+	}
 	private static final String RING = "Ring";
 	private static final String BMM = "BMM";
 	/** The player must stand this many tiles directly south of him. */
@@ -71,6 +85,11 @@ public class WiseOldMan
 	{
 	};
 
+	/** Denounces the player's god, then makes them faction-less. Set by the plugin. */
+	private java.util.function.Consumer<NPC> onFactionless = npc ->
+	{
+	};
+
 	@Inject
 	WiseOldMan(Client client, ChatDialogue dialogue, Oath oath, Rules rules)
 	{
@@ -92,6 +111,13 @@ public class WiseOldMan
 		this.onDenounce = onDenounce == null ? npc ->
 		{
 		} : onDenounce;
+	}
+
+	void setOnFactionless(java.util.function.Consumer<NPC> onFactionless)
+	{
+		this.onFactionless = onFactionless == null ? npc ->
+		{
+		} : onFactionless;
 	}
 
 	// ------------------------------------------------------------------ the ritual
@@ -256,11 +282,16 @@ public class WiseOldMan
 			.setTarget(event.getTarget())
 			.setIdentifier(event.getIdentifier())
 			.setType(MenuAction.RUNELITE)
-			.onClick(e -> ask(npcId));
+			.onClick(e -> ask(npc));
 	}
 
-	private void ask(int npcId)
+	/** The NPC the current conversation is with, for the ceremony at the end of the faction-less offer. */
+	private NPC talkingTo;
+
+	private void ask(NPC npc)
 	{
+		talkingTo = npc;
+		int npcId = npc.getId();
 		dialogue.play(npcId, NAME, Line.npc(Mood.QUESTION, "What would you like to know?"), () -> questions(npcId, 0));
 	}
 
@@ -268,7 +299,20 @@ public class WiseOldMan
 	private void questions(int npcId, int page)
 	{
 		Runnable here = () -> questions(npcId, page);
-		List<Option> options = page == 0
+		Faction f = oath.getFaction();
+		boolean god = f != null && f.isGod();
+		List<Option> options = page == 2
+			? Arrays.asList(
+				new Option("What if I have ideas to contribute?", () -> answer(npcId, ideas(), here)),
+				new Option("That's all, thanks.", dialogue::close))
+			: page == 1 && god
+			? Arrays.asList(
+				new Option("How does blocking work?", () -> answer(npcId, blocking(), here)),
+				new Option("What about special attacks and food?", () -> answer(npcId, specsAndFood(), here)),
+				new Option("How do I change my god faction?", () -> answer(npcId, changeGod(), here)),
+				new Option("Can I try the PKP System without a faction?", () -> withoutFaction(npcId, here)),
+				new Option("More questions...", () -> questions(npcId, 2)))
+			: page == 0
 			? Arrays.asList(
 				new Option("What is PKP?", () -> answer(npcId, whatIsPkp(), here)),
 				new Option("How do I earn and spend it?", () -> answer(npcId, earnAndSpend(), here)),
@@ -326,6 +370,13 @@ public class WiseOldMan
 
 	private List<Line> gear()
 	{
+		if (oath.getFaction() == Faction.FACTIONLESS)
+		{
+			return Arrays.asList(
+				Line.player(Mood.QUESTION, "What can I wear and wield?"),
+				Line.npc(Mood.HAPPY, "Without a god, nothing is off limits. Wear and wield whatever you like!"),
+				Line.npc(Mood.NEUTRAL, "Your PKP still rises and falls with every swing, shot and spell, all the same."));
+		}
 		return Arrays.asList(
 			Line.player(Mood.QUESTION, "What can I wear and wield?"),
 			Line.npc(Mood.NEUTRAL, "Weapons need a magic attack bonus of at least +" + rules.magicAttackMinimum()
@@ -344,7 +395,8 @@ public class WiseOldMan
 		return Arrays.asList(
 			Line.player(Mood.QUESTION, "How does blocking work?"),
 			Line.npc(Mood.NEUTRAL, "Block a hit with a shield or off-hand equipped and your PKP shifts. Some restore it and some drain it."),
-			Line.npc(Mood.NEUTRAL, "Under your god, an ordinary shield's block " + plain + "."),
+			Line.npc(Mood.NEUTRAL, (oath.getFaction() == Faction.FACTIONLESS ? "Without a god" : "Under your god")
+				+ ", an ordinary shield's block " + plain + "."),
 			Line.npc(Mood.HAPPY, "Blocking never Overloads or Depletes you."));
 	}
 
@@ -364,6 +416,37 @@ public class WiseOldMan
 			Line.player(Mood.QUESTION, "How do I change my god faction?"),
 			Line.npc(Mood.NEUTRAL, "You can denounce your god at any time from the Battle-Mage Mode sidebar."),
 			Line.npc(Mood.NEUTRAL, "Then come back and ring your Cowbell amulet to choose again."));
+	}
+
+	/**
+	 * Sworn to a god and asking for the PKP system on its own. He warns first; a yes gets the
+	 * ceremony - the denouncing, then Vengeance Other - and the player comes out faction-less.
+	 */
+	private void withoutFaction(int npcId, Runnable back)
+	{
+		dialogue.play(npcId, NAME, Arrays.asList(
+			Line.player(Mood.QUESTION, "Can I try the PKP System without a faction?"),
+			Line.npc(Mood.CONFUSED, "Without a god? Hmm... The traveler who dreamt all this up believes the PKP system is best experienced on a fresh account..."),
+			Line.npc(Mood.NEUTRAL, "...sworn to a god faction, with all the restrictions that come with it."),
+			Line.npc(Mood.QUESTION, "Are you sure?")
+		), () -> dialogue.menu("Are you sure?", Arrays.asList(
+			new Option("Yes", () -> dialogue.play(npcId, NAME, Arrays.asList(
+				Line.player(Mood.HAPPY, "Yes, I'm sure."),
+				Line.npc(Mood.LAUGH, "Very well! First, your god must let you go... then I'll give you something to fight with. Hold still! Nyehehe!")
+			), () ->
+			{
+				dialogue.close();
+				NPC man = talkingTo;
+				if (man != null)
+				{
+					onFactionless.accept(man);
+				}
+			})),
+			new Option("No", () -> dialogue.play(npcId, NAME, Arrays.asList(
+				Line.player(Mood.NEUTRAL, "No, I'll stay with my god."),
+				Line.npc(Mood.HAPPY, "A wise choice! Spend some time reading from my shelves.")
+			), back))
+		)));
 	}
 
 	private List<Line> ideas()

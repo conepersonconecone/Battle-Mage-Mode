@@ -121,6 +121,12 @@ public interface BattleMageConfig extends Config
 		return true;
 	}
 
+	@ConfigItem(keyName = "barExhaust", name = "barExhaust", description = "", hidden = true)
+	default boolean barExhaust()
+	{
+		return true;
+	}
+
 	@ConfigItem(keyName = "showCostTicks", name = "showCostTicks", description = "", hidden = true)
 	default boolean showCostTicks()
 	{
@@ -269,5 +275,11 @@ public interface BattleMageConfig extends Config
 	default boolean inventoryTooltips()
 	{
 		return true;
+	}
+
+	@ConfigItem(keyName = "auraMode", name = "auraMode", description = "", hidden = true)
+	default AuraMode auraMode()
+	{
+		return AuraMode.XRAY;
 	}
 }

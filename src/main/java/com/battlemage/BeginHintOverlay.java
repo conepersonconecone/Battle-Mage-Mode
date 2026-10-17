@@ -169,7 +169,7 @@ class BeginHintOverlay extends Overlay
 
 	private boolean showing()
 	{
-		return !oath.isSworn() && !onboarding.isActive() && client.getGameState() == GameState.LOGGED_IN;
+		return !oath.isSworn() && !oath.inCeremony() && !onboarding.isActive() && client.getGameState() == GameState.LOGGED_IN;
 	}
 
 	@Override
