@@ -7,6 +7,7 @@ A self-imposed challenge mode for Old School RuneScape. Swear an oath to one of 
 - **PKP.** Combat spells cost PKP. Melee and ranged attacks earn it back. Some consumables, special attacks and shields add, drain, or interact with PKP in unique ways.
 - **Failure states.** Gaining PKP while the bar is full leaves you **Overloaded** (no melee, ranged or eating until you cast). Dropping below zero leaves you **Depleted** (no drinking until you regenerate). Attacking while Overloaded triggers **Critical Overload**, which forces you to exit combat. Only your Cowbell Amulet will be able to teleport you out.
 - **Immunity.** Some special attacks and items make you immune to Overload or Depletion: PKP still moves, but you can't fall into that state. Gaining immunity while already Overloaded or Depleted ends the state instead (Overload ends at full, Depletion at zero).
+- **Drinks.** Every sip of alcohol cuts PKP gain by 10% (up to 50%) for 30 seconds. God brews act differently depending on your god: see the rulebook for each one.
 - **Equipment.** Weapons need a magic attack bonus above 0, and armour must stay above -10. Each god also has its own aligned and forbidden gear. Items you can't use show a stop symbol, and their Wield/Wear option is removed.
 - **Blocking.** Blocking a hit may restore or drain PKP depending on the shield or off-hand you have equipped. It never causes an overload or depletion.
 - **Rulebook.** The side panel opens a full rulebook in your browser, with a PKP simulator and the verdict for every listed item under every god.
@@ -14,7 +15,7 @@ A self-imposed challenge mode for Old School RuneScape. Swear an oath to one of 
 ## Using it
 
 1. Enable **Battle-Mage Mode**, then head to the **Wise Old Man** in Draynor Village. Stand two tiles directly south of him and **Ring** your **Cowbell amulet** (charged or uncharged). Choose **Begin Battle-Mage Mode** and select your faction. The PKP bar appears and the rules take effect.
-2. Open the side panel to view the handbook to learn about PKP, customize the UI components, and denounce your faction when needed (or ring your Cowbell amulet in front of the Wise Old Man again for a change of heart). To choose a new one, visit the Wise Old Man again. Once sworn, right-click him and choose **BMM** for a refresher on the rules.
+2. Open the side panel to view the handbook to learn about PKP, customize the UI components, and denounce your faction when needed.
 3. Look at the bottom of the handbook to view a matrix of equipment with ties to specific factions. Alternatively, just go off vibes, and figure it out on the fly!
 4. Have fun flowing through the combat triangle! Figure out what is possible! Try it on a Hardcore if you are daring!
 5. Don't forget your Tea Flask and Cowbell Amulet!
