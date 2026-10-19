@@ -8,8 +8,8 @@ A self-imposed challenge mode for Old School RuneScape. Swear an oath to one of 
 - **Failure states.** Gaining PKP while the bar is full leaves you **Overloaded** (no melee, ranged or eating until you cast). Dropping below zero leaves you **Depleted** (no drinking until you regenerate). Attacking while Overloaded triggers **Critical Overload**, which forces you to exit combat. Only your Cowbell Amulet will be able to teleport you out.
 - **Immunity.** Some special attacks and items make you immune to Overload or Depletion: PKP still moves, but you can't fall into that state. Gaining immunity while already Overloaded or Depleted ends the state instead (Overload ends at full, Depletion at zero).
 - **Drinks.** Every sip of alcohol cuts PKP gain by 10% (up to 50%) for 30 seconds. God brews act differently depending on your god: see the rulebook for each one.
-- **Equipment.** Weapons need a magic attack bonus above 0, and armour must stay above -10. Each god also has its own aligned and forbidden gear. Items you can't use show a stop symbol, and their Wield/Wear option is removed.
-- **Blocking.** Blocking a hit may restore or drain PKP depending on the shield or off-hand you have equipped. It never causes an overload or depletion.
+- **Equipment.** Weapons need a magic attack bonus above 0, and armour can go no lower than -12. Each god also has its own aligned and forbidden gear. Items you can't use show a stop symbol, and their Wield/Wear option is removed.
+- **Blocking.** Blocking a hit may restore or drain PKP depending on the shield or off-hand you have equipped. It never causes an overload or depletion. Right-click a shield and choose **Toggle PKP** to switch its block PKP off or back on.
 - **Rulebook.** The side panel opens a full rulebook in your browser, with a PKP simulator and the verdict for every listed item under every god.
 
 ## Using it
