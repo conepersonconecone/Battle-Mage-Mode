@@ -380,7 +380,7 @@ public class WiseOldMan
 		return Arrays.asList(
 			Line.player(Mood.QUESTION, "What can I wear and wield?"),
 			Line.npc(Mood.NEUTRAL, "Weapons need a magic attack bonus of at least +" + rules.magicAttackMinimum()
-				+ ", and armour must stay above " + rules.magicAttackThreshold() + "."),
+				+ ", and armour can go no lower than " + (rules.magicAttackThreshold() + 1) + "."),
 			Line.npc(Mood.NEUTRAL, "On top of that, your god blesses some gear and forbids others. Anything you can't use shows a stop symbol, and its Wield option disappears."),
 			Line.npc(Mood.NEUTRAL, "Quest gear is always allowed while you still need it for the quest."),
 			Line.npc(Mood.HAPPY, "Every item and every god's verdict is listed at the bottom of the rulebook. Open it from the Battle-Mage Mode sidebar!"));

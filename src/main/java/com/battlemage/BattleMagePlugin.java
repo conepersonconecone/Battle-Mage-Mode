@@ -488,6 +488,7 @@ public class BattleMagePlugin extends Plugin
 		});
 		rules.refresh();
 		look.followFaction();
+		loadShieldPkpOff();
 		rebuildCaches();
 		// startUp does NOT run on the client thread, and the starting pool is read off the player's
 		// Magic level, which does. Asking here would either throw - taking the plugin down with it -
@@ -1026,6 +1027,20 @@ public class BattleMagePlugin extends Plugin
 
 		final String option = event.getOption();
 		final MenuEntry me = event.getMenuEntry();
+
+		// a shield that moves PKP on a block can have that switched off (and back on)
+		if (oath.isSworn() && "Examine".equalsIgnoreCase(option))
+		{
+			int shield = resolveItemId(event);
+			if (shield > 0 && isShieldSlotItem(shield) && blockAmountForItem(shield) != 0)
+			{
+				client.getMenu().createMenuEntry(-2)
+					.setOption(TOGGLE_SHIELD_PKP)
+					.setTarget(event.getTarget())
+					.setType(MenuAction.RUNELITE)
+					.onClick(e -> toggleShieldPkp(shield));
+			}
+		}
 
 		// the Cowbell amulet holds what spilled past either end of the bar
 		if (oath.isSworn() && "Examine".equalsIgnoreCase(option))
@@ -2351,11 +2366,63 @@ public class BattleMagePlugin extends Plugin
 	private int blockGain(int shieldId)
 	{
 		// nothing in the shield slot, or a two-handed weapon in hand: a block earns nothing
-		if (shieldId <= 0 || twoHandedEquipped())
+		if (shieldId <= 0 || twoHandedEquipped() || isShieldPkpOff(shieldId))
 		{
 			return 0;
 		}
 		return blockAmountForItem(shieldId);
+	}
+
+	private static final String TOGGLE_SHIELD_PKP = "Toggle PKP";
+	private static final String SHIELD_PKP_OFF_KEY = "shieldPkpOff";
+
+	/** Shields (canonical item ids) the player has switched to earn and cost nothing on a block. */
+	private final Set<Integer> shieldPkpOff = java.util.concurrent.ConcurrentHashMap.newKeySet();
+
+	/** Has the player switched this shield's block PKP off? */
+	private boolean isShieldPkpOff(int itemId)
+	{
+		return itemId > 0 && shieldPkpOff.contains(itemManager.canonicalize(itemId));
+	}
+
+	/** Switches a shield's block PKP off or back on, saves it, and says which in the chatbox. */
+	private void toggleShieldPkp(int itemId)
+	{
+		int id = itemManager.canonicalize(itemId);
+		boolean off = !shieldPkpOff.remove(id);
+		if (off)
+		{
+			shieldPkpOff.add(id);
+		}
+		configManager.setConfiguration(BattleMageConfig.GROUP, SHIELD_PKP_OFF_KEY,
+			shieldPkpOff.stream().map(String::valueOf).collect(java.util.stream.Collectors.joining(",")));
+		ItemComposition comp = itemManager.getItemComposition(id);
+		String name = comp == null ? "Shield" : comp.getName();
+		client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
+			"<col=7f1fff>Battle-Mage Mode:</col> " + name + " blocks "
+				+ (off ? "no longer move your PKP." : "move your PKP again."), null);
+	}
+
+	/** Reads the switched-off shields back from the config. */
+	private void loadShieldPkpOff()
+	{
+		shieldPkpOff.clear();
+		String raw = configManager.getConfiguration(BattleMageConfig.GROUP, SHIELD_PKP_OFF_KEY);
+		if (raw == null)
+		{
+			return;
+		}
+		for (String part : raw.split(","))
+		{
+			try
+			{
+				shieldPkpOff.add(Integer.parseInt(part.trim()));
+			}
+			catch (NumberFormatException ignored)
+			{
+				// a hand-edited or damaged entry is skipped rather than losing the rest
+			}
+		}
 	}
 
 	private Integer blockPenaltyAmount(int itemId)
@@ -3791,8 +3858,8 @@ public class BattleMagePlugin extends Plugin
 			case WEAPON:
 				return "<col=ff2a2a>(Weapons need more than " + (rules.magicAttackMinimum() - 1) + " magic attack)</col>";
 			case ARMOR:
-				return "<col=ff2a2a>(Too magically detrimental: armour needs more than "
-					+ rules.magicAttackThreshold() + " magic attack)</col>";
+				return "<col=ff2a2a>(Too magically detrimental: armour can go no lower than "
+					+ (rules.magicAttackThreshold() + 1) + " magic attack)</col>";
 			default:
 				break;
 		}
@@ -3861,7 +3928,9 @@ public class BattleMagePlugin extends Plugin
 		// "what is equipped right now" checks (empty slot / two-handed weapon), which a tooltip can't know.
 		if (isShieldSlotItem(itemId))
 		{
-			lines.add("<col=46c8ff>PKP</col> " + signedPkp(blockAmountForItem(itemId)) + " per block");
+			int perBlock = blockAmountForItem(itemId);
+			lines.add("<col=46c8ff>PKP</col> " + signedPkp(perBlock) + " per block"
+				+ (perBlock != 0 && isShieldPkpOff(itemId) ? " <col=9f9f9f>(toggled off)</col>" : ""));
 		}
 		SpecEffect specFx = specEffectFor(itemId);
 		boolean gamble = specFx != null && specFx.hasGamble();

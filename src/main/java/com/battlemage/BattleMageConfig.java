@@ -277,6 +277,13 @@ public interface BattleMageConfig extends Config
 		return true;
 	}
 
+	/** Shields whose block PKP the player has switched off: canonical item ids, comma separated. */
+	@ConfigItem(keyName = "shieldPkpOff", name = "shieldPkpOff", description = "", hidden = true)
+	default String shieldPkpOff()
+	{
+		return "";
+	}
+
 	@ConfigItem(keyName = "auraMode", name = "auraMode", description = "", hidden = true)
 	default AuraMode auraMode()
 	{
