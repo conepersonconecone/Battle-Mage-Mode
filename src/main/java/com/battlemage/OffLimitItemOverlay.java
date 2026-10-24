@@ -165,14 +165,30 @@ class OffLimitItemOverlay extends Overlay
 		long start = plugin.zapStartMs();
 		long age = now - start;
 		Rectangle bar = plugin.barScreenBounds();
-		if (start == 0 || age < 0 || age >= ZAP_SPARK_MS || bar == null || bell == null)
+		if (start == 0 || age < 0 || age >= ZAP_SPARK_MS || bar == null)
+		{
+			return;
+		}
+		// a release the worn amulet made on its own leaves from the player; one made by hand from the amulet
+		double sx;
+		double sy;
+		net.runelite.api.Point from = plugin.zapFromPlayer() ? playerPoint(g) : null;
+		if (from != null)
+		{
+			sx = from.getX();
+			sy = from.getY();
+		}
+		else if (bell != null && !plugin.zapFromPlayer())
+		{
+			sx = bell.getCenterX();
+			sy = bell.getCenterY();
+		}
+		else
 		{
 			return;
 		}
 		int side = plugin.zapSide();
 		Color c = side > 0 ? look.barColorFull() : look.barColorLow();
-		double sx = bell.getCenterX();
-		double sy = bell.getCenterY();
 		double ex = bar.x + bar.width * (side > 0 ? 0.75 : 0.25);
 		double ey = bar.getCenterY();
 		java.awt.Stroke old = g.getStroke();
@@ -236,6 +252,17 @@ class OffLimitItemOverlay extends Overlay
 			g.fill(new java.awt.geom.Ellipse2D.Double(px - d / 2, py - d / 2, d, d));
 		}
 		g.setStroke(old);
+	}
+
+	/** The middle of the player's character on screen, or null when it is not drawn. */
+	private net.runelite.api.Point playerPoint(Graphics2D g)
+	{
+		net.runelite.api.Player me = client.getLocalPlayer();
+		if (me == null)
+		{
+			return null;
+		}
+		return me.getCanvasTextLocation(g, "", me.getLogicalHeight() / 2);
 	}
 
 	private void findWornBell(Widget w, int depth, List<Rectangle> out)

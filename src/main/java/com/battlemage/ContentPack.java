@@ -56,6 +56,88 @@ public class ContentPack
 		public Map<String, Integer> spellCostItems = new LinkedHashMap<>();
 
 		/**
+		 * Spells with a cost of their own, as {@code name -> PKP}, beating the combat and curse costs
+		 * whatever the Magic level (Crumble Undead, the binds).
+		 */
+		public Map<String, Integer> spellCosts = new LinkedHashMap<>();
+
+		/**
+		 * Spells that get cheaper with Magic level: from {@link LevelCost#level} up, the spell costs
+		 * {@link LevelCost#cost} instead of its normal cost. Below the level it costs as usual.
+		 */
+		public Map<String, LevelCost> spellLevelCosts = new LinkedHashMap<>();
+
+		/**
+		 * Equipment that adds a PKP buffer while worn, as {@code name -> buffer}. A buffer is extra
+		 * room before a state trips: the {@link Buffer#depletion} side counts as PKP you still have
+		 * when a cast would deplete you, and the {@link Buffer#overload} side as PKP you are still
+		 * missing when a gain would overload you. Worn buffers add up.
+		 */
+		public Map<String, Buffer> pkpBufferItems = new LinkedHashMap<>();
+
+		/**
+		 * Equipment that may save you from Overload or Depletion while worn - see {@link StateSave}.
+		 * Rolled each time a cast or a gain would newly trip either state; on a save the bar stops at
+		 * empty or full instead. Several worn take the best chance, not the sum.
+		 */
+		public Map<String, StateSave> stateSaveItems = new LinkedHashMap<>();
+
+		/**
+		 * Named groups of spells, as {@code group -> spell names}, so a rule can say "ancient" instead
+		 * of listing sixteen spells.
+		 */
+		public Map<String, List<String>> spellGroups = new LinkedHashMap<>();
+
+		/**
+		 * Equipment that changes what spells cost while worn, as {@code item -> (target -> cost)}. A
+		 * target is a spell name, a {@link #spellGroups} name, or "curse" / "combat" for a whole
+		 * family. Only ever lowers a cost: the cheapest that applies wins.
+		 */
+		public Map<String, Map<String, Integer>> wornSpellCosts = new LinkedHashMap<>();
+
+		/**
+		 * Worn items that take PKP off a spell's cost, as {@code item -> (target -> PKP off)}, targets as in
+		 * {@link #wornSpellCosts} - the elemental staves.
+		 */
+		public Map<String, Map<String, Integer>> wornSpellDiscounts = new LinkedHashMap<>();
+
+		/** Equipment sets with a bonus for wearing enough pieces - see {@link SetBonus}. */
+		public Map<String, SetBonus> setBonuses = new LinkedHashMap<>();
+
+		/**
+		 * Equipment that cancels CRITICAL OVERLOAD as it starts, as {@code item -> cooldown in
+		 * seconds}. Once used it rests for the cooldown before it can do it again.
+		 */
+		public Map<String, Integer> criticalSaveItems = new LinkedHashMap<>();
+
+		/** Game messages that set off effects - see {@link ChatTrigger}. */
+		public List<ChatTrigger> chatTriggers = new ArrayList<>();
+
+		/** Equipment with flat or percent bonuses while worn - see {@link WornBonus}. */
+		public Map<String, WornBonus> wornBonuses = new LinkedHashMap<>();
+
+		/** Equipment with worn chances - see {@link ChanceEffect}. */
+		public Map<String, ChanceEffect> chanceItems = new LinkedHashMap<>();
+
+		/** Equipment that makes you immune to Depletion while you are in the Wilderness. */
+		public List<String> wildernessDepletionImmuneItems = new ArrayList<>();
+
+		/**
+		 * Items that are not used up, as {@code item -> (menu option -> effect)} - the Dwarven rock
+		 * cake's Eat and Guzzle, the Locator orb's Feel. Applied once per game tick per item.
+		 */
+		public Map<String, Map<String, OptionEffect>> itemOptionEffects = new LinkedHashMap<>();
+
+		/** Ranged weapons whose PKP shrinks with each throw in a row - see {@link Decay}. */
+		public Map<String, Decay> decayingRangedWeapons = new LinkedHashMap<>();
+
+		/**
+		 * Melee weapons whose every hit is a coin flip, as {@code weapon -> amount}: heads earns that
+		 * much PKP, tails costs it (the Ham joint).
+		 */
+		public Map<String, Integer> weaponHitGambles = new LinkedHashMap<>();
+
+		/**
 		 * Equipment every god lets you wear, whatever else the pack says.
 		 *
 		 * <p>Quest gear: the flail a quest hands you, the staff a teleport needs, the amulet that
@@ -229,6 +311,106 @@ public class ContentPack
 		public Cannon cannon = new Cannon();
 	}
 
+	/** A spell's cheaper cost from a Magic level up - see {@link Shared#spellLevelCosts}. */
+	public static class LevelCost
+	{
+		public int level = 99;
+		public int cost = 50;
+	}
+
+	/** A set bonus: wear at least {@link #minPieces} of {@link #pieces} and the costs change. */
+	public static class SetBonus
+	{
+		/** Item names; two worn items with the same name (a robe top and bottom) count twice. */
+		public List<String> pieces = new ArrayList<>();
+		public int minPieces = 2;
+		/** {@code target -> percent of the normal cost}, targets as in {@link Shared#wornSpellCosts}. */
+		public Map<String, Integer> costPercent = new LinkedHashMap<>();
+		/** {@code target -> PKP taken off the cost}, after the percent. "all" means every spell. */
+		public Map<String, Integer> costMinus = new LinkedHashMap<>();
+		/** A PKP buffer the set adds on top of its pieces' own, each side on its own. */
+		public int bufferOverload;
+		public int bufferDepletion;
+		/** With enough pieces on, CRITICAL OVERLOAD cannot start at all. */
+		public boolean noCritical;
+		/** With enough pieces on, a percent chance to stop a fresh overload. */
+		public int saveOverload;
+		/** Tooltips say "full set" instead of a piece count. */
+		public boolean fullSet;
+		/** The name tooltips show, when it differs from the key (two bonuses for one set). */
+		public String name;
+	}
+
+	/** A game message that sets off effect codes when it appears (matched as lower-case text). */
+	public static class ChatTrigger
+	{
+		public String contains = "";
+		/** Effect codes, joined with "+", as in a consumable's effects (e.g. "CO+CD"). */
+		public String effects = "";
+	}
+
+	/** A ranged weapon whose PKP shrinks with each throw in a row. */
+	public static class Decay
+	{
+		/** PKP for the first throw. */
+		public int first = 50;
+		/** Each further throw earns this fraction of the one before. */
+		public double factor = 0.5;
+		/** A gap longer than this, in seconds, starts the chain over. */
+		public int resetSeconds = 3;
+		/** Its throws fill the bar to the top at most and never overload. */
+		public boolean neverOverload = true;
+	}
+
+	/** One save item: its chance in percent, and the effect played on the player when it saves. */
+	public static class StateSave
+	{
+		public int chance;
+		/** A spot-anim id (a graphic from the game cache), or 0 for none. */
+		public int spotanim;
+		/** Which states it can save you from. Overload and depletion by default; CRITICAL OVERLOAD only when set. */
+		public boolean overload = true;
+		public boolean depletion = true;
+		public boolean critical;
+	}
+
+	/** What an item adds while worn. Several worn add up; percents multiply. */
+	public static class WornBonus
+	{
+		/** Extra PKP each melee hit earns. */
+		public int meleeGain;
+		/** Extra PKP each block earns (only on a block that already moves PKP). */
+		public int blockGain;
+		/** Out-of-combat regen speed, in percent of normal (150 = half as fast again). */
+		public int regenPercent = 100;
+		/** Food and drink PKP gains, in percent of normal. */
+		public int restorePercent = 100;
+	}
+
+	/** Worn chances that change an action, each in percent. */
+	public static class ChanceEffect
+	{
+		/** Chance a cast costs nothing. */
+		public int freeCast;
+		/** Chance a melee or ranged gain does not land. */
+		public int noGain;
+	}
+
+	/** A non-consumed item's menu option and what it does each time it is used. */
+	public static class OptionEffect
+	{
+		public int delta;
+		/** Effect codes joined with "+", as in a consumable's effects. */
+		public String effects = "";
+	}
+
+	/** One worn item's PKP buffer, each side on its own - see {@link Shared#pkpBufferItems}. */
+	public static class Buffer
+	{
+		public int overload;
+		public int depletion;
+	}
+
 	/**
 	 * The Dwarf multicannon window: it may be set up only while Ranged is still low.
 	 *
@@ -398,6 +580,12 @@ public class ContentPack
 
 	public static class Pool
 	{
+		/**
+		 * This god's own worn spell costs, in the same shape as {@link Shared#wornSpellCosts} and
+		 * added to it - the god capes, which only discount their own god's spell.
+		 */
+		public Map<String, Map<String, Integer>> wornSpellCosts = new LinkedHashMap<>();
+
 		public int maxPkp = 100;
 		public int combatSpellCost = 33;
 		public int curseSpellCost = 25;

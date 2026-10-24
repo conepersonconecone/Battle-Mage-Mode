@@ -21,6 +21,9 @@ import net.runelite.client.ui.overlay.OverlayPosition;
  */
 class PkpPopupOverlay extends Overlay
 {
+	/** A state that was stopped ("OVERLOAD AVERTED") is set a size smaller than the PKP numbers. */
+	private static final Font LABEL_FONT = new Font(Font.SANS_SERIF, Font.BOLD, 13);
+
 	private final Client client;
 	private final BattleMagePlugin plugin;
 	private final Appearance look;
@@ -81,6 +84,23 @@ class PkpPopupOverlay extends Overlay
 			int rise = (int) Math.round(age * 12); // gentle upward drift as it fades
 			int y = baseY - slot * 18 - rise;
 			int alpha = Math.max(0, Math.min(255, (int) Math.round(255 * (1.0 - age))));
+			if (p.label != null)
+			{
+				// a state that something stopped: words in that state's colour, a size smaller so a
+				// long label still fits the column, with a stronger outline to read over the game
+				Font old = g.getFont();
+				g.setFont(LABEL_FONT);
+				FontMetrics lfm = g.getFontMetrics();
+				int lx = cx - lfm.stringWidth(p.label) / 2;
+				Color lc = p.color;
+				g.setColor(new Color(0, 0, 0, (int) (alpha * 0.85)));
+				g.drawString(p.label, lx + 1, y + 1);
+				g.drawString(p.label, lx - 1, y + 1);
+				g.setColor(new Color(lc.getRed(), lc.getGreen(), lc.getBlue(), alpha));
+				g.drawString(p.label, lx, y);
+				g.setFont(old);
+				continue;
+			}
 			String text = plugin.fmtPkpDelta(p.delta);
 			int tx = cx - fm.stringWidth(text) / 2;
 

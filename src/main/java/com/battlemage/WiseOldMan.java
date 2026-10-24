@@ -349,7 +349,7 @@ public class WiseOldMan
 		return Arrays.asList(
 			Line.player(Mood.QUESTION, "How do I earn and spend it?"),
 			Line.npc(Mood.NEUTRAL, "A combat spell costs " + rules.combatSpellCost() + " PKP, and a curse costs "
-				+ rules.curseSpellCost() + "."),
+				+ rules.curseSpellCost() + ". Strike, Bolt, Blast and Wave spells get cheaper as your Magic rises."),
 			Line.npc(Mood.NEUTRAL, "Land a melee hit and you earn " + rules.meleeRestore()
 				+ " back. Ranged shots earn PKP too, with the weapons your god allows."),
 			Line.npc(Mood.NEUTRAL, "Step out of combat for a while and your bar slowly refills on its own."

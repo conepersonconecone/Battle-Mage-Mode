@@ -920,6 +920,112 @@ public class Rules
 		return active == null || pack.shared == null ? null : pack.shared.alcohol;
 	}
 
+	/** Spells with their own flat cost; empty with no god in force. */
+	public java.util.Map<String, Integer> spellCosts()
+	{
+		return active == null || pack.shared == null || pack.shared.spellCosts == null
+			? java.util.Collections.emptyMap() : pack.shared.spellCosts;
+	}
+
+	/** Spells that get cheaper from a Magic level up; empty with no god in force. */
+	public java.util.Map<String, ContentPack.LevelCost> spellLevelCosts()
+	{
+		return active == null || pack.shared == null || pack.shared.spellLevelCosts == null
+			? java.util.Collections.emptyMap() : pack.shared.spellLevelCosts;
+	}
+
+	/** Equipment that adds a PKP buffer while worn; empty with no god in force. */
+	public java.util.Map<String, ContentPack.Buffer> pkpBufferItems()
+	{
+		return active == null || pack.shared == null || pack.shared.pkpBufferItems == null
+			? java.util.Collections.emptyMap() : pack.shared.pkpBufferItems;
+	}
+
+	/** Equipment that may save you from Overload or Depletion; empty with no god in force. */
+	public java.util.Map<String, ContentPack.StateSave> stateSaveItems()
+	{
+		return active == null || pack.shared == null || pack.shared.stateSaveItems == null
+			? java.util.Collections.emptyMap() : pack.shared.stateSaveItems;
+	}
+
+	private <T> T sharedOr(java.util.function.Function<ContentPack.Shared, T> get, T empty)
+	{
+		if (active == null || pack.shared == null)
+		{
+			return empty;
+		}
+		T v = get.apply(pack.shared);
+		return v == null ? empty : v;
+	}
+
+	public java.util.Map<String, java.util.List<String>> spellGroups()
+	{
+		return sharedOr(s -> s.spellGroups, java.util.Collections.emptyMap());
+	}
+
+	/** Worn spell costs: the shared ones plus the god in force's own (its god capes). */
+	public java.util.Map<String, java.util.Map<String, Integer>> wornSpellCosts()
+	{
+		java.util.Map<String, java.util.Map<String, Integer>> out = new java.util.LinkedHashMap<>();
+		java.util.Map<String, java.util.Map<String, Integer>> shared = sharedOr(s -> s.wornSpellCosts, java.util.Collections.emptyMap());
+		shared.forEach((k, v) -> out.put(k, new java.util.LinkedHashMap<>(v)));
+		if (active != null && active.pool != null && active.pool.wornSpellCosts != null)
+		{
+			active.pool.wornSpellCosts.forEach((k, v) -> out.computeIfAbsent(k, x -> new java.util.LinkedHashMap<>()).putAll(v));
+		}
+		return out;
+	}
+
+	public java.util.Map<String, java.util.Map<String, Integer>> wornSpellDiscounts()
+	{
+		return sharedOr(s -> s.wornSpellDiscounts, java.util.Collections.emptyMap());
+	}
+
+	public java.util.Map<String, ContentPack.WornBonus> wornBonuses()
+	{
+		return sharedOr(s -> s.wornBonuses, java.util.Collections.emptyMap());
+	}
+
+	public java.util.Map<String, ContentPack.ChanceEffect> chanceItems()
+	{
+		return sharedOr(s -> s.chanceItems, java.util.Collections.emptyMap());
+	}
+
+	public java.util.List<String> wildernessDepletionImmuneItems()
+	{
+		return sharedOr(s -> s.wildernessDepletionImmuneItems, java.util.Collections.emptyList());
+	}
+
+	public java.util.Map<String, java.util.Map<String, ContentPack.OptionEffect>> itemOptionEffects()
+	{
+		return sharedOr(s -> s.itemOptionEffects, java.util.Collections.emptyMap());
+	}
+
+	public java.util.Map<String, ContentPack.SetBonus> setBonuses()
+	{
+		return sharedOr(s -> s.setBonuses, java.util.Collections.emptyMap());
+	}
+
+	public java.util.Map<String, Integer> criticalSaveItems()
+	{
+		return sharedOr(s -> s.criticalSaveItems, java.util.Collections.emptyMap());
+	}
+
+	public java.util.List<ContentPack.ChatTrigger> chatTriggers()
+	{
+		return sharedOr(s -> s.chatTriggers, java.util.Collections.emptyList());
+	}
+
+	public java.util.Map<String, ContentPack.Decay> decayingRangedWeapons()
+	{
+		return sharedOr(s -> s.decayingRangedWeapons, java.util.Collections.emptyMap());
+	}
+
+	public java.util.Map<String, Integer> weaponHitGambles()
+	{
+		return sharedOr(s -> s.weaponHitGambles, java.util.Collections.emptyMap());
+	}
+
 	/** Spell-cost equipment as {@code name:percent}, joined like the other pair lists. */
 	public String spellCostItems()
 	{

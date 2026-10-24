@@ -7,6 +7,7 @@ import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -27,6 +28,7 @@ import net.runelite.api.MenuAction;
 import net.runelite.api.MenuEntry;
 import net.runelite.api.NPC;
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.gameval.VarbitID;
 import net.runelite.api.Player;
 import net.runelite.api.Quest;
 import net.runelite.api.QuestState;
@@ -71,6 +73,8 @@ public class BattleMagePlugin extends Plugin
 	private static final int WEAPON_SLOT = EquipmentInventorySlot.WEAPON.getSlotIdx();
 	private static final int SPELLBOOK_GROUP = 218;
 	private static final long COMBAT_GRACE_MS = 3000L;
+	/** CRITICAL OVERLOAD holds on this much longer than the usual out-of-combat grace. */
+	private static final long CRITICAL_EXTRA_GRACE_MS = 2000L;
 	/** CRITICAL OVERLOAD runs for 10 game ticks. Every further restoring attack restarts it. */
 	private static final long CRITICAL_OVERLOAD_MS = 6000L;
 	private static final long OVERLOAD_FOOD_MS = 3000L;
@@ -174,6 +178,83 @@ public class BattleMagePlugin extends Plugin
 	private final Map<String, Integer> maxPkpItemNames = new HashMap<>();
 	private final Map<Integer, Integer> maxPkpItemIds = new HashMap<>();
 	private int wornMaxPkpBonus;
+	/** Spells with their own flat cost, by lower-case name. */
+	private final Map<String, Integer> spellCostByName = new HashMap<>();
+	/** Spells that get cheaper from a Magic level up, by lower-case name: {level, cost}. */
+	private final Map<String, int[]> spellLevelCostByName = new HashMap<>();
+	/** PKP buffer equipment, by lower-case name: {overload side, depletion side}. */
+	private final Map<String, int[]> pkpBufferByName = new HashMap<>();
+	/** The worn PKP buffer on each side, summed over everything equipped. Refreshed on the tick. */
+	private volatile int wornBufferOverload;
+	private volatile int wornBufferDepletion;
+	/** Save-from-a-state equipment, by lower-case name: {percent chance, spot-anim id, sides}. */
+	private final Map<String, int[]> stateSaveByName = new HashMap<>();
+	/** Which state a save is for, as bits in a save's sides. */
+	private static final int SAVE_OVERLOAD = 1;
+	private static final int SAVE_DEPLETION = 2;
+	private static final int SAVE_CRITICAL = 4;
+	/** Every worn save item's {chance, spot-anim, sides}. Refreshed on the tick. */
+	private volatile List<int[]> wornSaves = new ArrayList<>();
+	/** Worn bonuses, by lower-case name: {melee gain, block gain, regen %, restore %}. */
+	private final Map<String, int[]> wornBonusByName = new HashMap<>();
+	private volatile int wornMeleeBonus;
+	private volatile int wornBlockBonus;
+	private volatile double wornRegenFactor = 1.0;
+	private volatile double wornRestoreFactor = 1.0;
+	/** The extra buffer from set bonuses with enough pieces on. Refreshed with the spell costs. */
+	private volatile int setBufferOverload;
+	private volatile int setBufferDepletion;
+	/** A worn set (Guthan's, Torag's) stops CRITICAL OVERLOAD from starting at all. */
+	private volatile boolean setNoCritical;
+	/** The best worn set chance (Verac's) to stop a fresh overload. */
+	private volatile int setSaveOverload;
+	/** {@code weapon name -> PKP} won or lost on every hit (Ham joint). */
+	private final Map<String, Integer> hitGambleByName = new HashMap<>();
+
+	/** Worn chance items, by lower-case name: {free cast %, no gain %}. */
+	private final Map<String, int[]> chanceByName = new HashMap<>();
+	private volatile int wornFreeCastChance;
+	private volatile int wornNoGainChance;
+	/** Items that make you immune to Depletion in the Wilderness, and whether one is worn. */
+	private final Set<String> wildernessImmuneNames = new HashSet<>();
+	private volatile boolean wornWildernessImmune;
+	/** In the Wilderness, as of the last tick - read off the client thread by the immunity check. */
+	private volatile boolean wildernessNow;
+	/** Non-consumed item options: item -> option -> {delta, effect}, and the tick each last fired. */
+	private final Map<String, Map<String, Object[]>> optionEffectsByName = new HashMap<>();
+	private final Map<String, Integer> optionEffectLastTick = new HashMap<>();
+	private final java.util.Random stateSaveRng = new java.util.Random();
+	/** Spell name (lower-case) -> the spell groups it belongs to. */
+	private final Map<String, Set<String>> spellGroupsBySpell = new HashMap<>();
+	/** Item (lower-case) -> (target -> cost) for spell costs while worn. */
+	private final Map<String, Map<String, Integer>> wornSpellCostByItem = new HashMap<>();
+	/** The basic god staves and the god spell each casts, for the cape line on the staff's tooltip. */
+	private static final Map<String, String> GOD_STAFF_SPELL = Map.of(
+		"saradomin staff", "saradomin strike",
+		"guthix staff", "claws of guthix",
+		"zamorak staff", "flames of zamorak");
+	/** {@code item name -> (target -> PKP off the cost)} while worn (the elemental staves). */
+	private final Map<String, Map<String, Integer>> wornSpellDiscountByItem = new HashMap<>();
+	/** Set bonuses: pieces (lower-case), minimum worn, target -> percent. */
+	private final List<Object[]> setBonusList = new ArrayList<>();
+	/** What is worn right now: target -> cheapest cost, and target -> combined percent. Tick-refreshed. */
+	private volatile Map<String, Integer> wornCostOverride = new HashMap<>();
+	private volatile Map<String, Integer> wornCostPercent = new HashMap<>();
+	private volatile Map<String, Integer> wornCostMinus = new HashMap<>();
+	/** Critical-save items (lower-case) -> cooldown in seconds, and when each next becomes ready. */
+	private final Map<String, Integer> criticalSaveByName = new HashMap<>();
+	private final Map<String, Long> criticalSaveReadyAt = new HashMap<>();
+	/** Game-message triggers: lower-case text -> parsed effect. */
+	private final Map<String, SpecEffect> chatTriggerEffects = new LinkedHashMap<>();
+	/** Decaying ranged weapons (lower-case) -> {first, factor, reset seconds, never overload}. */
+	private final Map<String, ContentPack.Decay> decayByName = new HashMap<>();
+	/** The running throw chain: which weapon, the last throw's PKP, and when it landed. */
+	private int decayWeaponId = -1;
+	private double decayLastGain;
+	private long decayLastMs;
+
+	/** Spot-anim key for the save effect, clear of the game's own and the ordination's. */
+	private static final int STATE_SAVE_SPOTANIM_KEY = 0x0BB1;
 
 	// detection caches
 	private final Set<Integer> meleeAnimations = new HashSet<>();
@@ -287,6 +368,10 @@ public class BattleMagePlugin extends Plugin
 
 	/** Wall-clock deadline for CRITICAL OVERLOAD; 0 when the state is not running. */
 	private long criticalUntilMs;
+	/** The Poison chalice's chaos: until when, how often, and the next roll. */
+	private long chaosUntilMs;
+	private long chaosEveryMs;
+	private long chaosNextMs;
 	/** A timed scale on PKP gained / spent (the G and S effect codes), and when each ends. */
 	private double gainScale = 1.0;
 	private long gainScaleUntilMs;
@@ -306,12 +391,59 @@ public class BattleMagePlugin extends Plugin
 		final int delta;
 		final long spawnMs;
 		final java.awt.Color color;
+		/** Words to show instead of a number ("OVERLOAD AVERTED"), or null for a plain PKP change. */
+		final String label;
 
 		PkpPopup(int delta, long spawnMs, java.awt.Color color)
+		{
+			this(delta, spawnMs, color, null);
+		}
+
+		PkpPopup(int delta, long spawnMs, java.awt.Color color, String label)
 		{
 			this.delta = delta;
 			this.spawnMs = spawnMs;
 			this.color = color;
+			this.label = label;
+		}
+	}
+
+	/** Which state something just stopped, for the text popup. */
+	private static final int AVERTED_OVERLOAD = 0;
+	private static final int AVERTED_DEPLETION = 1;
+	private static final int AVERTED_CRITICAL = 2;
+
+	/**
+	 * Floats "OVERLOAD AVERTED" (or depletion, or critical) up the PKP popup column, in that
+	 * state's own colour, when a buffer, a save item or the Ring of life stops it.
+	 */
+	private void noteAverted(int which)
+	{
+		if (!look.pkpPopupsEnabled())
+		{
+			return;
+		}
+		String text;
+		Color c;
+		switch (which)
+		{
+			case AVERTED_OVERLOAD:
+				text = "OVERLOAD AVERTED";
+				c = look.overloadColor();
+				break;
+			case AVERTED_DEPLETION:
+				text = "DEPLETION AVERTED";
+				c = look.depletedColor();
+				break;
+			default:
+				text = "CRITICAL AVERTED";
+				c = look.criticalColor();
+				break;
+		}
+		pkpPopups.add(new PkpPopup(0, System.currentTimeMillis(), c, text));
+		if (pkpPopups.size() > 12)
+		{
+			pkpPopups.remove(0);
 		}
 	}
 
@@ -435,6 +567,8 @@ public class BattleMagePlugin extends Plugin
 	/** The latest release: when, and which side (1 replenish, -1 exhume). */
 	private long zapStartMs;
 	private int zapSide;
+	/** The latest release went off on its own (a worn amulet stopping a state): the bolt leaves the player. */
+	private boolean zapFromPlayer;
 	/** Where the PKP bar was last drawn, for the release bolt to aim at. */
 	private java.awt.Rectangle barScreenBounds;
 	private int freezeAttacks;
@@ -457,6 +591,12 @@ public class BattleMagePlugin extends Plugin
 	private int overloadImmuneAttacks;
 	private long depletionImmuneUntilMs;
 	private int depletionImmuneAttacks;
+	/**
+	 * Attack-count overload and depletion immunity lapse on their own this long after they were
+	 * granted or last used up an attack; every use starts the clock over.
+	 */
+	static final long IMMUNITY_ATTACKS_IDLE_MS = 15000L;
+	private long immunityAttacksExpireMs;
 
 	@Provides
 	BattleMageConfig provideConfig(ConfigManager configManager)
@@ -530,6 +670,7 @@ public class BattleMagePlugin extends Plugin
 		lastSprite.clear();
 		illegalActive = false;
 		criticalUntilMs = 0L;
+		chaosUntilMs = 0L;
 		pendingConsumes.clear();
 		gainScale = 1.0;
 		gainScaleUntilMs = 0L;
@@ -550,6 +691,8 @@ public class BattleMagePlugin extends Plugin
 		sustainFreezeWeaponId = -1;
 		sustainFreezeActionMs = 0L;
 		wornMaxPkpBonus = 0;
+		wornBufferOverload = 0;
+		wornBufferDepletion = 0;
 		overloadImmuneUntilMs = 0L;
 		overloadImmuneAttacks = 0;
 		depletionImmuneUntilMs = 0L;
@@ -1161,7 +1304,7 @@ public class BattleMagePlugin extends Plugin
 
 		// 5. overload (or ILLEGAL): hide food (eat) while overloaded/illegal, and for a few seconds after overload clears
 		if (rules.blockFoodWhenOverloaded() && (foodLockedByOverload() || illegal)
-			&& option != null && option.equalsIgnoreCase("Eat")
+			&& option != null && (option.equalsIgnoreCase("Eat") || option.equalsIgnoreCase("Guzzle"))
 			&& (illegal || !isConsumableException(resolveItemId(event))))
 		{
 			removeEntry(me);
@@ -1670,6 +1813,13 @@ public class BattleMagePlugin extends Plugin
 			return BlockKind.NONE;
 		}
 
+		// The basic god staves: every faction may wield one in Kolodion's arena, and anywhere in the
+		// Wilderness during Mage Arena II with the enchanted symbol.
+		if (isMageArenaStaff(name))
+		{
+			return BlockKind.NONE;
+		}
+
 		// This god's own weapon ban. Above the allow-lists, because it is a denial and they are
 		// permissions: naming a weapon here bars it even if it is also a listed exception.
 		if (weaponSlot && (blockedWeaponIds.contains(itemId) || blockedWeaponNames.contains(name)))
@@ -1854,6 +2004,11 @@ public class BattleMagePlugin extends Plugin
 		{
 			double beforeFood = pkp;
 			double restore = poisonAdjust(amount);
+			// worn food bonus (Healer hat) scales a gain, never a cost
+			if (restore > 0)
+			{
+				restore *= wornRestoreFactor;
+			}
 			// Beer overrides depletion immunity: a sip that would take the bar below 0 (or the Keg,
 			// which always depletes) strips the immunity first, so the drink lands in full.
 			if (forcesDepletion || (restore < 0 && pkp + restore < 0 && isAlcohol(itemId)))
@@ -1879,8 +2034,12 @@ public class BattleMagePlugin extends Plugin
 			// The delta is handed to activateSpecEffect rather than applied here, so that a CO/CD
 			// clear resets the pool BEFORE the gain lands on top of it. Applied first, the gain was
 			// simply overwritten by the reset.
-			activateSpecEffect(cFx, System.currentTimeMillis(),
-				cDelta == null ? null : Double.valueOf(poisonAdjust(cDelta)),
+			Double landed = cDelta == null ? null : poisonAdjust(cDelta);
+			if (landed != null && landed > 0)
+			{
+				landed *= wornRestoreFactor;
+			}
+			activateSpecEffect(cFx, System.currentTimeMillis(), landed,
 				cDelta != null && cDelta >= 0, itemId);
 		}
 	}
@@ -1936,7 +2095,7 @@ public class BattleMagePlugin extends Plugin
 	private static boolean isUseUpOption(String option)
 	{
 		return option.equalsIgnoreCase("Apply") || option.equalsIgnoreCase("Crack")
-			|| option.equalsIgnoreCase("Crush");
+			|| option.equalsIgnoreCase("Crush") || option.equalsIgnoreCase("Heal");
 	}
 
 	/** Does the codex say anything about using this item: a PKP amount, a delta or an effect? */
@@ -1955,6 +2114,21 @@ public class BattleMagePlugin extends Plugin
 	@Subscribe
 	public void onChatMessage(ChatMessage event)
 	{
+		// game messages that set off effects (a Phoenix necklace saving you clears both states)
+		if (!chatTriggerEffects.isEmpty() && rules.isActive()
+			&& (event.getType() == ChatMessageType.GAMEMESSAGE || event.getType() == ChatMessageType.SPAM)
+			&& event.getMessage() != null)
+		{
+			String text = event.getMessage().replaceAll("<[^>]*>", "").toLowerCase(Locale.ROOT);
+			for (Map.Entry<String, SpecEffect> t : chatTriggerEffects.entrySet())
+			{
+				if (text.contains(t.getKey()))
+				{
+					activateSpecEffect(t.getValue(), System.currentTimeMillis());
+					break;
+				}
+			}
+		}
 		if (pendingTeaItemId <= 0)
 		{
 			return;
@@ -2002,6 +2176,32 @@ public class BattleMagePlugin extends Plugin
 
 		final MenuEntry entry = event.getMenuEntry();
 		final String option = entry.getOption();
+
+		// items that are not used up but do something each time an option is used (the Dwarven rock
+		// cake, the Locator orb): applied on the click, once per game tick per item
+		{
+			int optItem = entry.getItemId();
+			if (optItem <= 0 && entry.getWidget() != null)
+			{
+				optItem = entry.getWidget().getItemId();
+			}
+			Map<String, Object[]> opts = optItem > 0 && option != null && rules.isActive()
+				? optionEffectsByName.get(itemName(optItem)) : null;
+			Object[] oe = opts == null ? null : opts.get(Text.removeTags(option).trim().toLowerCase(Locale.ROOT));
+			if (oe != null)
+			{
+				String key = itemName(optItem) + "|" + option.toLowerCase(Locale.ROOT);
+				int tick = client.getTickCount();
+				Integer last = optionEffectLastTick.get(key);
+				if (last == null || last != tick)
+				{
+					optionEffectLastTick.put(key, tick);
+					int d = (Integer) oe[0];
+					activateSpecEffect((SpecEffect) oe[1], System.currentTimeMillis(),
+						d == 0 ? null : Double.valueOf(poisonAdjust(d)), d > 0, optItem);
+				}
+			}
+		}
 
 		// consumable restore: Eat and Drink, plus the other ways a raid supply is used up (Apply a
 		// silk dressing, Crack a scarab, Crush smelling salts) when the codex gives that item an effect
@@ -2186,7 +2386,14 @@ public class BattleMagePlugin extends Plugin
 			{
 				return;
 			}
-			Integer gain = rangedRestoreAmount(equippedWeaponId());
+			int weapon = equippedWeaponId();
+			ContentPack.Decay decay = weapon > 0 ? decayByName.get(itemName(weapon)) : null;
+			if (decay != null)
+			{
+				handleAttackRestore(nextDecayGain(weapon, decay), "ranged", decay.neverOverload);
+				return;
+			}
+			Integer gain = rangedRestoreAmount(weapon);
 			if (gain != null)
 			{
 				handleRangedRestore(gain);
@@ -2370,7 +2577,9 @@ public class BattleMagePlugin extends Plugin
 		{
 			return 0;
 		}
-		return blockAmountForItem(shieldId);
+		int amount = blockAmountForItem(shieldId);
+		// worn block bonus (Runner hat) adds to a block that earns PKP, never to one that costs it
+		return amount > 0 ? amount + wornBlockBonus : amount;
 	}
 
 	private static final String TOGGLE_SHIELD_PKP = "Toggle PKP";
@@ -2527,12 +2736,41 @@ public class BattleMagePlugin extends Plugin
 
 	private void handleMeleeRestore()
 	{
-		handleAttackRestore(restoreForEquippedWeapon(), "melee");
+		int gain = restoreForEquippedWeapon();
+		// a gamble weapon (Ham joint): each hit wins or loses its amount on a coin flip
+		int weapon = equippedWeaponId();
+		Integer gamble = weapon > 0 ? hitGambleByName.get(itemName(weapon)) : null;
+		if (gamble != null)
+		{
+			gain = stateSaveRng.nextBoolean() ? gamble : -gamble;
+		}
+		// worn melee bonus (Fighter torso) adds to a hit that earns PKP, never to one that costs it
+		if (gain > 0)
+		{
+			gain += wornMeleeBonus;
+		}
+		handleAttackRestore(gain, "melee");
 	}
 
 	private void handleRangedRestore(int gain)
 	{
 		handleAttackRestore(gain, "ranged");
+	}
+
+	/**
+	 * The next throw in a decaying chain: the full amount after a pause, then each throw earns the
+	 * set fraction of the one before (50, 25, 12, 6, 3, 1, 0...). A gap longer than the reset, or a
+	 * different weapon, starts the chain over.
+	 */
+	private int nextDecayGain(int weapon, ContentPack.Decay decay)
+	{
+		long now = System.currentTimeMillis();
+		boolean chained = weapon == decayWeaponId && now - decayLastMs <= decay.resetSeconds * 1000L;
+		double gain = chained ? decayLastGain * decay.factor : decay.first;
+		decayWeaponId = weapon;
+		decayLastGain = gain;
+		decayLastMs = now;
+		return (int) Math.floor(gain);
 	}
 
 	/**
@@ -2542,15 +2780,26 @@ public class BattleMagePlugin extends Plugin
 	 */
 	private void handleAttackRestore(int gain, String kind)
 	{
+		handleAttackRestore(gain, kind, false);
+	}
+
+	/** @param neverOverload this gain fills the bar to the top at most and cannot overload */
+	private void handleAttackRestore(int gain, String kind, boolean neverOverload)
+	{
 		// alcohol and drinks scale what an attack earns (a negative per-weapon amount is a cost, not a gain)
 		if (gain > 0)
 		{
 			gain = (int) Math.round(gain * gainMultiplier());
 		}
+		// a worn chance item (Bracelet of slaughter) may stop this gain landing at all
+		if (gain > 0 && wornNoGainChance > 0 && stateSaveRng.nextInt(100) < wornNoGainChance)
+		{
+			gain = 0;
+		}
 		// another restoring attack while still overloaded, before resolving by casting (the resolution condition)
 		// any restoring attack while overloaded escalates - one the player clicked, or one auto-retaliate
 		// threw for them
-		if (rules.illegalRepeatActions() && attackingNow() && isOverloaded())
+		if (rules.illegalRepeatActions() && attackingNow() && isOverloaded() && !neverOverload)
 		{
 			fireCriticalOverload(kind + " attack while overloaded");
 		}
@@ -2567,8 +2816,32 @@ public class BattleMagePlugin extends Plugin
 		// spent - without this guard `atMax` is true on the way down and the attack overloads instead.
 		// The depletion side needs no guard: addPkp already latches DEPLETED when the pool goes under.
 		boolean atMax = gain > 0 && pkp >= effectiveMax();
-		boolean bigGain = rules.bigMoveTriggers() && gain > 2 * Math.max(0, effectiveMax() - pkp);
+		// A worn PKP buffer counts as PKP you are still missing for this check. Like the depletion
+		// side it only widens the "twice" rule: a gain onto an already full bar still overloads.
+		boolean bigGain = rules.bigMoveTriggers()
+			&& gain > 2 * (Math.max(0, effectiveMax() - pkp) + wornBufferOverload + setBufferOverload);
 		boolean nowOverloaded = !isPkpFrozen() && !overloadImmune() && (atMax || bigGain);
+		// the buffer was what kept this gain from overloading: say so
+		if (!nowOverloaded && !neverOverload && wornBufferOverload + setBufferOverload > 0 && !isPkpFrozen() && !overloadImmune()
+			&& !overloadActive && rules.bigMoveTriggers() && gain > 2 * Math.max(0, effectiveMax() - pkp))
+		{
+			noteAverted(AVERTED_OVERLOAD);
+		}
+		if (neverOverload)
+		{
+			nowOverloaded = false;
+		}
+		// a worn save item may catch a fresh overload: the gain fills the bar to the top and stops
+		if (nowOverloaded && !overloadActive && rollStateSave(SAVE_OVERLOAD))
+		{
+			nowOverloaded = false;
+			noteAverted(AVERTED_OVERLOAD);
+		}
+		// a worn Cowbell amulet with PKP in its empty-side store Exhumes it to stop the overload
+		if (nowOverloaded && !overloadActive && cowbellAutoSave(1))
+		{
+			nowOverloaded = false;
+		}
 		double spill = gain > 0 && !isPkpFrozen() ? pkp + gain - effectiveMax() : 0;
 		if (nowOverloaded)
 		{
@@ -2599,10 +2872,93 @@ public class BattleMagePlugin extends Plugin
 	 */
 	private void fireCriticalOverload(String reason)
 	{
+		// a worn set that rules it out (Guthan's, Torag's): it never starts
+		if (setNoCritical)
+		{
+			return;
+		}
+		// a worn critical-save item (Ring of life) cancels it as it starts, then rests
+		if (criticalOverloadSaved())
+		{
+			return;
+		}
 		long now = System.currentTimeMillis();
 		criticalUntilMs = now + CRITICAL_OVERLOAD_MS;
 		lastCombatMs = now;
 		inCombatUntilMs = Math.max(inCombatUntilMs, now + COMBAT_GRACE_MS);
+	}
+
+	/**
+	 * Uses a worn critical-save item if one is ready: CRITICAL OVERLOAD does not start, the item
+	 * goes on its cooldown, and the chatbox says so. Client thread only.
+	 */
+	private boolean criticalOverloadSaved()
+	{
+		boolean saved = criticalOverloadSavedQuiet();
+		if (saved)
+		{
+			noteAverted(AVERTED_CRITICAL);
+		}
+		return saved;
+	}
+
+	private boolean criticalOverloadSavedQuiet()
+	{
+		if ((criticalSaveByName.isEmpty() && wornSaves.isEmpty()) || criticalUntilMs > System.currentTimeMillis())
+		{
+			return false;
+		}
+		ItemContainer eq = client.getItemContainer(InventoryID.EQUIPMENT);
+		if (eq == null)
+		{
+			return false;
+		}
+		long now = System.currentTimeMillis();
+		for (Item item : eq.getItems())
+		{
+			if (item == null || item.getId() <= 0)
+			{
+				continue;
+			}
+			String name = itemName(item.getId());
+			Integer cooldown = criticalSaveByName.get(name);
+			if (cooldown == null || now < criticalSaveReadyAt.getOrDefault(name, 0L))
+			{
+				continue;
+			}
+			criticalSaveReadyAt.put(name, now + cooldown * 1000L);
+			announceCriticalSave(item.getId());
+			return true;
+		}
+		// then any worn chance to be saved from it (Tyrannical ring)
+		if (rollStateSave(SAVE_CRITICAL))
+		{
+			int savedBy = -1;
+			for (Item item : eq.getItems())
+			{
+				int[] sv = item == null || item.getId() <= 0 ? null : stateSaveByName.get(itemName(item.getId()));
+				if (sv != null && (sv[2] & SAVE_CRITICAL) != 0)
+				{
+					savedBy = item.getId();
+					break;
+				}
+			}
+			if (savedBy > 0)
+			{
+				announceCriticalSave(savedBy);
+			}
+			return true;
+		}
+		return false;
+	}
+
+	/** One chat line naming the item that cancelled CRITICAL OVERLOAD. */
+	private void announceCriticalSave(int itemId)
+	{
+		ItemComposition comp = itemManager.getItemComposition(itemId);
+		client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
+			"<col=7f1fff>Battle-Mage Mode:</col> your " + (comp == null ? "ring" : comp.getName())
+				+ " spares you from Critical Overload.", null);
 	}
 
 	/** Raise the ILLEGAL BEHAVIOR warning and keep it pinned while in combat. */
@@ -2727,6 +3083,7 @@ public class BattleMagePlugin extends Plugin
 
 		// What the player is wearing can change at any moment, and the ceiling moves with it.
 		recomputeWornMaxPkpBonus();
+		recomputeWornBuffers();
 
 		// A sustained freeze lapses when nothing has renewed it for the combat grace period. Applied
 		// here rather than inside the isPkpFrozen() query, which the overlays call every frame.
@@ -2744,6 +3101,7 @@ public class BattleMagePlugin extends Plugin
 		// Quest state can only be read on the client thread, and a quest can finish mid-fight, so the
 		// gated quest items are re-checked every tick rather than only when the caches rebuild.
 		refreshQuestProgress();
+		refreshMageArena2();
 
 		Player local = client.getLocalPlayer();
 		if (local != null && local.getInteracting() != null)
@@ -2759,14 +3117,29 @@ public class BattleMagePlugin extends Plugin
 		}
 		// CRITICAL OVERLOAD drops back to plain overload when its 10 ticks run out, the moment combat
 		// ends, or if the overload it sits on top of is cleared (by a spec/consumable CO token).
-		if (criticalUntilMs > 0L && (now >= criticalUntilMs || !inCombat() || !isOverloaded()))
+		// Out of combat it holds on 2 seconds past the usual grace.
+		if (criticalUntilMs > 0L && (now >= criticalUntilMs || !inCombat(CRITICAL_EXTRA_GRACE_MS) || !isOverloaded()))
 		{
 			criticalUntilMs = 0L;
+		}
+		// the Poison chalice's chaos: a new random PKP every few seconds, until it runs out or the
+		// player overloads or depletes
+		if (chaosUntilMs > 0L)
+		{
+			if (now >= chaosUntilMs || overloadActive || depletedLatch)
+			{
+				chaosUntilMs = 0L;
+			}
+			else if (now >= chaosNextMs)
+			{
+				rollChaos(now);
+			}
 		}
 		// an Eat/Drink click that never turned into a real bite or sip is forgotten
 		pendingConsumes.values().removeIf(p -> now - p[1] > CONSUME_CONFIRM_MS);
 		// the PSI overload lockout ends 3 seconds after combat ends
-		if (overloadActive && now - lastCombatMs >= rules.overloadClearMs())
+		// (never while CRITICAL OVERLOAD still sits on it - that would end it early)
+		if (overloadActive && criticalUntilMs == 0L && now - lastCombatMs >= rules.overloadClearMs())
 		{
 			overloadActive = false;
 		}
@@ -2861,6 +3234,8 @@ public class BattleMagePlugin extends Plugin
 				{
 					perTick *= 2.0;
 				}
+				// worn regen speed (Runner boots)
+				perTick *= wornRegenFactor;
 				addPkp(perTick);
 			}
 		}
@@ -2897,7 +3272,13 @@ public class BattleMagePlugin extends Plugin
 
 	private boolean inCombat()
 	{
-		if (System.currentTimeMillis() < inCombatUntilMs)
+		return inCombat(0L);
+	}
+
+	/** In combat, counting {@code extraMs} more grace after the last fight. */
+	private boolean inCombat(long extraMs)
+	{
+		if (System.currentTimeMillis() < inCombatUntilMs + extraMs)
 		{
 			return true;
 		}
@@ -3107,6 +3488,276 @@ public class BattleMagePlugin extends Plugin
 	}
 
 	/**
+	 * Sums the PKP buffer of everything equipped, each side on its own. Client thread only, for the
+	 * same reason as {@link #recomputeWornMaxPkpBonus}; a missing container keeps the last total.
+	 */
+	private void recomputeWornBuffers()
+	{
+		if (!onClientThread())
+		{
+			return;
+		}
+		recomputeWornSpellCosts();
+		if (pkpBufferByName.isEmpty() && stateSaveByName.isEmpty() && chanceByName.isEmpty()
+			&& wildernessImmuneNames.isEmpty() && wornBonusByName.isEmpty())
+		{
+			wornMeleeBonus = 0;
+			wornBlockBonus = 0;
+			wornRegenFactor = 1.0;
+			wornRestoreFactor = 1.0;
+			wornBufferOverload = 0;
+			wornBufferDepletion = 0;
+			wornSaves = new ArrayList<>();
+			wornFreeCastChance = 0;
+			wornNoGainChance = 0;
+			wornWildernessImmune = false;
+			return;
+		}
+		ItemContainer eq = client.getItemContainer(InventoryID.EQUIPMENT);
+		if (eq == null)
+		{
+			return;
+		}
+		int over = 0;
+		int under = 0;
+		List<int[]> saves = new ArrayList<>();
+		int freeCast = 0;
+		int noGain = 0;
+		boolean wildImmune = false;
+		int meleeBonus = 0;
+		int blockBonus = 0;
+		double regenFactor = 1.0;
+		double restoreFactor = 1.0;
+		for (Item item : eq.getItems())
+		{
+			if (item == null || item.getId() <= 0)
+			{
+				continue;
+			}
+			String name = itemName(item.getId());
+			int[] b = pkpBufferByName.get(name);
+			if (b != null)
+			{
+				over += b[0];
+				under += b[1];
+			}
+			int[] sv = stateSaveByName.get(name);
+			if (sv != null)
+			{
+				saves.add(sv);
+			}
+			int[] ch = chanceByName.get(name);
+			if (ch != null)
+			{
+				freeCast = Math.max(freeCast, ch[0]);
+				noGain = Math.max(noGain, ch[1]);
+			}
+			wildImmune |= wildernessImmuneNames.contains(name);
+			int[] wb = wornBonusByName.get(name);
+			if (wb != null)
+			{
+				meleeBonus += wb[0];
+				blockBonus += wb[1];
+				regenFactor *= wb[2] / 100.0;
+				restoreFactor *= wb[3] / 100.0;
+			}
+		}
+		wornBufferOverload = over;
+		wornBufferDepletion = under;
+		wornSaves = saves;
+		wornFreeCastChance = freeCast;
+		wornNoGainChance = noGain;
+		wornWildernessImmune = wildImmune;
+		wornMeleeBonus = meleeBonus;
+		wornBlockBonus = blockBonus;
+		wornRegenFactor = regenFactor;
+		wornRestoreFactor = restoreFactor;
+	}
+
+	/**
+	 * Rolls the worn save chance for a state that is about to trip. On a save the effect plays on
+	 * the player. Client thread only.
+	 */
+	private boolean rollStateSave(int side)
+	{
+		// the best worn chance for this state, and that item's effect
+		int chance = 0;
+		int fx = 0;
+		for (int[] sv : wornSaves)
+		{
+			if ((sv[2] & side) != 0 && sv[0] > chance)
+			{
+				chance = sv[0];
+				fx = sv[1];
+			}
+		}
+		// a worn set's own overload chance (Verac's), with no effect of its own
+		if ((side & SAVE_OVERLOAD) != 0 && setSaveOverload > chance)
+		{
+			chance = setSaveOverload;
+			fx = 0;
+		}
+		if (chance <= 0 || stateSaveRng.nextInt(100) >= chance)
+		{
+			return false;
+		}
+		Player me = client.getLocalPlayer();
+		if (me != null && fx > 0)
+		{
+			me.removeSpotAnim(STATE_SAVE_SPOTANIM_KEY);
+			me.createSpotAnim(STATE_SAVE_SPOTANIM_KEY, fx, 0, 0);
+		}
+		return true;
+	}
+
+	/**
+	 * What worn equipment does to spell costs right now: the cheapest worn cost per target, and the
+	 * combined percent from every set bonus that has enough pieces on. Client thread only.
+	 */
+	private void recomputeWornSpellCosts()
+	{
+		if (wornSpellCostByItem.isEmpty() && wornSpellDiscountByItem.isEmpty() && setBonusList.isEmpty())
+		{
+			wornCostOverride = new HashMap<>();
+			wornCostPercent = new HashMap<>();
+			wornCostMinus = new HashMap<>();
+			setBufferOverload = 0;
+			setBufferDepletion = 0;
+			setNoCritical = false;
+			setSaveOverload = 0;
+			return;
+		}
+		ItemContainer eq = client.getItemContainer(InventoryID.EQUIPMENT);
+		if (eq == null)
+		{
+			return;
+		}
+		Map<String, Integer> override = new HashMap<>();
+		List<String> worn = new ArrayList<>();
+		for (Item item : eq.getItems())
+		{
+			if (item == null || item.getId() <= 0)
+			{
+				continue;
+			}
+			String name = itemName(item.getId());
+			worn.add(name);
+			Map<String, Integer> targets = wornSpellCostByItem.get(name);
+			if (targets != null)
+			{
+				for (Map.Entry<String, Integer> t : targets.entrySet())
+				{
+					override.merge(t.getKey(), t.getValue(), Math::min);
+				}
+			}
+		}
+		Map<String, Integer> percent = new HashMap<>();
+		Map<String, Integer> minusTotal = new HashMap<>();
+		// worn discounts (the elemental staves) take their PKP off, like a set's
+		for (String name : worn)
+		{
+			Map<String, Integer> off = wornSpellDiscountByItem.get(name);
+			if (off != null)
+			{
+				for (Map.Entry<String, Integer> t : off.entrySet())
+				{
+					minusTotal.merge(t.getKey(), t.getValue(), Integer::sum);
+				}
+			}
+		}
+		int setOver = 0;
+		int setUnder = 0;
+		boolean noCrit = false;
+		int saveOver = 0;
+		for (Object[] set : setBonusList)
+		{
+			@SuppressWarnings("unchecked") Set<String> pieces = (Set<String>) set[1];
+			int count = 0;
+			for (String name : worn)
+			{
+				if (pieces.contains(name))
+				{
+					count++;
+				}
+			}
+			if (count >= (Integer) set[2])
+			{
+				@SuppressWarnings("unchecked") Map<String, Integer> pct = (Map<String, Integer>) set[3];
+				for (Map.Entry<String, Integer> t : pct.entrySet())
+				{
+					percent.merge(t.getKey(), t.getValue(), (a, b) -> a * b / 100);
+				}
+				@SuppressWarnings("unchecked") Map<String, Integer> minus = (Map<String, Integer>) set[4];
+				for (Map.Entry<String, Integer> t : minus.entrySet())
+				{
+					minusTotal.merge(t.getKey(), t.getValue(), Integer::sum);
+				}
+				setOver += (Integer) set[5];
+				setUnder += (Integer) set[6];
+				noCrit |= (Boolean) set[7];
+				saveOver = Math.max(saveOver, (Integer) set[8]);
+			}
+		}
+		wornCostOverride = override;
+		wornCostPercent = percent;
+		wornCostMinus = minusTotal;
+		setBufferOverload = setOver;
+		setBufferDepletion = setUnder;
+		setNoCritical = noCrit;
+		setSaveOverload = saveOver;
+	}
+
+	/** The targets a spell answers to: its own name, its family ("curse"/"combat"), its groups. */
+	private List<String> costTargets(String key, PsiAction fam)
+	{
+		List<String> out = new ArrayList<>();
+		out.add(key);
+		out.add(fam == PsiAction.CURSE ? "curse" : "combat");
+		out.add("all");
+		Set<String> groups = spellGroupsBySpell.get(key);
+		if (groups != null)
+		{
+			out.addAll(groups);
+		}
+		return out;
+	}
+
+	/** "Curses", "Ancient spells", "Crumble Undead" - a cost target as a tooltip would say it. */
+	/** " cost " after a plural label ("Fire spells", "Curses"), " costs " after a single spell. */
+	private static String costVerb(String label)
+	{
+		return label.endsWith("s") && (label.endsWith(" spells") || label.equals("Curses")) ? " cost " : " costs ";
+	}
+
+	private String costTargetLabel(String target)
+	{
+		if ("curse".equals(target))
+		{
+			return "Curses";
+		}
+		if ("combat".equals(target))
+		{
+			return "Combat spells";
+		}
+		StringBuilder sb = new StringBuilder();
+		for (String w : target.split(" "))
+		{
+			if (!w.isEmpty())
+			{
+				sb.append(sb.length() == 0 ? "" : " ").append(Character.toUpperCase(w.charAt(0))).append(w.substring(1));
+			}
+		}
+		boolean isGroup = spellGroupsBySpell.values().stream().anyMatch(g -> g.contains(target));
+		return isGroup ? sb + " spells" : sb.toString();
+	}
+
+	/** An item's PKP buffer {overload, depletion}, or null when it has none. For the tooltip. */
+	private int[] pkpBufferFor(int itemId)
+	{
+		return itemId > 0 ? pkpBufferByName.get(itemName(itemId)) : null;
+	}
+
+	/**
 	 * Re-add up what the player's equipment is worth to the ceiling.
 	 *
 	 * <p>Every slot is scanned rather than just the shield slot the god books occupy, so the list
@@ -3263,8 +3914,100 @@ public class BattleMagePlugin extends Plugin
 		{
 			return false;
 		}
-		String c = name.replaceAll("<[^>]*>", "").trim();
-		return !c.isEmpty() && blockedGodSpells.contains(c.toLowerCase(Locale.ROOT));
+		String c = name.replaceAll("<[^>]*>", "").trim().toLowerCase(Locale.ROOT);
+		if (c.isEmpty() || !blockedGodSpells.contains(c))
+		{
+			return false;
+		}
+		// Mage Arena: the three god spells are open to every faction in Kolodion's arena, and in the
+		// rest of the Wilderness while Mage Arena II is under way with its enchanted symbol in hand.
+		return !(MAGE_ARENA_GOD_SPELLS.contains(c) && mageArenaAllows());
+	}
+
+	// ============================================================ Mage Arena
+
+	/** The god spells the Mage Arena teaches and Mage Arena II asks for. */
+	private static final Set<String> MAGE_ARENA_GOD_SPELLS = new HashSet<>(Arrays.asList(
+		"saradomin strike", "claws of guthix", "flames of zamorak"));
+	/** The staves those spells are cast with, sold by the Chamber Guardian under the arena. */
+	private static final Set<String> MAGE_ARENA_STAVES = new HashSet<>(Arrays.asList(
+		"saradomin staff", "guthix staff", "zamorak staff"));
+	/** Kolodion's arena on the surface, with a little room around its walls. */
+	private static final int MAGE_ARENA_MIN_X = 3088;
+	private static final int MAGE_ARENA_MAX_X = 3122;
+	private static final int MAGE_ARENA_MIN_Y = 3916;
+	private static final int MAGE_ARENA_MAX_Y = 3952;
+	/** The enchanted symbol Mage Arena II hands out to track down the three demons. */
+	private static final int[] MA2_SYMBOL_IDS = {21800, 21801};
+
+	/** Mage Arena II in progress with the enchanted symbol carried. Refreshed on the game tick. */
+	private volatile boolean mageArena2Armed;
+
+	/** In the Wilderness, by the game's own flag (the one that shows the level). Client thread only. */
+	private boolean inWilderness()
+	{
+		return client.getVarbitValue(VarbitID.INSIDE_WILDERNESS) == 1;
+	}
+
+	/** Inside Kolodion's arena. Client thread only. */
+	private boolean inKolodionsArena()
+	{
+		Player me = client.getLocalPlayer();
+		if (me == null)
+		{
+			return false;
+		}
+		WorldPoint at = WorldPoint.fromLocalInstance(client, me.getLocalLocation());
+		return at != null && at.getPlane() == 0
+			&& at.getX() >= MAGE_ARENA_MIN_X && at.getX() <= MAGE_ARENA_MAX_X
+			&& at.getY() >= MAGE_ARENA_MIN_Y && at.getY() <= MAGE_ARENA_MAX_Y;
+	}
+
+	/**
+	 * Where the god spells and the basic god staves are open to every faction: Kolodion's arena at
+	 * any time, and the whole Wilderness while Mage Arena II is in progress and its enchanted symbol
+	 * is in the inventory. Client thread only.
+	 */
+	private boolean mageArenaAllows()
+	{
+		return inKolodionsArena() || (mageArena2Armed && inWilderness());
+	}
+
+	/** Re-reads whether Mage Arena II is under way with the enchanted symbol carried. Game tick only. */
+	private void refreshMageArena2()
+	{
+		wildernessNow = client.getGameState() == GameState.LOGGED_IN && inWilderness();
+		boolean armed = false;
+		if (client.getGameState() == GameState.LOGGED_IN)
+		{
+			ItemContainer inv = client.getItemContainer(InventoryID.INVENTORY);
+			boolean symbol = false;
+			if (inv != null)
+			{
+				for (int id : MA2_SYMBOL_IDS)
+				{
+					symbol |= inv.contains(id);
+				}
+			}
+			if (symbol)
+			{
+				try
+				{
+					armed = Quest.MAGE_ARENA_II.getState(client) == QuestState.IN_PROGRESS;
+				}
+				catch (Exception | LinkageError | AssertionError e)
+				{
+					// quest state not readable yet: stay closed, the safe direction
+				}
+			}
+		}
+		mageArena2Armed = armed;
+	}
+
+	/** A basic god staff where the Mage Arena rules open it to every faction. */
+	private boolean isMageArenaStaff(String lowerName)
+	{
+		return MAGE_ARENA_STAVES.contains(lowerName) && mageArenaAllows();
 	}
 
 	/** Does this menu entry cast one of the other gods' spells? */
@@ -3284,13 +4027,65 @@ public class BattleMagePlugin extends Plugin
 		return false;
 	}
 
-	/** Per-spell cost: the flat family cost (curses have their own). It does not change with Magic level. */
+	/**
+	 * Per-spell cost. In order: a cheaper cost the spell earns from a Magic level, a cost of its own
+	 * (Crumble Undead, the binds), then the flat family cost (curses have their own).
+	 */
 	private int costForSpell(String name)
 	{
 		PsiAction fam = familyForSpell(name);
 		if (fam == null)
 		{
 			return 0;
+		}
+		int base = baseCostForSpell(name, fam);
+		String key = name.replaceAll("<[^>]*>", "").trim().toLowerCase(Locale.ROOT);
+		// worn equipment can only make a spell cheaper: the lowest worn cost that applies wins,
+		// then any set bonus percent with enough pieces on
+		Map<String, Integer> override = wornCostOverride;
+		Map<String, Integer> percent = wornCostPercent;
+		List<String> targets = costTargets(key, fam);
+		for (String t : targets)
+		{
+			Integer c = override.get(t);
+			if (c != null)
+			{
+				base = Math.min(base, c);
+			}
+		}
+		for (String t : targets)
+		{
+			Integer pct = percent.get(t);
+			if (pct != null)
+			{
+				base = (int) Math.round(base * pct / 100.0);
+			}
+		}
+		Map<String, Integer> minus = wornCostMinus;
+		for (String t : targets)
+		{
+			Integer m = minus.get(t);
+			if (m != null)
+			{
+				base -= m;
+			}
+		}
+		return Math.max(0, base);
+	}
+
+	/** The cost before worn equipment: Magic-level cost, then the spell's own, then its family's. */
+	private int baseCostForSpell(String name, PsiAction fam)
+	{
+		String key = name.replaceAll("<[^>]*>", "").trim().toLowerCase(Locale.ROOT);
+		int[] byLevel = spellLevelCostByName.get(key);
+		if (byLevel != null && magicLevel() >= byLevel[0])
+		{
+			return byLevel[1];
+		}
+		Integer own = spellCostByName.get(key);
+		if (own != null)
+		{
+			return own;
 		}
 		if (fam == PsiAction.CURSE)
 		{
@@ -3306,6 +4101,7 @@ public class BattleMagePlugin extends Plugin
 		long now = System.currentTimeMillis();
 		pkpPopups.add(new PkpPopup(25, now, new Color(120, 240, 120)));
 		pkpPopups.add(new PkpPopup(-25, now, new Color(255, 95, 95)));
+		pkpPopups.add(new PkpPopup(0, now, look.overloadColor(), "OVERLOAD AVERTED"));
 	}
 
 	private void notePkpChange(double delta)
@@ -3708,16 +4504,20 @@ public class BattleMagePlugin extends Plugin
 				pendingFreezeSeconds * 1000L, pendingFreezeAttacks, true));
 		}
 
-		long overMs = Math.max(0L, overloadImmuneUntilMs - now);
-		if (overMs > 0 || overloadImmuneAttacks > 0)
+		// attack-count immunity counts down its idle clock alongside its attacks
+		long idleMs = Math.max(0L, immunityAttacksExpireMs - now);
+		int overAtk = idleMs > 0 ? overloadImmuneAttacks : 0;
+		int depAtk = idleMs > 0 ? depletionImmuneAttacks : 0;
+		long overMs = Math.max(Math.max(0L, overloadImmuneUntilMs - now), overAtk > 0 ? idleMs : 0L);
+		if (overMs > 0 || overAtk > 0)
 		{
-			out.add(new ActiveEffect(EffectKind.OVERLOAD_IMMUNE, look.overloadColor(), overMs, overloadImmuneAttacks, false));
+			out.add(new ActiveEffect(EffectKind.OVERLOAD_IMMUNE, look.overloadColor(), overMs, overAtk, false));
 		}
 
-		long depMs = Math.max(0L, depletionImmuneUntilMs - now);
-		if (depMs > 0 || depletionImmuneAttacks > 0)
+		long depMs = Math.max(Math.max(0L, depletionImmuneUntilMs - now), depAtk > 0 ? idleMs : 0L);
+		if (depMs > 0 || depAtk > 0)
 		{
-			out.add(new ActiveEffect(EffectKind.DEPLETION_IMMUNE, look.depletedColor(), depMs, depletionImmuneAttacks, false));
+			out.add(new ActiveEffect(EffectKind.DEPLETION_IMMUNE, look.depletedColor(), depMs, depAtk, false));
 		}
 
 		int sips = drunkSipsActive();
@@ -3818,7 +4618,7 @@ public class BattleMagePlugin extends Plugin
 			{
 				perTick *= 2.0;
 			}
-			rate += perTick;
+			rate += perTick * wornRegenFactor;
 		}
 		return rate;
 	}
@@ -3850,16 +4650,16 @@ public class BattleMagePlugin extends Plugin
 		// Blocked gear: say why it can't be used instead of a PKP value.
 		switch (blockKind(itemId))
 		{
+			// gear the magic-attack gate stops reads the same as the god's own ban
 			case FACTION_WEAPON:
 			case FACTION_GEAR:
-				return "<col=ff2a2a>(Forbidden by " + godName() + ")</col>";
+			case WEAPON:
+			case ARMOR:
+				return oath.getFaction() == Faction.FACTIONLESS
+					? "<col=ff2a2a>(Forbidden for the Faction-less)</col>"
+					: "<col=ff2a2a>(Forbidden by " + godName() + ")</col>";
 			case POWERED_STAFF:
 				return "<col=ff2a2a>(No powered staves or autocasting)</col>";
-			case WEAPON:
-				return "<col=ff2a2a>(Weapons need more than " + (rules.magicAttackMinimum() - 1) + " magic attack)</col>";
-			case ARMOR:
-				return "<col=ff2a2a>(Too magically detrimental: armour can go no lower than "
-					+ (rules.magicAttackThreshold() + 1) + " magic attack)</col>";
 			default:
 				break;
 		}
@@ -3931,6 +4731,175 @@ public class BattleMagePlugin extends Plugin
 			int perBlock = blockAmountForItem(itemId);
 			lines.add("<col=46c8ff>PKP</col> " + signedPkp(perBlock) + " per block"
 				+ (perBlock != 0 && isShieldPkpOff(itemId) ? " <col=9f9f9f>(toggled off)</col>" : ""));
+		}
+		String tipName = itemId > 0 ? itemName(itemId) : "";
+		Map<String, Integer> wornCosts = wornSpellCostByItem.get(tipName);
+		if (wornCosts != null)
+		{
+			for (Map.Entry<String, Integer> t : wornCosts.entrySet())
+			{
+				String label = costTargetLabel(t.getKey());
+				lines.add("<col=46c8ff>PKP</col> " + label + costVerb(label)
+					+ (t.getValue() == 0 ? "nothing" : String.valueOf(t.getValue())) + " while worn");
+			}
+		}
+		// raised maximum PKP (Magic cape, Kandarin headgear)
+		Integer maxUp = itemId > 0 ? maxPkpItemIds.get(itemId) : null;
+		if (maxUp == null)
+		{
+			maxUp = maxPkpItemNames.get(tipName);
+		}
+		if (maxUp != null && maxUp != 0)
+		{
+			lines.add("<col=46c8ff>PKP</col> " + (maxUp > 0 ? "+" : "") + maxUp + " max PKP while worn");
+		}
+		// a god staff names what your god's cape does for the spell it casts
+		String capeSpell = GOD_STAFF_SPELL.get(tipName);
+		if (capeSpell != null)
+		{
+			String cape = tipName.substring(0, tipName.indexOf(' ')) + " cape";
+			Map<String, Integer> capeCosts = wornSpellCostByItem.get(cape);
+			Integer capeCost = capeCosts == null ? null : capeCosts.get(capeSpell);
+			if (capeCost != null)
+			{
+				lines.add("<col=46c8ff>PKP</col> " + costTargetLabel(capeSpell) + " costs " + capeCost
+					+ " with your " + costTargetLabel(cape) + " worn");
+			}
+		}
+		Map<String, Integer> wornOff = wornSpellDiscountByItem.get(tipName);
+		if (wornOff != null)
+		{
+			for (Map.Entry<String, Integer> t : wornOff.entrySet())
+			{
+				String label = costTargetLabel(t.getKey());
+				lines.add("<col=46c8ff>PKP</col> " + label + costVerb(label) + t.getValue() + " less while worn");
+			}
+		}
+		for (Object[] set : setBonusList)
+		{
+			@SuppressWarnings("unchecked") Set<String> pieces = (Set<String>) set[1];
+			if (pieces.contains(tipName))
+			{
+				@SuppressWarnings("unchecked") Map<String, Integer> pct = (Map<String, Integer>) set[3];
+				for (Map.Entry<String, Integer> t : pct.entrySet())
+				{
+					String label = "all".equals(t.getKey()) ? "All spells" : costTargetLabel(t.getKey());
+					// a free spell reads as 0 PKP rather than 0%
+					lines.add("<col=46c8ff>PKP</col> " + set[0] + ": " + label + costVerb(label)
+						+ (t.getValue() == 0 ? "0 PKP" : t.getValue() + "%"));
+				}
+				if ((Boolean) set[7])
+				{
+					lines.add("<col=46c8ff>PKP</col> " + set[0] + ": Critical Overload cannot start");
+				}
+				if ((Integer) set[8] > 0)
+				{
+					lines.add("<col=46c8ff>PKP</col> " + set[0] + ": " + set[8] + "% chance to stop overload");
+				}
+				int sbo = (Integer) set[5];
+				int sbd = (Integer) set[6];
+				if (sbo > 0 || sbd > 0)
+				{
+					lines.add("<col=46c8ff>PKP</col> " + set[0] + ": buffer "
+						+ (sbo > 0 ? "+" + sbo + " vs overload" : "") + (sbo > 0 && sbd > 0 ? ", " : "")
+						+ (sbd > 0 ? "+" + sbd + " vs depletion" : ""));
+				}
+				@SuppressWarnings("unchecked") Map<String, Integer> minusTip = (Map<String, Integer>) set[4];
+				for (Map.Entry<String, Integer> t : minusTip.entrySet())
+				{
+					String label = "all".equals(t.getKey()) ? "All spells" : costTargetLabel(t.getKey());
+					lines.add("<col=46c8ff>PKP</col> " + set[0] + ": " + label + costVerb(label) + t.getValue() + " less");
+				}
+			}
+		}
+		int[] bonusTip = wornBonusByName.get(tipName);
+		if (bonusTip != null)
+		{
+			if (bonusTip[0] != 0)
+			{
+				lines.add("<col=46c8ff>PKP</col> " + signedPkp(bonusTip[0]) + " per melee hit while worn");
+			}
+			if (bonusTip[1] != 0)
+			{
+				lines.add("<col=46c8ff>PKP</col> " + signedPkp(bonusTip[1]) + " per block while worn");
+			}
+			if (bonusTip[2] != 100)
+			{
+				lines.add("<col=46c8ff>PKP</col> out-of-combat regen " + (bonusTip[2] - 100 > 0 ? "+" : "") + (bonusTip[2] - 100) + "%");
+			}
+			if (bonusTip[3] != 100)
+			{
+				lines.add("<col=46c8ff>PKP</col> food and drink gains " + (bonusTip[3] - 100 > 0 ? "+" : "") + (bonusTip[3] - 100) + "%");
+			}
+		}
+		int[] chanceTip = chanceByName.get(tipName);
+		if (chanceTip != null)
+		{
+			if (chanceTip[0] > 0)
+			{
+				lines.add("<col=46c8ff>PKP</col> " + chanceTip[0] + "% chance a cast costs nothing");
+			}
+			if (chanceTip[1] > 0)
+			{
+				lines.add("<col=46c8ff>PKP</col> " + chanceTip[1] + "% chance a melee or ranged hit earns nothing");
+			}
+		}
+		if (wildernessImmuneNames.contains(tipName))
+		{
+			lines.add("<col=46c8ff>PKP</col> immune to depletion in the Wilderness");
+		}
+		Map<String, Object[]> optTip = optionEffectsByName.get(tipName);
+		if (optTip != null)
+		{
+			for (Map.Entry<String, Object[]> o : optTip.entrySet())
+			{
+				int d = (Integer) o.getValue()[0];
+				if (d != 0)
+				{
+					lines.add("<col=46c8ff>PKP</col> " + signedPkp(d) + " per " + Character.toUpperCase(o.getKey().charAt(0)) + o.getKey().substring(1));
+				}
+			}
+		}
+		Integer critCooldown = criticalSaveByName.get(tipName);
+		if (critCooldown != null)
+		{
+			lines.add("<col=46c8ff>PKP</col> cancels Critical Overload once every " + (critCooldown / 60) + " min");
+		}
+		Integer tipGamble = hitGambleByName.get(tipName);
+		if (tipGamble != null)
+		{
+			lines.add("<col=46c8ff>PKP</col> each hit: coin flip, +" + tipGamble + " or -" + tipGamble);
+		}
+		ContentPack.Decay tipDecay = decayByName.get(tipName);
+		if (tipDecay != null)
+		{
+			lines.add("<col=46c8ff>PKP</col> +" + tipDecay.first + " first throw, then " + Math.round(tipDecay.factor * 100)
+				+ "% of the last each throw in a row" + (tipDecay.neverOverload ? "; never overloads" : ""));
+		}
+		int[] saveChance = itemId > 0 ? stateSaveByName.get(itemName(itemId)) : null;
+		if (saveChance != null)
+		{
+			int sides = saveChance[2];
+			String what = ((sides & SAVE_OVERLOAD) != 0 && (sides & SAVE_DEPLETION) != 0) ? "overload or depletion"
+				: (sides & SAVE_OVERLOAD) != 0 ? "overload" : (sides & SAVE_DEPLETION) != 0 ? "depletion" : "";
+			if (!what.isEmpty())
+			{
+				lines.add("<col=46c8ff>PKP</col> " + saveChance[0] + "% chance to save you from " + what);
+			}
+			if ((sides & SAVE_CRITICAL) != 0)
+			{
+				lines.add("<col=46c8ff>PKP</col> " + saveChance[0] + "% chance to save you from Critical Overload");
+			}
+		}
+		// PKP buffer: how much further a cast or a gain may overreach before the state trips
+		int[] buffer = pkpBufferFor(itemId);
+		if (buffer != null && (buffer[0] > 0 || buffer[1] > 0))
+		{
+			lines.add("<col=46c8ff>PKP</col> buffer " + (buffer[0] == buffer[1]
+				? "+" + buffer[0] + " vs overload and depletion"
+				: (buffer[0] > 0 ? "+" + buffer[0] + " vs overload" : "")
+					+ (buffer[0] > 0 && buffer[1] > 0 ? ", " : "")
+					+ (buffer[1] > 0 ? "+" + buffer[1] + " vs depletion" : "")));
 		}
 		SpecEffect specFx = specEffectFor(itemId);
 		boolean gamble = specFx != null && specFx.hasGamble();
@@ -4075,6 +5044,11 @@ public class BattleMagePlugin extends Plugin
 		{
 			lines.add("<col=ff2a2a>Causes CRITICAL OVERLOAD" + when + "</col>");
 		}
+		if (fx.chaosSeconds > 0)
+		{
+			lines.add("<col=ffb000>PKP jumps to a random 1-99 every " + fx.chaosEvery + "s for " + fx.chaosSeconds
+				+ "s; ends if you overload or deplete" + when + "</col>");
+		}
 		if (fx.forceDepletion)
 		{
 			lines.add("<col=ff2a2a>Causes DEPLETION, breaking depletion immunity" + when + "</col>");
@@ -4115,6 +5089,11 @@ public class BattleMagePlugin extends Plugin
 	{
 		// drinks and the Cursed amulet of magic scale what this cast costs
 		cost = (int) Math.round(cost * spendMultiplier());
+		// a worn chance item (Expeditious bracelet) may make this cast free
+		if (cost > 0 && wornFreeCastChance > 0 && stateSaveRng.nextInt(100) < wornFreeCastChance)
+		{
+			cost = 0;
+		}
 		// an armed freeze starts here, before any PKP moves, so this cast's cost is the one it cancels
 		startPendingFreeze();
 		// ...and this cast either renews a sustained freeze or breaks it
@@ -4131,8 +5110,29 @@ public class BattleMagePlugin extends Plugin
 		double spill = cost > 0 && !isPkpFrozen() ? cost - pkp : 0;
 		if (pkp > 0)
 		{
-			// a cast costing more than twice your remaining PKP triggers depletion outright
-			boolean bigOverspend = rules.bigMoveTriggers() && !depletionImmune() && cost > 2 * before;
+			// a cast costing more than twice your remaining PKP triggers depletion outright. A worn PKP
+			// buffer counts as PKP you still have for this check, so it widens how far a cast may
+			// overreach. It only helps from a positive bar: casting from empty still depletes.
+			boolean bigOverspend = rules.bigMoveTriggers() && !depletionImmune()
+				&& cost > 2 * (before + wornBufferDepletion + setBufferDepletion);
+			// the buffer was what kept this cast from depleting: say so
+			if (!bigOverspend && !wasDepleted && wornBufferDepletion + setBufferDepletion > 0 && rules.bigMoveTriggers()
+				&& !depletionImmune() && cost > 2 * before)
+			{
+				noteAverted(AVERTED_DEPLETION);
+			}
+			// a worn save item may catch it: the cast still empties the bar, but no depletion
+			if (bigOverspend && !wasDepleted && rollStateSave(SAVE_DEPLETION))
+			{
+				bigOverspend = false;
+				noteAverted(AVERTED_DEPLETION);
+			}
+			// a worn Cowbell amulet with PKP in its full-side store Replenishes it to stop the depletion
+			if (bigOverspend && !wasDepleted && cowbellAutoSave(-1))
+			{
+				bigOverspend = false;
+				spill = cost - pkp;
+			}
 			// deduct the cost; a cast from a positive value cannot be driven below 0 (no punishment)
 			setPkp(Math.max(0, pkp - cost), false);
 			if (bigOverspend && !depletedLatch)
@@ -4142,8 +5142,18 @@ public class BattleMagePlugin extends Plugin
 		}
 		else
 		{
-			// already empty: the cast goes negative and triggers the depletion punishment
-			setPkp(pkp - cost, false);
+			// already empty: the cast goes negative and triggers the depletion punishment - unless a
+			// worn save item catches it, in which case the bar simply stays empty
+			boolean wouldDeplete = cost > 0 && !wasDepleted && !depletionImmune() && !isPkpFrozen();
+			if (wouldDeplete && rollStateSave(SAVE_DEPLETION))
+			{
+				setPkp(Math.min(0, pkp), false);
+				noteAverted(AVERTED_DEPLETION);
+			}
+			else
+			{
+				setPkp(pkp - cost, false);
+			}
 		}
 		if (cost > 0 && !isPkpFrozen())
 		{
@@ -4179,7 +5189,8 @@ public class BattleMagePlugin extends Plugin
 	 */
 	private void addPkpSpec(double delta, boolean canOvercharge)
 	{
-		if (specActivation && delta > 0 && pkp > effectiveMax() && !isPkpFrozen() && !overloadImmune())
+		if (specActivation && delta > 0 && pkp > effectiveMax() && !isPkpFrozen() && !overloadImmune()
+			&& !cowbellAutoSave(1))
 		{
 			overloadActive = true;
 			setPkp(effectiveMax(), false);
@@ -4208,6 +5219,16 @@ public class BattleMagePlugin extends Plugin
 		//    allowed); the OVERLOADED state is withheld where it is decided - handleAttackRestore and
 		//    addPkpSpec - so nothing extra is needed here.
 		boolean depImmune = depletionImmune();
+		// a worn Cowbell amulet Replenishes to stop a fresh depletion; what it adds lifts the result,
+		// which then stops at empty at the lowest
+		if (canDeplete && !depImmune && !depletedLatch && v < 0 && v < pkp)
+		{
+			double was = pkp;
+			if (cowbellAutoSave(-1))
+			{
+				v = Math.max(0, v + (pkp - was));
+			}
+		}
 		int max = effectiveMax();
 		double hi = allowOver ? overchargeCap() : Math.max(max, pkp);
 		double lo = depImmune ? Math.min(0, pkp) : -max;
@@ -4383,6 +5404,12 @@ public class BattleMagePlugin extends Plugin
 			{
 				overloadImmuneUntilMs = Math.max(overloadImmuneUntilMs, now + fx.overloadImmuneSeconds * 1000L);
 			}
+			if (fx.overloadImmuneAttacks > 0 || fx.depletionImmuneAttacks > 0)
+			{
+				// anything left over that had already gone idle lapses first, then the clock starts over
+				lapseIdleImmunityAttacks(now);
+				immunityAttacksExpireMs = now + IMMUNITY_ATTACKS_IDLE_MS;
+			}
 			if (fx.overloadImmuneAttacks > 0)
 			{
 				overloadImmuneAttacks = Math.max(overloadImmuneAttacks, fx.overloadImmuneAttacks);
@@ -4477,6 +5504,14 @@ public class BattleMagePlugin extends Plugin
 		}
 		// DP (the Keg of beer): straight into ordinary DEPLETION, whatever immunity was up. It lasts
 		// exactly as long as any depletion: until the bar recovers to full.
+		// X: the chaos starts at once and rolls again every few seconds (see onGameTick)
+		if (fx.chaosSeconds > 0)
+		{
+			chaosUntilMs = now + fx.chaosSeconds * 1000L;
+			chaosEveryMs = fx.chaosEvery * 1000L;
+			chaosNextMs = now;
+			rollChaos(now);
+		}
 		if (fx.forceDepletion && !isPkpFrozen())
 		{
 			clearDepletionImmunity();
@@ -4485,6 +5520,19 @@ public class BattleMagePlugin extends Plugin
 			depletedLatch = true;
 			lastCombatMs = now;
 		}
+	}
+
+	/** One roll of the chaos: PKP becomes a random 1-99, and the next roll is booked. */
+	private void rollChaos(long now)
+	{
+		chaosNextMs = now + Math.max(600L, chaosEveryMs);
+		if (isPkpFrozen())
+		{
+			return;
+		}
+		double before = pkp;
+		pkp = 1 + stateSaveRng.nextInt(99);
+		notePkpChange(pkp - before);
 	}
 
 	/**
@@ -4640,8 +5688,77 @@ public class BattleMagePlugin extends Plugin
 
 	private void zap(int side)
 	{
+		zap(side, false);
+	}
+
+	private void zap(int side, boolean fromPlayer)
+	{
 		zapSide = side;
+		zapFromPlayer = fromPlayer;
 		zapStartMs = System.currentTimeMillis();
+	}
+
+	boolean zapFromPlayer()
+	{
+		return zapFromPlayer;
+	}
+
+	/** Whether the Cowbell amulet is in the worn neck slot (not just carried). Client thread only. */
+	private boolean cowbellWorn()
+	{
+		ItemContainer eq = client.getItemContainer(InventoryID.EQUIPMENT);
+		if (eq == null)
+		{
+			return false;
+		}
+		for (Item item : eq.getItems())
+		{
+			if (item != null && isCowbell(item.getId()))
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * A worn Cowbell amulet releases its store on its own to stop a state from starting: an overload
+	 * ({@code state > 0}) is met by an Exhume, a depletion ({@code state < 0}) by a Replenish. Same
+	 * store, same cooldown as using it by hand, and the bolt runs from the player to the bar. Only
+	 * while sworn and only from the neck slot. Client thread only.
+	 */
+	private boolean cowbellAutoSave(int state)
+	{
+		if (!oath.isSworn() || isPkpFrozen())
+		{
+			return false;
+		}
+		if (state > 0 ? storedUnder < 1 : storedOver < 1)
+		{
+			return false;
+		}
+		if (!cowbellWorn())
+		{
+			return false;
+		}
+		long now = System.currentTimeMillis();
+		if (state > 0)
+		{
+			pkp = Math.min(pkp, Math.max(0, pkp - storedUnder));
+			storedUnder = 0;
+			underCooldownUntilMs = now + COWBELL_COOLDOWN_MS;
+			zap(-1, true);
+			noteAverted(AVERTED_OVERLOAD);
+		}
+		else
+		{
+			pkp = Math.max(pkp, Math.min(effectiveMax(), pkp + storedOver));
+			storedOver = 0;
+			overCooldownUntilMs = now + COWBELL_COOLDOWN_MS;
+			zap(1, true);
+			noteAverted(AVERTED_DEPLETION);
+		}
+		return true;
 	}
 
 	/** When the latest spill happened (0 for none): the bar overlay watches this for new ones. */
@@ -4773,12 +5890,25 @@ public class BattleMagePlugin extends Plugin
 
 	private boolean overloadImmune()
 	{
-		return System.currentTimeMillis() < overloadImmuneUntilMs || overloadImmuneAttacks > 0;
+		long now = System.currentTimeMillis();
+		return now < overloadImmuneUntilMs || (overloadImmuneAttacks > 0 && now < immunityAttacksExpireMs);
 	}
 
 	private boolean depletionImmune()
 	{
-		return System.currentTimeMillis() < depletionImmuneUntilMs || depletionImmuneAttacks > 0;
+		long now = System.currentTimeMillis();
+		return now < depletionImmuneUntilMs || (depletionImmuneAttacks > 0 && now < immunityAttacksExpireMs)
+			|| (wornWildernessImmune && wildernessNow);
+	}
+
+	/** Drops attack-count immunity that has sat unused for {@link #IMMUNITY_ATTACKS_IDLE_MS}. */
+	private void lapseIdleImmunityAttacks(long now)
+	{
+		if (now >= immunityAttacksExpireMs)
+		{
+			overloadImmuneAttacks = 0;
+			depletionImmuneAttacks = 0;
+		}
 	}
 
 	/** Each melee hit / cast spends one attack from any active attack-count immunity or freeze. */
@@ -4788,6 +5918,9 @@ public class BattleMagePlugin extends Plugin
 		{
 			freezeAttacks--;
 		}
+		long now = System.currentTimeMillis();
+		lapseIdleImmunityAttacks(now);
+		boolean used = overloadImmuneAttacks > 0 || depletionImmuneAttacks > 0;
 		if (overloadImmuneAttacks > 0)
 		{
 			overloadImmuneAttacks--;
@@ -4795,6 +5928,11 @@ public class BattleMagePlugin extends Plugin
 		if (depletionImmuneAttacks > 0)
 		{
 			depletionImmuneAttacks--;
+		}
+		// using one starts the idle clock over for whatever is left
+		if (used)
+		{
+			immunityAttacksExpireMs = now + IMMUNITY_ATTACKS_IDLE_MS;
 		}
 	}
 
@@ -4825,6 +5963,9 @@ public class BattleMagePlugin extends Plugin
 		boolean criticalOverload;
 		/** DP: throws the player into DEPLETION, breaking any depletion immunity. */
 		boolean forceDepletion;
+		/** X<secs>/<every>: PKP jumps to a random 1-99 every {@link #chaosEvery} seconds for this long. */
+		int chaosSeconds;
+		int chaosEvery;
 
 		boolean hasGamble()
 		{
@@ -4837,7 +5978,7 @@ public class BattleMagePlugin extends Plugin
 				|| depletionImmuneSeconds > 0 || depletionImmuneAttacks > 0
 				|| clearOverload || clearDepletion || hasGamble()
 				|| freezeNowSeconds > 0 || gainSeconds > 0 || spendSeconds > 0
-				|| criticalOverload || forceDepletion;
+				|| criticalOverload || forceDepletion || chaosSeconds > 0;
 		}
 	}
 
@@ -4912,11 +6053,220 @@ public class BattleMagePlugin extends Plugin
 		parseConsumables(rules.consumableEffects());
 		parseSustainedFreeze(rules.sustainedFreeze());
 		parsePairs(rules.maxPkpItems(), maxPkpItemNames, maxPkpItemIds);
+		spellCostByName.clear();
+		for (Map.Entry<String, Integer> e : rules.spellCosts().entrySet())
+		{
+			if (e.getKey() != null && e.getValue() != null)
+			{
+				spellCostByName.put(e.getKey().trim().toLowerCase(Locale.ROOT), Math.max(0, e.getValue()));
+			}
+		}
+		spellLevelCostByName.clear();
+		for (Map.Entry<String, ContentPack.LevelCost> e : rules.spellLevelCosts().entrySet())
+		{
+			if (e.getKey() != null && e.getValue() != null)
+			{
+				spellLevelCostByName.put(e.getKey().trim().toLowerCase(Locale.ROOT),
+					new int[]{e.getValue().level, Math.max(0, e.getValue().cost)});
+			}
+		}
+		spellGroupsBySpell.clear();
+		for (Map.Entry<String, List<String>> e : rules.spellGroups().entrySet())
+		{
+			if (e.getKey() == null || e.getValue() == null)
+			{
+				continue;
+			}
+			String group = e.getKey().trim().toLowerCase(Locale.ROOT);
+			for (String spell : e.getValue())
+			{
+				if (spell != null)
+				{
+					spellGroupsBySpell.computeIfAbsent(spell.trim().toLowerCase(Locale.ROOT), k -> new HashSet<>()).add(group);
+				}
+			}
+		}
+		wornSpellCostByItem.clear();
+		for (Map.Entry<String, Map<String, Integer>> e : rules.wornSpellCosts().entrySet())
+		{
+			if (e.getKey() == null || e.getValue() == null)
+			{
+				continue;
+			}
+			Map<String, Integer> targets = new HashMap<>();
+			for (Map.Entry<String, Integer> t : e.getValue().entrySet())
+			{
+				if (t.getKey() != null && t.getValue() != null)
+				{
+					targets.put(t.getKey().trim().toLowerCase(Locale.ROOT), Math.max(0, t.getValue()));
+				}
+			}
+			wornSpellCostByItem.put(e.getKey().trim().toLowerCase(Locale.ROOT), targets);
+		}
+		wornSpellDiscountByItem.clear();
+		for (Map.Entry<String, Map<String, Integer>> e : rules.wornSpellDiscounts().entrySet())
+		{
+			if (e.getKey() == null || e.getValue() == null)
+			{
+				continue;
+			}
+			Map<String, Integer> targets = new HashMap<>();
+			for (Map.Entry<String, Integer> t : e.getValue().entrySet())
+			{
+				if (t.getKey() != null && t.getValue() != null)
+				{
+					targets.put(t.getKey().trim().toLowerCase(Locale.ROOT), Math.max(0, t.getValue()));
+				}
+			}
+			wornSpellDiscountByItem.put(e.getKey().trim().toLowerCase(Locale.ROOT), targets);
+		}
+		setBonusList.clear();
+		for (Map.Entry<String, ContentPack.SetBonus> e : rules.setBonuses().entrySet())
+		{
+			ContentPack.SetBonus b = e.getValue();
+			if (b == null || b.pieces == null || b.costPercent == null)
+			{
+				continue;
+			}
+			Set<String> pieces = new HashSet<>();
+			for (String piece : b.pieces)
+			{
+				if (piece != null)
+				{
+					pieces.add(piece.trim().toLowerCase(Locale.ROOT));
+				}
+			}
+			Map<String, Integer> pct = new HashMap<>();
+			for (Map.Entry<String, Integer> t : b.costPercent.entrySet())
+			{
+				if (t.getKey() != null && t.getValue() != null)
+				{
+					pct.put(t.getKey().trim().toLowerCase(Locale.ROOT), Math.max(0, t.getValue()));
+				}
+			}
+			Map<String, Integer> minus = new HashMap<>();
+			if (b.costMinus != null)
+			{
+				for (Map.Entry<String, Integer> t : b.costMinus.entrySet())
+				{
+					if (t.getKey() != null && t.getValue() != null)
+					{
+						minus.put(t.getKey().trim().toLowerCase(Locale.ROOT), Math.max(0, t.getValue()));
+					}
+				}
+			}
+			int min = Math.max(1, b.minPieces);
+			String shown = b.name != null && !b.name.trim().isEmpty() ? b.name.trim() : e.getKey();
+			// tooltips say "(full set)" for a set that needs every slot, else the exact count it needs
+			String label = shown + (b.fullSet ? " (full set)" : " (" + min + (min == 1 ? " piece)" : " pieces)"));
+			setBonusList.add(new Object[]{label, pieces, min, pct, minus,
+				Math.max(0, b.bufferOverload), Math.max(0, b.bufferDepletion), b.noCritical,
+				Math.max(0, Math.min(100, b.saveOverload))});
+		}
+		criticalSaveByName.clear();
+		for (Map.Entry<String, Integer> e : rules.criticalSaveItems().entrySet())
+		{
+			if (e.getKey() != null && e.getValue() != null)
+			{
+				criticalSaveByName.put(e.getKey().trim().toLowerCase(Locale.ROOT), Math.max(0, e.getValue()));
+			}
+		}
+		chatTriggerEffects.clear();
+		for (ContentPack.ChatTrigger t : rules.chatTriggers())
+		{
+			if (t != null && t.contains != null && !t.contains.trim().isEmpty())
+			{
+				chatTriggerEffects.put(t.contains.trim().toLowerCase(Locale.ROOT), parseSpecEffect(t.effects));
+			}
+		}
+		hitGambleByName.clear();
+		for (Map.Entry<String, Integer> e : rules.weaponHitGambles().entrySet())
+		{
+			if (e.getKey() != null && e.getValue() != null)
+			{
+				hitGambleByName.put(e.getKey().trim().toLowerCase(Locale.ROOT), Math.abs(e.getValue()));
+			}
+		}
+		decayByName.clear();
+		for (Map.Entry<String, ContentPack.Decay> e : rules.decayingRangedWeapons().entrySet())
+		{
+			if (e.getKey() != null && e.getValue() != null)
+			{
+				decayByName.put(e.getKey().trim().toLowerCase(Locale.ROOT), e.getValue());
+			}
+		}
+		wornBonusByName.clear();
+		for (Map.Entry<String, ContentPack.WornBonus> e : rules.wornBonuses().entrySet())
+		{
+			ContentPack.WornBonus b = e.getValue();
+			if (e.getKey() != null && b != null)
+			{
+				wornBonusByName.put(e.getKey().trim().toLowerCase(Locale.ROOT),
+					new int[]{b.meleeGain, b.blockGain, Math.max(0, b.regenPercent), Math.max(0, b.restorePercent)});
+			}
+		}
+		chanceByName.clear();
+		for (Map.Entry<String, ContentPack.ChanceEffect> e : rules.chanceItems().entrySet())
+		{
+			if (e.getKey() != null && e.getValue() != null)
+			{
+				chanceByName.put(e.getKey().trim().toLowerCase(Locale.ROOT), new int[]{
+					Math.max(0, Math.min(100, e.getValue().freeCast)), Math.max(0, Math.min(100, e.getValue().noGain))});
+			}
+		}
+		wildernessImmuneNames.clear();
+		for (String n : rules.wildernessDepletionImmuneItems())
+		{
+			if (n != null)
+			{
+				wildernessImmuneNames.add(n.trim().toLowerCase(Locale.ROOT));
+			}
+		}
+		optionEffectsByName.clear();
+		for (Map.Entry<String, Map<String, ContentPack.OptionEffect>> e : rules.itemOptionEffects().entrySet())
+		{
+			if (e.getKey() == null || e.getValue() == null)
+			{
+				continue;
+			}
+			Map<String, Object[]> opts = new HashMap<>();
+			for (Map.Entry<String, ContentPack.OptionEffect> o : e.getValue().entrySet())
+			{
+				if (o.getKey() != null && o.getValue() != null)
+				{
+					opts.put(o.getKey().trim().toLowerCase(Locale.ROOT),
+						new Object[]{o.getValue().delta, parseSpecEffect(o.getValue().effects)});
+				}
+			}
+			optionEffectsByName.put(e.getKey().trim().toLowerCase(Locale.ROOT), opts);
+		}
+		stateSaveByName.clear();
+		for (Map.Entry<String, ContentPack.StateSave> e : rules.stateSaveItems().entrySet())
+		{
+			if (e.getKey() != null && e.getValue() != null && e.getValue().chance > 0)
+			{
+				ContentPack.StateSave sv = e.getValue();
+				int sides = (sv.overload ? SAVE_OVERLOAD : 0) | (sv.depletion ? SAVE_DEPLETION : 0)
+					| (sv.critical ? SAVE_CRITICAL : 0);
+				stateSaveByName.put(e.getKey().trim().toLowerCase(Locale.ROOT),
+					new int[]{Math.min(100, sv.chance), Math.max(0, sv.spotanim), sides});
+			}
+		}
+		pkpBufferByName.clear();
+		for (Map.Entry<String, ContentPack.Buffer> e : rules.pkpBufferItems().entrySet())
+		{
+			if (e.getKey() != null && e.getValue() != null)
+			{
+				pkpBufferByName.put(e.getKey().trim().toLowerCase(Locale.ROOT),
+					new int[]{Math.max(0, e.getValue().overload), Math.max(0, e.getValue().depletion)});
+			}
+		}
 		parsePairs(rules.spellCostItems(), spellCostItemNames, spellCostItemIds);
 		ContentPack.Alcohol booze = rules.alcohol();
 		parseList(booze == null ? "" : String.join(",", booze.items), alcoholNames, alcoholIds);
 		// the sheet just changed, so what is worn may be worth a different amount now
 		recomputeWornMaxPkpBonus();
+		recomputeWornBuffers();
 
 		parseNameSet(rules.blockedGodSpells(), blockedGodSpells);
 		parseNameSet(rules.curseSpells(), curseSpells);
@@ -4994,6 +6344,7 @@ public class BattleMagePlugin extends Plugin
 			}
 		}
 		refreshQuestProgress();
+		refreshMageArena2();
 	}
 
 	private void parseList(String raw, Set<String> names, Set<Integer> ids)
@@ -5209,6 +6560,19 @@ public class BattleMagePlugin extends Plugin
 			// Both halves are magnitudes, so they are written unsigned: R50/25 is "+50 or -25", never
 			// "-50 or 25". A half that will not parse, or is not positive, makes the whole token
 			// nothing rather than half a gamble - a typo must not leave a weapon that only ever loses.
+			// X<secs>/<every>: the Poison chalice's chaos - see SpecEffect#chaosSeconds
+			if (type == 'X' && rest.indexOf('/') > 0)
+			{
+				int slash = rest.indexOf('/');
+				int secs = parsePositive(rest.substring(0, slash));
+				int every = parsePositive(rest.substring(slash + 1).toLowerCase(Locale.ROOT).replace("s", ""));
+				if (secs > 0 && every > 0)
+				{
+					fx.chaosSeconds = secs;
+					fx.chaosEvery = every;
+				}
+				continue;
+			}
 			if (type == 'R')
 			{
 				int slash = rest.indexOf('/');
