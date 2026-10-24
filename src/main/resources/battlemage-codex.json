@@ -1,6 +1,9 @@
 {
   "formatVersion": 14,
   "shared": {
+    "weaponHitGambles": {
+      "Ham joint": 25
+    },
     "consumableEffects": [
       {
         "name": "Keg of beer",
@@ -1048,6 +1051,82 @@
           "CD",
           "F3a"
         ]
+      },
+      {
+        "name": "Purple sweets",
+        "delta": 0,
+        "effects": [
+          "R5/5"
+        ]
+      },
+      {
+        "name": "Strange fruit",
+        "delta": 25,
+        "effects": [
+          "F3s"
+        ]
+      },
+      {
+        "name": "Gout tuber",
+        "delta": 0,
+        "effects": [
+          "CO",
+          "CD"
+        ]
+      },
+      {
+        "name": "Toad's legs",
+        "delta": -25,
+        "effects": []
+      },
+      {
+        "name": "Ugthanki kebab",
+        "delta": 0,
+        "effects": [
+          "R25/25"
+        ]
+      },
+      {
+        "name": "Kebab",
+        "delta": 0,
+        "effects": [
+          "R10/10"
+        ]
+      },
+      {
+        "name": "Cabbage",
+        "delta": 1,
+        "effects": []
+      },
+      {
+        "name": "Stew",
+        "delta": -50,
+        "effects": []
+      },
+      {
+        "name": "Spinach roll",
+        "delta": -99,
+        "effects": []
+      },
+      {
+        "name": "Chocolate bar",
+        "delta": 10,
+        "effects": []
+      },
+      {
+        "name": "Bandages",
+        "delta": 0,
+        "effects": [
+          "CO",
+          "CD"
+        ]
+      },
+      {
+        "name": "1/2 pineapple pizza",
+        "delta": 0,
+        "effects": [
+          "CO"
+        ]
       }
     ],
     "alcohol": {
@@ -1224,6 +1303,722 @@
     },
     "spellCostItems": {
       "Cursed amulet of magic": 150
+    },
+    "spellCosts": {
+      "Crumble Undead": 33,
+      "Bind": 25,
+      "Snare": 25,
+      "Entangle": 25
+    },
+    "spellLevelCosts": {
+      "Wind Strike": {
+        "level": 59,
+        "cost": 33
+      },
+      "Water Strike": {
+        "level": 59,
+        "cost": 33
+      },
+      "Earth Strike": {
+        "level": 59,
+        "cost": 33
+      },
+      "Fire Strike": {
+        "level": 59,
+        "cost": 33
+      },
+      "Wind Bolt": {
+        "level": 75,
+        "cost": 33
+      },
+      "Water Bolt": {
+        "level": 75,
+        "cost": 33
+      },
+      "Earth Bolt": {
+        "level": 75,
+        "cost": 33
+      },
+      "Fire Bolt": {
+        "level": 75,
+        "cost": 33
+      },
+      "Wind Blast": {
+        "level": 95,
+        "cost": 33
+      },
+      "Water Blast": {
+        "level": 95,
+        "cost": 33
+      },
+      "Earth Blast": {
+        "level": 95,
+        "cost": 33
+      },
+      "Fire Blast": {
+        "level": 95,
+        "cost": 33
+      },
+      "Wind Wave": {
+        "level": 99,
+        "cost": 33
+      },
+      "Water Wave": {
+        "level": 99,
+        "cost": 33
+      },
+      "Earth Wave": {
+        "level": 99,
+        "cost": 33
+      },
+      "Fire Wave": {
+        "level": 99,
+        "cost": 33
+      }
+    },
+    "pkpBufferItems": {
+      "Explorer's ring 1": {
+        "overload": 0,
+        "depletion": 5
+      },
+      "Explorer's ring 2": {
+        "overload": 0,
+        "depletion": 5
+      },
+      "Explorer's ring 3": {
+        "overload": 0,
+        "depletion": 10
+      },
+      "Explorer's ring 4": {
+        "overload": 0,
+        "depletion": 10
+      },
+      "Mind helmet": {
+        "overload": 5,
+        "depletion": 5
+      },
+      "Ring of Charos(a)": {
+        "overload": 10,
+        "depletion": 0
+      },
+      "Neitiznot shield": {
+        "overload": 10,
+        "depletion": 0
+      },
+      "Desert amulet 1": {
+        "overload": 0,
+        "depletion": 5
+      },
+      "Fremennik sea boots 1": {
+        "overload": 5,
+        "depletion": 0
+      },
+      "Desert amulet 2": {
+        "overload": 0,
+        "depletion": 5
+      },
+      "Fremennik sea boots 2": {
+        "overload": 5,
+        "depletion": 0
+      },
+      "Desert amulet 3": {
+        "overload": 0,
+        "depletion": 10
+      },
+      "Fremennik sea boots 3": {
+        "overload": 10,
+        "depletion": 0
+      },
+      "Desert amulet 4": {
+        "overload": 0,
+        "depletion": 10
+      },
+      "Fremennik sea boots 4": {
+        "overload": 10,
+        "depletion": 0
+      },
+      "Farseer helm": {
+        "overload": 0,
+        "depletion": 5
+      },
+      "Helm of Neitiznot": {
+        "overload": 5,
+        "depletion": 0
+      },
+      "Treasonous ring": {
+        "overload": 15,
+        "depletion": 0
+      },
+      "Treasonous ring (i)": {
+        "overload": 15,
+        "depletion": 0
+      },
+      "Seers ring": {
+        "overload": 0,
+        "depletion": 10
+      },
+      "Seers ring (i)": {
+        "overload": 0,
+        "depletion": 10
+      }
+    },
+    "stateSaveItems": {
+      "Beacon ring": {
+        "chance": 10,
+        "spotanim": 353
+      },
+      "Ring of shadows": {
+        "chance": 50,
+        "spotanim": 383
+      },
+      "Ring of shadows (uncharged)": {
+        "chance": 50,
+        "spotanim": 383
+      },
+      "Rada's blessing 1": {
+        "chance": 2,
+        "spotanim": 321
+      },
+      "Rada's blessing 2": {
+        "chance": 4,
+        "spotanim": 321
+      },
+      "Rada's blessing 3": {
+        "chance": 6,
+        "spotanim": 321
+      },
+      "Rada's blessing 4": {
+        "chance": 8,
+        "spotanim": 321
+      },
+      "Ring of the gods": {
+        "chance": 50,
+        "spotanim": 321,
+        "overload": false,
+        "depletion": true,
+        "critical": false
+      },
+      "Ring of the gods (i)": {
+        "chance": 50,
+        "spotanim": 321,
+        "overload": false,
+        "depletion": true,
+        "critical": false
+      },
+      "Tyrannical ring": {
+        "chance": 50,
+        "spotanim": 246,
+        "overload": true,
+        "depletion": false,
+        "critical": true
+      },
+      "Tyrannical ring (i)": {
+        "chance": 50,
+        "spotanim": 246,
+        "overload": true,
+        "depletion": false,
+        "critical": true
+      },
+      "Warrior ring": {
+        "chance": 25,
+        "spotanim": 2112,
+        "overload": true,
+        "depletion": false,
+        "critical": false
+      },
+      "Warrior ring (i)": {
+        "chance": 25,
+        "spotanim": 2112,
+        "overload": true,
+        "depletion": false,
+        "critical": false
+      },
+      "Berserker ring": {
+        "chance": 25,
+        "spotanim": 246,
+        "overload": false,
+        "depletion": false,
+        "critical": true
+      },
+      "Berserker ring (i)": {
+        "chance": 25,
+        "spotanim": 246,
+        "overload": false,
+        "depletion": false,
+        "critical": true
+      }
+    },
+    "spellGroups": {
+      "air": [
+        "Wind Strike",
+        "Wind Bolt",
+        "Wind Blast",
+        "Wind Wave",
+        "Wind Surge"
+      ],
+      "earth": [
+        "Earth Strike",
+        "Earth Bolt",
+        "Earth Blast",
+        "Earth Wave",
+        "Earth Surge"
+      ],
+      "water": [
+        "Water Strike",
+        "Water Bolt",
+        "Water Blast",
+        "Water Wave",
+        "Water Surge"
+      ],
+      "blood": [
+        "Blood Rush",
+        "Blood Burst",
+        "Blood Blitz",
+        "Blood Barrage"
+      ],
+      "elemental": [
+        "Wind Strike",
+        "Water Strike",
+        "Earth Strike",
+        "Fire Strike",
+        "Wind Bolt",
+        "Water Bolt",
+        "Earth Bolt",
+        "Fire Bolt",
+        "Wind Blast",
+        "Water Blast",
+        "Earth Blast",
+        "Fire Blast",
+        "Wind Wave",
+        "Water Wave",
+        "Earth Wave",
+        "Fire Wave",
+        "Wind Surge",
+        "Water Surge",
+        "Earth Surge",
+        "Fire Surge"
+      ],
+      "strike": [
+        "Wind Strike",
+        "Water Strike",
+        "Earth Strike",
+        "Fire Strike"
+      ],
+      "ancient": [
+        "Smoke Rush",
+        "Smoke Burst",
+        "Smoke Blitz",
+        "Smoke Barrage",
+        "Shadow Rush",
+        "Shadow Burst",
+        "Shadow Blitz",
+        "Shadow Barrage",
+        "Blood Rush",
+        "Blood Burst",
+        "Blood Blitz",
+        "Blood Barrage",
+        "Ice Rush",
+        "Ice Burst",
+        "Ice Blitz",
+        "Ice Barrage"
+      ],
+      "fire": [
+        "Fire Strike",
+        "Fire Bolt",
+        "Fire Blast",
+        "Fire Wave",
+        "Fire Surge"
+      ]
+    },
+    "wornSpellDiscounts": {
+      "Toktz-mej-tal": {
+        "fire": 10
+      },
+      "Twinflame staff": {
+        "water": 10,
+        "fire": 10
+      },
+      "Mud battlestaff": {
+        "water": 10,
+        "earth": 10
+      },
+      "Mystic mud staff": {
+        "water": 10,
+        "earth": 10
+      },
+      "Smoke battlestaff": {
+        "air": 10,
+        "fire": 10
+      },
+      "Mystic smoke staff": {
+        "air": 10,
+        "fire": 10
+      },
+      "Steam battlestaff": {
+        "water": 10,
+        "fire": 10
+      },
+      "Mystic steam staff": {
+        "water": 10,
+        "fire": 10
+      },
+      "Mist battlestaff": {
+        "water": 10,
+        "air": 10
+      },
+      "Mystic mist staff": {
+        "water": 10,
+        "air": 10
+      },
+      "Dust battlestaff": {
+        "air": 10,
+        "earth": 10
+      },
+      "Mystic dust staff": {
+        "air": 10,
+        "earth": 10
+      },
+      "Lava battlestaff": {
+        "earth": 10,
+        "fire": 10
+      },
+      "Mystic lava staff": {
+        "earth": 10,
+        "fire": 10
+      }
+    },
+    "wornSpellCosts": {
+      "Dramen staff": {
+        "curse": 15
+      },
+      "Lunar staff": {
+        "curse": 0
+      },
+      "Salve amulet": {
+        "Crumble Undead": 25
+      },
+      "Salve amulet (e)": {
+        "Crumble Undead": 25
+      },
+      "Salve amulet(i)": {
+        "Crumble Undead": 25
+      },
+      "Salve amulet(ei)": {
+        "Crumble Undead": 25
+      },
+      "Morytania legs 3": {
+        "Crumble Undead": 0
+      },
+      "Morytania legs 4": {
+        "Crumble Undead": 0
+      }
+    },
+    "setBonuses": {
+      "Infinity robes (full set)": {
+        "pieces": [
+          "Infinity hat",
+          "Infinity top",
+          "Infinity bottoms",
+          "Infinity gloves",
+          "Infinity boots",
+          "Light infinity hat",
+          "Light infinity top",
+          "Light infinity bottoms",
+          "Dark infinity hat",
+          "Dark infinity top",
+          "Dark infinity bottoms"
+        ],
+        "minPieces": 5,
+        "costPercent": {
+          "all": 0
+        },
+        "fullSet": true,
+        "name": "Infinity robes"
+      },
+      "Swampbark armour": {
+        "pieces": [
+          "Swampbark helm",
+          "Swampbark body",
+          "Swampbark legs",
+          "Swampbark gauntlets",
+          "Swampbark boots"
+        ],
+        "minPieces": 2,
+        "costPercent": {
+          "Bind": 0,
+          "Snare": 0,
+          "Entangle": 0
+        }
+      },
+      "Bloodbark armour": {
+        "pieces": [
+          "Bloodbark helm",
+          "Bloodbark body",
+          "Bloodbark legs",
+          "Bloodbark gauntlets",
+          "Bloodbark boots"
+        ],
+        "minPieces": 2,
+        "costPercent": {
+          "blood": 50
+        }
+      },
+      "Guthan's armour": {
+        "pieces": [
+          "Guthan's helm",
+          "Guthan's helm 100",
+          "Guthan's helm 75",
+          "Guthan's helm 50",
+          "Guthan's helm 25",
+          "Guthan's platebody",
+          "Guthan's platebody 100",
+          "Guthan's platebody 75",
+          "Guthan's platebody 50",
+          "Guthan's platebody 25",
+          "Guthan's chainskirt",
+          "Guthan's chainskirt 100",
+          "Guthan's chainskirt 75",
+          "Guthan's chainskirt 50",
+          "Guthan's chainskirt 25",
+          "Guthan's warspear",
+          "Guthan's warspear 100",
+          "Guthan's warspear 75",
+          "Guthan's warspear 50",
+          "Guthan's warspear 25"
+        ],
+        "minPieces": 4,
+        "noCritical": true,
+        "fullSet": true
+      },
+      "Torag's armour": {
+        "pieces": [
+          "Torag's helm",
+          "Torag's helm 100",
+          "Torag's helm 75",
+          "Torag's helm 50",
+          "Torag's helm 25",
+          "Torag's platebody",
+          "Torag's platebody 100",
+          "Torag's platebody 75",
+          "Torag's platebody 50",
+          "Torag's platebody 25",
+          "Torag's platelegs",
+          "Torag's platelegs 100",
+          "Torag's platelegs 75",
+          "Torag's platelegs 50",
+          "Torag's platelegs 25",
+          "Torag's hammers",
+          "Torag's hammers 100",
+          "Torag's hammers 75",
+          "Torag's hammers 50",
+          "Torag's hammers 25"
+        ],
+        "minPieces": 4,
+        "noCritical": true,
+        "fullSet": true
+      },
+      "Verac's armour": {
+        "pieces": [
+          "Verac's helm",
+          "Verac's helm 100",
+          "Verac's helm 75",
+          "Verac's helm 50",
+          "Verac's helm 25",
+          "Verac's brassard",
+          "Verac's brassard 100",
+          "Verac's brassard 75",
+          "Verac's brassard 50",
+          "Verac's brassard 25",
+          "Verac's plateskirt",
+          "Verac's plateskirt 100",
+          "Verac's plateskirt 75",
+          "Verac's plateskirt 50",
+          "Verac's plateskirt 25",
+          "Verac's flail",
+          "Verac's flail 100",
+          "Verac's flail 75",
+          "Verac's flail 50",
+          "Verac's flail 25"
+        ],
+        "minPieces": 4,
+        "saveOverload": 50,
+        "fullSet": true
+      },
+      "Elemental helmet and shield": {
+        "pieces": [
+          "Elemental helmet",
+          "Elemental shield"
+        ],
+        "minPieces": 2,
+        "costMinus": {
+          "elemental": 10
+        },
+        "fullSet": true
+      },
+      "Mind helmet and shield": {
+        "pieces": [
+          "Mind helmet",
+          "Mind shield"
+        ],
+        "minPieces": 2,
+        "costPercent": {
+          "strike": 0
+        },
+        "fullSet": true
+      },
+      "Ghostly robes": {
+        "pieces": [
+          "Ghostly hood",
+          "Ghostly robe",
+          "Ghostly gloves",
+          "Ghostly boots",
+          "Ghostly cloak"
+        ],
+        "minPieces": 3,
+        "costPercent": {
+          "ancient": 50
+        }
+      },
+      "Infinity robes": {
+        "pieces": [
+          "Infinity hat",
+          "Infinity top",
+          "Infinity bottoms",
+          "Infinity gloves",
+          "Infinity boots",
+          "Light infinity hat",
+          "Light infinity top",
+          "Light infinity bottoms",
+          "Dark infinity hat",
+          "Dark infinity top",
+          "Dark infinity bottoms"
+        ],
+        "minPieces": 2,
+        "costPercent": {},
+        "costMinus": {
+          "all": 10
+        }
+      },
+      "Barbarian Assault attacker": {
+        "pieces": [
+          "Fighter hat",
+          "Fighter hat (l)",
+          "Fighter torso",
+          "Fighter torso (l)",
+          "Fighter torso (or)",
+          "Fighter torso (l)(or)"
+        ],
+        "minPieces": 2,
+        "costPercent": {},
+        "costMinus": {},
+        "bufferOverload": 10,
+        "bufferDepletion": 0,
+        "fullSet": true
+      }
+    },
+    "criticalSaveItems": {
+      "Ring of life": 600
+    },
+    "chatTriggers": [
+      {
+        "contains": "Your phoenix necklace heals you, but is destroyed in the process.",
+        "effects": "CO+CD"
+      }
+    ],
+    "decayingRangedWeapons": {
+      "Blisterwood stake": {
+        "first": 50,
+        "factor": 0.5,
+        "resetSeconds": 3,
+        "neverOverload": true
+      }
+    },
+    "chanceItems": {
+      "Expeditious bracelet": {
+        "freeCast": 25,
+        "noGain": 0
+      },
+      "Bracelet of slaughter": {
+        "freeCast": 0,
+        "noGain": 25
+      }
+    },
+    "wornBonuses": {
+      "Fighter torso": {
+        "meleeGain": 10,
+        "blockGain": 0,
+        "regenPercent": 100,
+        "restorePercent": 100
+      },
+      "Fighter torso (l)": {
+        "meleeGain": 10,
+        "blockGain": 0,
+        "regenPercent": 100,
+        "restorePercent": 100
+      },
+      "Fighter torso (or)": {
+        "meleeGain": 10,
+        "blockGain": 0,
+        "regenPercent": 100,
+        "restorePercent": 100
+      },
+      "Fighter torso (l)(or)": {
+        "meleeGain": 10,
+        "blockGain": 0,
+        "regenPercent": 100,
+        "restorePercent": 100
+      },
+      "Runner hat": {
+        "meleeGain": 0,
+        "blockGain": 10,
+        "regenPercent": 100,
+        "restorePercent": 100
+      },
+      "Runner hat (l)": {
+        "meleeGain": 0,
+        "blockGain": 10,
+        "regenPercent": 100,
+        "restorePercent": 100
+      },
+      "Runner boots": {
+        "meleeGain": 0,
+        "blockGain": 0,
+        "regenPercent": 150,
+        "restorePercent": 100
+      },
+      "Healer hat": {
+        "meleeGain": 0,
+        "blockGain": 0,
+        "regenPercent": 100,
+        "restorePercent": 150
+      },
+      "Healer hat (l)": {
+        "meleeGain": 0,
+        "blockGain": 0,
+        "regenPercent": 100,
+        "restorePercent": 150
+      }
+    },
+    "wildernessDepletionImmuneItems": [
+      "Bracelet of ethereum"
+    ],
+    "itemOptionEffects": {
+      "Dwarven rock cake": {
+        "Eat": {
+          "delta": -5,
+          "effects": ""
+        },
+        "Guzzle": {
+          "delta": -10,
+          "effects": ""
+        }
+      },
+      "Locator orb": {
+        "Feel": {
+          "delta": -15,
+          "effects": ""
+        }
+      }
     },
     "questItems": [
       {
@@ -1428,7 +2223,19 @@
       "Crystal helm (perfected)",
       "Crystal legs (basic)",
       "Crystal legs (attuned)",
-      "Crystal legs (perfected)"
+      "Crystal legs (perfected)",
+      "Morytania legs 1",
+      "Morytania legs 2",
+      "Morytania legs 3",
+      "Morytania legs 4",
+      "Varrock armour 1",
+      "Varrock armour 2",
+      "Varrock armour 3",
+      "Varrock armour 4",
+      "Fighter torso",
+      "Fighter torso (l)",
+      "Fighter torso (or)",
+      "Fighter torso (l)(or)"
     ],
     "shields": [
       "Gilded Kiteshield",
@@ -1529,7 +2336,7 @@
       "Ghommal's avernic defender 5 (l)": 15,
       "Ghommal's avernic defender 6 (l)": 15
     },
-    "weaponExceptions": ["Keris partisan of the sun", "Keris partisan of corruption", "Dawnbringer", "Abyssal dagger", "Abyssal dagger (p)", "Abyssal dagger (p+)", "Abyssal dagger (p++)", "Ahrim's staff", "Ahrim's staff 100", "Ahrim's staff 75", "Ahrim's staff 50", "Ahrim's staff 25", "Ahrim's staff 0", "Oak blackjack(d)", "Willow blackjack(d)", 
+    "weaponExceptions": ["Keris partisan of the sun", "Ham joint", "Keris partisan of corruption", "Dawnbringer", "Abyssal dagger", "Abyssal dagger (p)", "Abyssal dagger (p+)", "Abyssal dagger (p++)", "Ahrim's staff", "Ahrim's staff 100", "Ahrim's staff 75", "Ahrim's staff 50", "Ahrim's staff 25", "Ahrim's staff 0", "Oak blackjack(d)", "Willow blackjack(d)", 
       "3rd Age Longsword",
       "Emberlight",
       "Arclight",
@@ -2463,7 +3270,6 @@
       "Karil's crossbow 50": 50,
       "Karil's crossbow 25": 50,
       "Karil's crossbow 0": 50,
-      "Blisterwood Stake": 25,
       "Rune Knife": 25,
       "Adamant Knife": 25,
       "Dragon Knife": 25,
@@ -2648,7 +3454,8 @@
         10923,
         13142,
         13143,
-        13144
+        13144,
+        11085
       ],
       "targetCastAnimationIds": [
         9144,
@@ -3459,6 +4266,29 @@
         "bigMoveTriggers": true
       },
       "pool": {
+        "wornSpellCosts": {
+          "Saradomin cape": {
+            "Saradomin Strike": 25
+          },
+          "Imbued Saradomin cape": {
+            "Saradomin Strike": 25
+          },
+          "Saradomin max cape": {
+            "Saradomin Strike": 25
+          },
+          "Imbued Saradomin max cape": {
+            "Saradomin Strike": 25
+          },
+          "Imbued Saradomin cape (l)": {
+            "Saradomin Strike": 25
+          },
+          "Imbued Saradomin cape (Deadman)": {
+            "Saradomin Strike": 25
+          },
+          "Imbued Saradomin max cape (l)": {
+            "Saradomin Strike": 25
+          }
+        },
         "maxPkp": 100,
         "combatSpellCost": 50,
         "curseSpellCost": 25,
@@ -3487,7 +4317,13 @@
           "Tome of earth": 25,
           "Tome of earth (empty)": 25,
           "Tome of fire": 25,
-          "Tome of fire (empty)": 25
+          "Tome of fire (empty)": 25,
+          "Kandarin headgear 1": 5,
+          "Kandarin headgear 2": 10,
+          "Kandarin headgear 3": 15,
+          "Kandarin headgear 4": 20,
+          "Magic cape": 25,
+          "Magic cape(t)": 25
         }
       },
       "scaling": {
@@ -3515,7 +4351,10 @@
         "blockFoodWhenOverloaded": true,
         "blockPotionsWhenDepleted": true,
         "consumableExceptions": [
-          "Tea flask"
+          "Tea flask",
+          "Gout tuber",
+          "1/2 pineapple pizza",
+          "Bandages"
         ],
         "illegalDefaultUse": true,
         "blockCastWhileSeated": true,
@@ -3530,9 +4369,10 @@
           "Pineapple pizza": 25,
           "Cup of Tea": 25,
           "Beer": -25,
-          "Cider": -25,
+          "Cider": -33,
+          "Vodka": -50,
           "Keg of Beer": -100,
-          "Cooked t-bone steak": -50
+          "Cooked t-bone steak": -66
         },
         "consumableEffects": [
           {
@@ -3554,9 +4394,7 @@
             "name": "Poison Chalice",
             "delta": 0,
             "effects": [
-              "CO",
-              "CD",
-              "R33/33"
+              "X30/2"
             ]
           },
           {
@@ -4317,6 +5155,29 @@
         "bigMoveTriggers": true
       },
       "pool": {
+        "wornSpellCosts": {
+          "Guthix cape": {
+            "Claws of Guthix": 25
+          },
+          "Imbued Guthix cape": {
+            "Claws of Guthix": 25
+          },
+          "Guthix max cape": {
+            "Claws of Guthix": 25
+          },
+          "Imbued Guthix max cape": {
+            "Claws of Guthix": 25
+          },
+          "Imbued Guthix cape (l)": {
+            "Claws of Guthix": 25
+          },
+          "Imbued Guthix cape (Deadman)": {
+            "Claws of Guthix": 25
+          },
+          "Imbued Guthix max cape (l)": {
+            "Claws of Guthix": 25
+          }
+        },
         "maxPkp": 100,
         "combatSpellCost": 50,
         "curseSpellCost": 25,
@@ -4345,7 +5206,13 @@
           "Tome of earth": 25,
           "Tome of earth (empty)": 25,
           "Tome of fire": 25,
-          "Tome of fire (empty)": 25
+          "Tome of fire (empty)": 25,
+          "Kandarin headgear 1": 5,
+          "Kandarin headgear 2": 10,
+          "Kandarin headgear 3": 15,
+          "Kandarin headgear 4": 20,
+          "Magic cape": 25,
+          "Magic cape(t)": 25
         }
       },
       "scaling": {
@@ -4373,7 +5240,10 @@
         "blockFoodWhenOverloaded": true,
         "blockPotionsWhenDepleted": true,
         "consumableExceptions": [
-          "Tea flask"
+          "Tea flask",
+          "Gout tuber",
+          "1/2 pineapple pizza",
+          "Bandages"
         ],
         "illegalDefaultUse": true,
         "blockCastWhileSeated": true,
@@ -4388,9 +5258,10 @@
           "Pineapple pizza": 25,
           "Cup of Tea": 25,
           "Beer": -25,
-          "Cider": -25,
+          "Cider": -33,
+          "Vodka": -50,
           "Keg of Beer": -100,
-          "Cooked t-bone steak": -50
+          "Cooked t-bone steak": -66
         },
         "consumableEffects": [
           {
@@ -4412,9 +5283,7 @@
             "name": "Poison Chalice",
             "delta": 0,
             "effects": [
-              "CO",
-              "CD",
-              "R33/33"
+              "X30/2"
             ]
           },
           {
@@ -5143,6 +6012,29 @@
         "bigMoveTriggers": true
       },
       "pool": {
+        "wornSpellCosts": {
+          "Zamorak cape": {
+            "Flames of Zamorak": 25
+          },
+          "Imbued Zamorak cape": {
+            "Flames of Zamorak": 25
+          },
+          "Zamorak max cape": {
+            "Flames of Zamorak": 25
+          },
+          "Imbued Zamorak max cape": {
+            "Flames of Zamorak": 25
+          },
+          "Imbued Zamorak cape (l)": {
+            "Flames of Zamorak": 25
+          },
+          "Imbued Zamorak cape (Deadman)": {
+            "Flames of Zamorak": 25
+          },
+          "Imbued Zamorak max cape (l)": {
+            "Flames of Zamorak": 25
+          }
+        },
         "maxPkp": 100,
         "combatSpellCost": 50,
         "curseSpellCost": 25,
@@ -5171,7 +6063,13 @@
           "Tome of earth": 25,
           "Tome of earth (empty)": 25,
           "Tome of fire": 25,
-          "Tome of fire (empty)": 25
+          "Tome of fire (empty)": 25,
+          "Kandarin headgear 1": 5,
+          "Kandarin headgear 2": 10,
+          "Kandarin headgear 3": 15,
+          "Kandarin headgear 4": 20,
+          "Magic cape": 25,
+          "Magic cape(t)": 25
         }
       },
       "scaling": {
@@ -5200,7 +6098,10 @@
         "blockFoodWhenOverloaded": true,
         "blockPotionsWhenDepleted": true,
         "consumableExceptions": [
-          "Tea flask"
+          "Tea flask",
+          "Gout tuber",
+          "1/2 pineapple pizza",
+          "Bandages"
         ],
         "illegalDefaultUse": true,
         "blockCastWhileSeated": true,
@@ -5215,9 +6116,10 @@
           "Pineapple pizza": 25,
           "Cup of Tea": 25,
           "Beer": -25,
-          "Cider": -25,
+          "Cider": -33,
+          "Vodka": -50,
           "Keg of Beer": -100,
-          "Cooked t-bone steak": -50
+          "Cooked t-bone steak": -66
         },
         "consumableEffects": [
           {
@@ -5239,9 +6141,7 @@
             "name": "Poison Chalice",
             "delta": 0,
             "effects": [
-              "CO",
-              "CD",
-              "R33/33"
+              "X30/2"
             ]
           },
           {
@@ -6036,7 +6936,13 @@
           "Tome of earth": 25,
           "Tome of earth (empty)": 25,
           "Tome of fire": 25,
-          "Tome of fire (empty)": 25
+          "Tome of fire (empty)": 25,
+          "Kandarin headgear 1": 5,
+          "Kandarin headgear 2": 10,
+          "Kandarin headgear 3": 15,
+          "Kandarin headgear 4": 20,
+          "Magic cape": 25,
+          "Magic cape(t)": 25
         }
       },
       "scaling": {
@@ -6062,7 +6968,10 @@
         "blockFoodWhenOverloaded": true,
         "blockPotionsWhenDepleted": true,
         "consumableExceptions": [
-          "Tea flask"
+          "Tea flask",
+          "Gout tuber",
+          "1/2 pineapple pizza",
+          "Bandages"
         ],
         "illegalDefaultUse": true,
         "blockCastWhileSeated": true,
@@ -6077,9 +6986,10 @@
           "Pineapple pizza": 25,
           "Cup of Tea": 25,
           "Beer": -25,
-          "Cider": -25,
+          "Cider": -33,
+          "Vodka": -50,
           "Keg of Beer": -100,
-          "Cooked t-bone steak": -50
+          "Cooked t-bone steak": -66
         },
         "consumableEffects": [
           {
@@ -6101,9 +7011,7 @@
             "name": "Poison Chalice",
             "delta": 0,
             "effects": [
-              "CO",
-              "CD",
-              "R33/33"
+              "X30/2"
             ]
           },
           {
@@ -6563,7 +7471,13 @@
           "Tome of earth": 25,
           "Tome of earth (empty)": 25,
           "Tome of fire": 25,
-          "Tome of fire (empty)": 25
+          "Tome of fire (empty)": 25,
+          "Kandarin headgear 1": 5,
+          "Kandarin headgear 2": 10,
+          "Kandarin headgear 3": 15,
+          "Kandarin headgear 4": 20,
+          "Magic cape": 25,
+          "Magic cape(t)": 25
         }
       },
       "scaling": {
@@ -6589,7 +7503,10 @@
         "blockFoodWhenOverloaded": true,
         "blockPotionsWhenDepleted": true,
         "consumableExceptions": [
-          "Tea flask"
+          "Tea flask",
+          "Gout tuber",
+          "1/2 pineapple pizza",
+          "Bandages"
         ],
         "illegalDefaultUse": true,
         "blockCastWhileSeated": true,
@@ -6604,9 +7521,10 @@
           "Pineapple pizza": 25,
           "Cup of Tea": 25,
           "Beer": -25,
-          "Cider": -25,
+          "Cider": -33,
+          "Vodka": -50,
           "Keg of Beer": -100,
-          "Cooked t-bone steak": -50
+          "Cooked t-bone steak": -66
         },
         "consumableEffects": [
           {
@@ -6628,9 +7546,7 @@
             "name": "Poison Chalice",
             "delta": 0,
             "effects": [
-              "CO",
-              "CD",
-              "R33/33"
+              "X30/2"
             ]
           }
         ]
