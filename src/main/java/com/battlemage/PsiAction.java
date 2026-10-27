@@ -136,6 +136,15 @@ public enum PsiAction
 		put(m, "Superior Demonbane", new int[]{62, 82}, STEP2);
 		put(m, "Dark Demonbane", FLAT, FLAT);
 
+		// ---- arceuus: thralls. Not combat spells, but they cost PKP to summon like one.
+		for (String tier : new String[]{"Lesser", "Superior", "Greater"})
+		{
+			for (String kind : new String[]{"Ghost", "Skeleton", "Zombie"})
+			{
+				put(m, "Resurrect " + tier + " " + kind, FLAT, FLAT);
+			}
+		}
+
 		// ---- debuff / root spells. Registered so they are recognised as combat spells; the curse-spell
 		// list in the config decides which of them are charged the curse cost instead of the combat cost.
 		put(m, "Confuse", FLAT, FLAT);

@@ -13,8 +13,8 @@ import net.runelite.client.ui.overlay.tooltip.Tooltip;
 import net.runelite.client.ui.overlay.tooltip.TooltipManager;
 
 /**
- * Pushes PKP tooltips: item effects when hovering the inventory / worn-equipment, and per-mode spell
- * costs when hovering a PK spell in the spellbook or autocast-selection menu.
+ * Pushes PKP tooltips: item effects when hovering the inventory / worn-equipment, and a spell's PKP
+ * cost when hovering it in the spellbook or the autocast list. Each kind can be switched off on its own.
  */
 class PkpTooltipOverlay extends Overlay
 {
@@ -22,6 +22,9 @@ class PkpTooltipOverlay extends Overlay
 	private static final int EQUIPMENT_TAB_GROUP = 387;
 	private static final int BANK_GROUP = 12;
 	private static final int BANK_INVENTORY_GROUP = 15;
+	/** The spellbook tab, and the autocast spell list a staff opens. */
+	private static final int SPELLBOOK_GROUP = 218;
+	private static final int AUTOCAST_GROUP = 201;
 
 	private final Client client;
 	private final BattleMagePlugin plugin;
@@ -89,7 +92,21 @@ class PkpTooltipOverlay extends Overlay
 			}
 		}
 
-		// spellbook hover text is deliberately not shown - spells carry no plugin-side name or cost label
+		// spell tooltips: the PKP a spell costs, when hovering it in the spellbook or the autocast list
+		if (look.spellTooltips())
+		{
+			MenuEntry top = menu[menu.length - 1];
+			Widget w = top.getWidget();
+			int group = w == null ? -1 : w.getId() >>> 16;
+			if (group == SPELLBOOK_GROUP || group == AUTOCAST_GROUP)
+			{
+				String text = plugin.spellTooltipFor(top);
+				if (text != null)
+				{
+					tooltipManager.add(new Tooltip(text));
+				}
+			}
+		}
 		return null;
 	}
 

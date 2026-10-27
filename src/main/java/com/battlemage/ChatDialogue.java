@@ -64,12 +64,26 @@ class ChatDialogue
 		final boolean player;
 		final Mood mood;
 		final String text;
+		/** A plain message: no chat head and no name, the words centred across the chatbox. */
+		final boolean plain;
 
-		private Line(boolean player, Mood mood, String text)
+		private Line(boolean player, Mood mood, String text, boolean plain)
 		{
 			this.player = player;
 			this.mood = mood;
 			this.text = text;
+			this.plain = plain;
+		}
+
+		private Line(boolean player, Mood mood, String text)
+		{
+			this(player, mood, text, false);
+		}
+
+		/** A message box, as the game shows for notices: no chat head, no speaker. */
+		static Line message(String text)
+		{
+			return new Line(false, Mood.NEUTRAL, text, true);
 		}
 
 		static Line npc(Mood mood, String text)
@@ -219,6 +233,11 @@ class ChatDialogue
 		protected void open()
 		{
 			Widget c = panels.getContainerWidget();
+			if (line.plain)
+			{
+				openPlain(c);
+				return;
+			}
 			int side = line.player ? WidgetPositionMode.ABSOLUTE_RIGHT : WidgetPositionMode.ABSOLUTE_LEFT;
 
 			Widget head = c.createChild(-1, WidgetType.MODEL);
@@ -259,6 +278,28 @@ class ChatDialogue
 			body.revalidate();
 
 			Widget cont = textIn(c, side, CONTINUE_COLOR, "Click here to continue");
+			cont.setYPositionMode(WidgetPositionMode.ABSOLUTE_BOTTOM);
+			cont.setOriginalY(8);
+			cont.setOriginalHeight(18);
+			cont.setAction(0, "Continue");
+			cont.setOnOpListener((JavaScriptCallback) ev -> advance());
+			cont.setOnMouseOverListener((JavaScriptCallback) ev -> cont.setTextColor(HOVER_COLOR));
+			cont.setOnMouseLeaveListener((JavaScriptCallback) ev -> cont.setTextColor(CONTINUE_COLOR));
+			cont.setHasListener(true);
+			cont.revalidate();
+		}
+
+		/** A message with no head and no name: the words centred across the whole chatbox. */
+		private void openPlain(Widget c)
+		{
+			Widget body = plainText(c, TEXT_COLOR, line.text);
+			body.setYPositionMode(WidgetPositionMode.ABSOLUTE_TOP);
+			body.setOriginalY(8);
+			body.setHeightMode(WidgetSizeMode.MINUS);
+			body.setOriginalHeight(8 + 30);
+			body.revalidate();
+
+			Widget cont = plainText(c, CONTINUE_COLOR, "Click here to continue");
 			cont.setYPositionMode(WidgetPositionMode.ABSOLUTE_BOTTOM);
 			cont.setOriginalY(8);
 			cont.setOriginalHeight(18);
@@ -314,6 +355,22 @@ class ChatDialogue
 		public void keyReleased(KeyEvent e)
 		{
 		}
+	}
+
+	/** Centred text across the whole chatbox, with the usual margin each side. */
+	private static Widget plainText(Widget c, int color, String text)
+	{
+		Widget w = c.createChild(-1, WidgetType.TEXT);
+		w.setText(text);
+		w.setTextColor(color);
+		w.setFontId(FONT);
+		w.setXPositionMode(WidgetPositionMode.ABSOLUTE_CENTER);
+		w.setOriginalX(0);
+		w.setWidthMode(WidgetSizeMode.MINUS);
+		w.setOriginalWidth(TEXT_MARGIN * 2);
+		w.setXTextAlignment(WidgetTextAlignment.CENTER);
+		w.setYTextAlignment(WidgetTextAlignment.CENTER);
+		return w;
 	}
 
 	/** A centred line of dialogue text in the column beside the head. */

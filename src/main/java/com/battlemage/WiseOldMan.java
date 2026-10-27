@@ -91,13 +91,16 @@ public class WiseOldMan
 	};
 
 	@Inject
-	WiseOldMan(Client client, ChatDialogue dialogue, Oath oath, Rules rules)
+	WiseOldMan(Client client, ChatDialogue dialogue, Oath oath, Rules rules, CombatGate gate)
 	{
 		this.client = client;
 		this.dialogue = dialogue;
 		this.oath = oath;
 		this.rules = rules;
+		this.gate = gate;
 	}
+
+	private final CombatGate gate;
 
 	void setOnBegin(Runnable onBegin)
 	{
@@ -151,6 +154,11 @@ public class WiseOldMan
 		if (man != null)
 		{
 			misplacedRings = 0;
+			if (gate.tooHighToStart())
+			{
+				turnAway(man.getId());
+				return;
+			}
 			introduce(man.getId());
 			return;
 		}
@@ -245,6 +253,27 @@ public class WiseOldMan
 		)));
 	}
 
+	/** Too high a combat level to begin for the first time: he doesn't think it's you. */
+	private void turnAway(int npcId)
+	{
+		// his line, then the reason as a plain message in the chatbox (no chat head)
+		dialogue.play(npcId, NAME, Arrays.asList(
+			Line.npc(Mood.CONFUSED,
+				"Your combat level leads me to believe you are not who those in the Tower were speaking of."),
+			Line.message(CombatGate.START_NOTICE)
+		), null);
+	}
+
+	/** Past the denounce lock: there is no leaving your faction now. */
+	private void tooLateToLeave(int npcId)
+	{
+		// his line, then the reason as a plain message in the chatbox (no chat head)
+		dialogue.play(npcId, NAME, Arrays.asList(
+			Line.npc(Mood.LAUGH, "Eh?! You already know it's too late to flip-flop! ... Maybe if you paid your tithes..."),
+			Line.message(CombatGate.CHANGE_NOTICE)
+		), null);
+	}
+
 	/** Sworn and ringing in front of him: he offers to release the player from their oath. */
 	private void changeOfHeart(NPC man)
 	{
@@ -253,6 +282,12 @@ public class WiseOldMan
 			() -> dialogue.menu("Select an Option", Arrays.asList(
 				new Option("Denounce faction", () ->
 				{
+					// past the combat lock there is no leaving
+					if (gate.denounceLocked())
+					{
+						tooLateToLeave(npcId);
+						return;
+					}
 					dialogue.close();
 					onDenounce.accept(man);
 				}),
@@ -310,7 +345,6 @@ public class WiseOldMan
 				new Option("How does blocking work?", () -> answer(npcId, blocking(), here)),
 				new Option("What about special attacks and food?", () -> answer(npcId, specsAndFood(), here)),
 				new Option("How do I change my god faction?", () -> answer(npcId, changeGod(), here)),
-				new Option("Can I try the PKP System without a faction?", () -> withoutFaction(npcId, here)),
 				new Option("More questions...", () -> questions(npcId, 2)))
 			: page == 0
 			? Arrays.asList(
@@ -421,7 +455,11 @@ public class WiseOldMan
 	/**
 	 * Sworn to a god and asking for the PKP system on its own. He warns first; a yes gets the
 	 * ceremony - the denouncing, then Vengeance Other - and the player comes out faction-less.
+	 *
+	 * <p>Not offered for now: nobody new can go faction-less, though anyone already faction-less
+	 * keeps playing that way. Kept so the offer can come back in a new form.
 	 */
+	@SuppressWarnings("unused")
 	private void withoutFaction(int npcId, Runnable back)
 	{
 		dialogue.play(npcId, NAME, Arrays.asList(
@@ -430,18 +468,27 @@ public class WiseOldMan
 			Line.npc(Mood.NEUTRAL, "...sworn to a god faction, with all the restrictions that come with it."),
 			Line.npc(Mood.QUESTION, "Are you sure?")
 		), () -> dialogue.menu("Are you sure?", Arrays.asList(
-			new Option("Yes", () -> dialogue.play(npcId, NAME, Arrays.asList(
-				Line.player(Mood.HAPPY, "Yes, I'm sure."),
-				Line.npc(Mood.LAUGH, "Very well! First, your god must let you go... then I'll give you something to fight with. Hold still! Nyehehe!")
-			), () ->
+			new Option("Yes", () ->
 			{
-				dialogue.close();
-				NPC man = talkingTo;
-				if (man != null)
+				// going faction-less starts with a denouncing, so the same lock applies
+				if (gate.denounceLocked())
 				{
-					onFactionless.accept(man);
+					tooLateToLeave(npcId);
+					return;
 				}
-			})),
+				dialogue.play(npcId, NAME, Arrays.asList(
+					Line.player(Mood.HAPPY, "Yes, I'm sure."),
+					Line.npc(Mood.LAUGH, "Very well! First, your god must let you go... then I'll give you something to fight with. Hold still! Nyehehe!")
+				), () ->
+				{
+					dialogue.close();
+					NPC man = talkingTo;
+					if (man != null)
+					{
+						onFactionless.accept(man);
+					}
+				});
+			}),
 			new Option("No", () -> dialogue.play(npcId, NAME, Arrays.asList(
 				Line.player(Mood.NEUTRAL, "No, I'll stay with my god."),
 				Line.npc(Mood.HAPPY, "A wise choice! Spend some time reading from my shelves.")

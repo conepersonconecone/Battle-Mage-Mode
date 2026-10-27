@@ -119,6 +119,15 @@ public class ContentPack
 		/** Equipment with worn chances - see {@link ChanceEffect}. */
 		public Map<String, ChanceEffect> chanceItems = new LinkedHashMap<>();
 
+		/** Items that, carried in the inventory, may make a cast cheaper - see {@link CarriedSpellChance}. */
+		public Map<String, CarriedSpellChance> carriedSpellChances = new LinkedHashMap<>();
+
+		/** The same, for worn items (the ancient sceptres). */
+		public Map<String, CarriedSpellChance> wornSpellChances = new LinkedHashMap<>();
+
+		/** Worn items that swing PKP up or down at random on a timer - see {@link RandomPkp}. */
+		public Map<String, RandomPkp> randomPkpItems = new LinkedHashMap<>();
+
 		/** Equipment that makes you immune to Depletion while you are in the Wilderness. */
 		public List<String> wildernessDepletionImmuneItems = new ArrayList<>();
 
@@ -385,6 +394,26 @@ public class ContentPack
 		public int regenPercent = 100;
 		/** Food and drink PKP gains, in percent of normal. */
 		public int restorePercent = 100;
+	}
+
+	/**
+	 * A chance, rolled on each cast while the item is carried (or worn, for
+	 * {@link Shared#wornSpellChances}), that the spell costs less: {@code chance} in percent,
+	 * {@code discount} as target -> PKP off, and {@code free} as targets that cost nothing on a hit.
+	 * Targets are as in {@link Shared#wornSpellCosts}.
+	 */
+	public static class CarriedSpellChance
+	{
+		public int chance;
+		public Map<String, Integer> discount = new LinkedHashMap<>();
+		public java.util.List<String> free = new java.util.ArrayList<>();
+	}
+
+	/** While worn: every {@code everyMs}, PKP goes up or down by {@code amount}, a coin flip each time. */
+	public static class RandomPkp
+	{
+		public int amount;
+		public int everyMs = 1000;
 	}
 
 	/** Worn chances that change an action, each in percent. */

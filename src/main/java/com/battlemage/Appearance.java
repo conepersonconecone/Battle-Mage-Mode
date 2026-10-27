@@ -84,6 +84,7 @@ public class Appearance
 		DEFAULTS.put("pkpPopupsEnabled", true);
 		DEFAULTS.put("pkpPopupSeconds", 3);
 		DEFAULTS.put("inventoryTooltips", true);
+		DEFAULTS.put("spellTooltips", true);
 		DEFAULTS.put("castCardsEnabled", true);
 		DEFAULTS.put("levelUpCards", true);
 		DEFAULTS.put("meleeColor", new Color(0xF2F2F2));
@@ -611,6 +612,11 @@ public class Appearance
 	boolean inventoryTooltips()
 	{
 		return get("inventoryTooltips", config::inventoryTooltips);
+	}
+
+	boolean spellTooltips()
+	{
+		return get("spellTooltips", config::spellTooltips);
 	}
 
 	boolean castCardsEnabled()

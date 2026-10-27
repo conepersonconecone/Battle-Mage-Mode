@@ -22,10 +22,14 @@ public class Oath
 {
 	static final String GROUP = "battlemageoath";
 	private static final String KEY_FACTION = "faction";
+	/** The faction most recently denounced, kept so a high-level player can only go back to it. */
+	private static final String KEY_PREVIOUS = "previousFaction";
 
 	private final ConfigManager configManager;
 
 	private Faction faction;
+	/** The faction denounced last, or null if this player has never left one. */
+	private Faction previous;
 
 	/**
 	 * True between leaving a god and becoming faction-less in front of the Wise Old Man, so the
@@ -75,6 +79,21 @@ public class Oath
 		return faction;
 	}
 
+	/** The faction denounced last, or null if this player has never left one. */
+	public Faction getPrevious()
+	{
+		return previous;
+	}
+
+	/** Has this player ever sworn to a faction (the one now, or one since denounced)? */
+	public boolean hasEverSworn()
+	{
+		// the faction pop-up's one-time tip is marked seen the first time anyone swears, so it also
+		// covers players who denounced before the denounced faction was remembered
+		Boolean tip = configManager.getConfiguration(GROUP, "sidePanelTipShown", Boolean.class);
+		return faction != null || previous != null || Boolean.TRUE.equals(tip);
+	}
+
 	/** The {@link ContentPack#profiles} key to enforce, or null when no god is in force. */
 	public String getRulesetKey()
 	{
@@ -103,6 +122,7 @@ public class Oath
 		{
 			return;
 		}
+		previous = faction;
 		faction = null;
 		persist();
 		changeListener.run();
@@ -113,6 +133,7 @@ public class Oath
 	private void load()
 	{
 		faction = Faction.byName(configManager.getConfiguration(GROUP, KEY_FACTION));
+		previous = Faction.byName(configManager.getConfiguration(GROUP, KEY_PREVIOUS));
 	}
 
 	private void persist()
@@ -124,6 +145,14 @@ public class Oath
 		else
 		{
 			configManager.setConfiguration(GROUP, KEY_FACTION, faction.name());
+		}
+		if (previous == null)
+		{
+			configManager.unsetConfiguration(GROUP, KEY_PREVIOUS);
+		}
+		else
+		{
+			configManager.setConfiguration(GROUP, KEY_PREVIOUS, previous.name());
 		}
 	}
 }

@@ -95,6 +95,9 @@ public class OnboardingOverlay extends Overlay
 	private Screen screen = Screen.GODS;
 	private Faction selected;
 	private boolean active;
+	private final CombatGate gate;
+	/** Past the combat lock: the one faction this player may swear back to, else null. */
+	private Faction locked;
 
 	private final Map<Faction, Rectangle> factionHits = new LinkedHashMap<>();
 	private Rectangle lockHit;
@@ -119,9 +122,10 @@ public class OnboardingOverlay extends Overlay
 
 	@Inject
 	private OnboardingOverlay(Client client, Oath oath, Rules rules, MouseManager mouseManager,
-		ConfigManager configManager)
+		ConfigManager configManager, CombatGate gate)
 	{
 		this.client = client;
+		this.gate = gate;
 		this.oath = oath;
 		this.rules = rules;
 		this.mouseManager = mouseManager;
@@ -151,6 +155,11 @@ public class OnboardingOverlay extends Overlay
 		// rather than starting from a blank screen.
 		Faction current = oath.getFaction();
 		selected = current != null && current.isGod() ? current : null;
+		locked = gate.lockedTo();
+		if (locked != null && locked.isGod())
+		{
+			selected = locked;
+		}
 		mouseManager.registerMouseListener(mouseAdapter);
 	}
 
@@ -211,6 +220,10 @@ public class OnboardingOverlay extends Overlay
 
 	private void pickGod(Faction f)
 	{
+		if (locked != null && f != locked)
+		{
+			return;
+		}
 		selected = f;
 	}
 
@@ -431,10 +444,17 @@ public class OnboardingOverlay extends Overlay
 		centre(g, fm, lore.displayName, r, r.y + 58);
 
 		// The one word of doctrine, and nothing else - the card is a choice, not a briefing.
+		boolean barred = locked != null && faction != locked;
+		if (barred)
+		{
+			// past the combat lock only the denounced faction can be chosen again
+			g.setColor(new Color(10, 12, 16, 150));
+			g.fill(new RoundRectangle2D.Double(r.x, r.y, r.width, r.height, 8, 8));
+		}
 		g.setFont(LABEL_FONT);
 		fm = g.getFontMetrics();
-		g.setColor(FactionSigils.alpha(accent, 235));
-		centre(g, fm, lore.epithet.toUpperCase(), r, r.y + 72);
+		g.setColor(barred ? INK_FAINT : FactionSigils.alpha(accent, 235));
+		centre(g, fm, barred ? "LOCKED" : lore.epithet.toUpperCase(), r, r.y + 72);
 	}
 
 	// ------------------------------------------------------------------ util

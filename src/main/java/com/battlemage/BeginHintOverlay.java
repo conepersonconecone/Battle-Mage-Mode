@@ -45,18 +45,18 @@ import net.runelite.client.ui.overlay.OverlayPosition;
 @Singleton
 class BeginHintOverlay extends Overlay
 {
-	private static final Color AMBER = new Color(0xFF, 0xB9, 0x11);
+	static final Color AMBER = new Color(0xFF, 0xB9, 0x11);
 	/** A few shades lighter, for while the mouse is over it. */
-	private static final Color AMBER_HOVER = new Color(0xFF, 0xD2, 0x66);
+	static final Color AMBER_HOVER = new Color(0xFF, 0xD2, 0x66);
 	/** A soft drop shadow, as the game gives its own icons, so it holds up on bright ground. */
 	private static final Color SHADOW = new Color(0, 0, 0, 90);
-	private static final Color BOX = new Color(18, 14, 10, 235);
-	private static final Color BOX_TEXT = new Color(255, 236, 214);
+	static final Color BOX = new Color(18, 14, 10, 235);
+	static final Color BOX_TEXT = new Color(255, 236, 214);
 
 	/** The ring's outer diameter, and a small margin around it for the shadow. */
-	private static final int RING_D = 30;
-	private static final int GLOW_PAD = 2;
-	private static final int BUBBLE_D = RING_D + GLOW_PAD * 2;
+	static final int RING_D = 30;
+	static final int GLOW_PAD = 2;
+	static final int BUBBLE_D = RING_D + GLOW_PAD * 2;
 	private static final int BUBBLE_H = BUBBLE_D;
 
 	/** How many times the box has been opened, ever - stored beside the oath, never shown as a setting. */
@@ -169,7 +169,8 @@ class BeginHintOverlay extends Overlay
 
 	private boolean showing()
 	{
-		return !oath.isSworn() && !oath.inCeremony() && !onboarding.isActive() && client.getGameState() == GameState.LOGGED_IN;
+		return !oath.isSworn() && !oath.inCeremony() && !onboarding.isActive() && !CombatNoticeOverlay.isShowing()
+			&& client.getGameState() == GameState.LOGGED_IN;
 	}
 
 	@Override
@@ -262,6 +263,12 @@ class BeginHintOverlay extends Overlay
 	 */
 	private void drawRing(Graphics2D g, int x, int y)
 	{
+		drawAlert(g, x, y, hovered ? AMBER_HOVER : AMBER);
+	}
+
+	/** The amber "!" ring itself, shared with {@link CombatNoticeOverlay} so both look the same. */
+	static void drawAlert(Graphics2D g, int x, int y, Color colour)
+	{
 		double cx = x + BUBBLE_D / 2.0;
 		double cy = y + BUBBLE_D / 2.0;
 		double r = RING_D / 2.0;
@@ -295,14 +302,14 @@ class BeginHintOverlay extends Overlay
 		g.fill(mark);
 		g.translate(-1, -1);
 
-		g.setColor(hovered ? AMBER_HOVER : AMBER);
+		g.setColor(colour);
 		g.draw(ring);
 		g.fill(mark);
 
 		g.setStroke(old);
 	}
 
-	private static List<String> wrap(String text, FontMetrics fm, int maxW)
+	static List<String> wrap(String text, FontMetrics fm, int maxW)
 	{
 		List<String> out = new ArrayList<>();
 		StringBuilder line = new StringBuilder();

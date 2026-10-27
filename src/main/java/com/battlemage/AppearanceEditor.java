@@ -182,7 +182,8 @@ class AppearanceEditor extends JPanel
 		};
 		add(check("PKP change popups", "pkpPopupsEnabled", look.pkpPopupsEnabled(), pop));
 		add(slider("Popup duration", "pkpPopupSeconds", 1, 10, look.pkpPopupSeconds(), v -> v + " s", pop));
-		add(check("Item tooltips", "inventoryTooltips", look.inventoryTooltips(), bar));
+		add(check("Inventory tooltips", "inventoryTooltips", look.inventoryTooltips(), bar));
+		add(check("Spellbook tooltips", "spellTooltips", look.spellTooltips(), bar));
 
 		add(Box.createVerticalStrut(10));
 		add(buttons());

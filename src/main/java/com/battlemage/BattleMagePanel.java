@@ -38,6 +38,7 @@ class BattleMagePanel extends PluginPanel
 
 	private final Oath oath;
 	private final Rules rules;
+	private final CombatGate gate;
 	private final Appearance look;
 	private final AppearanceEditor.Previews previews;
 
@@ -57,10 +58,11 @@ class BattleMagePanel extends PluginPanel
 	/** Where a faction is chosen from - the panel can only point there. */
 	static final String BEGIN_HINT = "Ring the Cowbell Amulet in front of the Wise Old Man";
 
-	BattleMagePanel(Oath oath, Rules rules, Appearance look, AppearanceEditor.Previews previews)
+	BattleMagePanel(Oath oath, Rules rules, CombatGate gate, Appearance look, AppearanceEditor.Previews previews)
 	{
 		this.oath = oath;
 		this.rules = rules;
+		this.gate = gate;
 		this.look = look;
 		this.previews = previews;
 
@@ -269,9 +271,15 @@ class BattleMagePanel extends PluginPanel
 		clear.setFocusPainted(false);
 		clear.setAlignmentX(Component.LEFT_ALIGNMENT);
 		clear.setMaximumSize(new Dimension(Integer.MAX_VALUE, 26));
+		// the combat lock: said on hover always, and past it the button greys out (the hover stays)
+		clear.setToolTipText(CombatGate.DENOUNCE_TIP);
+		if (gate.denounceLocked())
+		{
+			clear.setEnabled(false);
+		}
 		clear.addActionListener(e ->
 		{
-			if (!oath.isSworn())
+			if (!oath.isSworn() || gate.denounceLocked())
 			{
 				return;
 			}

@@ -117,6 +117,21 @@ public class BattleMagePlugin extends Plugin
 	@Inject private BeginHintOverlay beginHintOverlay;
 	@Inject private FactionAuraOverlay factionAuraOverlay;
 	@Inject private SoulAura soulAura;
+	@Inject private DemonicBrutus demonicBrutus;
+	@Inject private ClownRespawn clownRespawn;
+	@Inject private CombatGate combatGate;
+	@Inject private CombatNoticeOverlay combatNotice;
+	/** Combat level as last seen, so a level-up across the warning levels is caught once. */
+	private int lastCombatLevel;
+	/** Ranged xp as last seen (-1 until the login reading), for the first-xp cannon reminder. */
+	private int lastRangedXp = -1;
+	/** Saved once the first-Ranged-xp cannon reminder has been shown. */
+	private static final String KEY_CANNON_FIRST = "cannonFirstXpShown";
+	/** Saved when "Don't remind me again" is ticked on the cannon reminder. */
+	private static final String KEY_CANNON_OFF = "cannonReminderOff";
+
+	/** Hitpoints as last seen, so the drop to 0 is caught once. */
+	private int lastBoostedHp = -1;
 	@Inject private ChatDialogue chatDialogue;
 	@Inject private EventBus eventBus;
 
@@ -235,6 +250,16 @@ public class BattleMagePlugin extends Plugin
 		"zamorak staff", "flames of zamorak");
 	/** {@code item name -> (target -> PKP off the cost)} while worn (the elemental staves). */
 	private final Map<String, Map<String, Integer>> wornSpellDiscountByItem = new HashMap<>();
+	/**
+	 * Items that may make a cast cheaper: lower-case name -> {chance percent, target -> PKP off,
+	 * targets made free}. Carried ones roll from the inventory, worn ones from the equipment.
+	 */
+	private final Map<String, Object[]> carriedChanceByItem = new HashMap<>();
+	private final Map<String, Object[]> wornChanceByItem = new HashMap<>();
+	/** Worn items that swing PKP at random: lower-case name -> {amount, every ms}. */
+	private final Map<String, int[]> randomPkpByItem = new HashMap<>();
+	/** When each random swing last fired, by item name. */
+	private final Map<String, Long> randomPkpLastMs = new HashMap<>();
 	/** Set bonuses: pieces (lower-case), minimum worn, target -> percent. */
 	private final List<Object[]> setBonusList = new ArrayList<>();
 	/** What is worn right now: target -> cheapest cost, and target -> combined percent. Tick-refreshed. */
@@ -699,6 +724,9 @@ public class BattleMagePlugin extends Plugin
 		depletionImmuneAttacks = 0;
 		overlayManager.add(factionAuraOverlay);
 		overlayManager.add(barOverlay);
+		demonicBrutus.start();
+		overlayManager.add(combatNotice);
+		combatNotice.start();
 		overlayManager.add(effectTimerOverlay);
 		overlayManager.add(stateOverlay);
 		overlayManager.add(tooltipOverlay);
@@ -729,7 +757,7 @@ public class BattleMagePlugin extends Plugin
 		wiseOldMan.setOnFactionless(this::factionlessCeremony);
 		eventBus.register(wiseOldMan);
 		beginHintShown = false;
-		panel = new BattleMagePanel(oath, rules, look,
+		panel = new BattleMagePanel(oath, rules, combatGate, look,
 			new AppearanceEditor.Previews()
 			{
 				@Override
@@ -1029,6 +1057,13 @@ public class BattleMagePlugin extends Plugin
 		// first run gets. Reselecting a faction should feel identical to choosing one.
 		onboardingOverlay.close();
 		clearReveal();
+		// past the combat lock, a player who left the faction-less path can only walk it again
+		if (combatGate.lockedTo() == Faction.FACTIONLESS)
+		{
+			oath.swear(Faction.FACTIONLESS);
+			beginReveal();
+			return;
+		}
 		onboardingOverlay.open();
 	}
 
@@ -1132,6 +1167,10 @@ public class BattleMagePlugin extends Plugin
 		look.cancel();
 		overlayManager.remove(factionAuraOverlay);
 		clientThread.invoke(soulAura::remove);
+		clientThread.invoke(demonicBrutus::stop);
+		clientThread.invoke(clownRespawn::stop);
+		combatNotice.stop();
+		overlayManager.remove(combatNotice);
 		overlayManager.remove(barOverlay);
 		overlayManager.remove(effectTimerOverlay);
 		overlayManager.remove(stateOverlay);
@@ -1799,7 +1838,7 @@ public class BattleMagePlugin extends Plugin
 		}
 
 		final ItemComposition comp = itemManager.getItemComposition(itemId);
-		final String name = comp == null ? "" : comp.getName().toLowerCase(Locale.ROOT);
+		final String name = ornamentAsBase(comp == null ? "" : comp.getName().toLowerCase(Locale.ROOT));
 
 		final ItemStats stats = itemManager.getItemStats(itemId);
 		final ItemEquipmentStats eq = stats != null ? stats.getEquipment() : null;
@@ -1880,7 +1919,23 @@ public class BattleMagePlugin extends Plugin
 		return BlockKind.NONE;
 	}
 
-	private void removeEntry(MenuEntry target)
+	/**
+	 * An ornament ("(or)") version that no rule names itself is judged as its plain version, so the
+	 * codex never has to list both. One that is named keeps its own entry.
+	 */
+	private String ornamentAsBase(String name)
+	{
+		if (!name.endsWith(" (or)"))
+		{
+			return name;
+		}
+		boolean named = blockedWeaponNames.contains(name) || magicForceNames.contains(name)
+			|| weaponExceptionNames.contains(name) || pacifistNames.contains(name)
+			|| magicExceptionNames.contains(name) || rangedNames.contains(name);
+		return named ? name : name.substring(0, name.length() - " (or)".length());
+	}
+
+		private void removeEntry(MenuEntry target)
 	{
 		MenuEntry[] kept = Arrays.stream(client.getMenuEntries())
 			.filter(e -> e != target)
@@ -2173,6 +2228,7 @@ public class BattleMagePlugin extends Plugin
 	@Subscribe
 	public void onMenuOptionClicked(MenuOptionClicked event)
 	{
+		clownRespawn.onMenuAction(event.getMenuAction());
 
 		final MenuEntry entry = event.getMenuEntry();
 		final String option = entry.getOption();
@@ -2444,7 +2500,26 @@ public class BattleMagePlugin extends Plugin
 			return;
 		}
 		Skill skill = event.getSkill();
+		if (skill == Skill.HITPOINTS)
+		{
+			int hp = event.getBoostedLevel();
+			if (hp <= 0 && lastBoostedHp > 0)
+			{
+				brutusOnDeath();
+			}
+			// back to 10 or more after dying: respawned. The ring stops, and the clown routine starts.
+			else if (hp >= RESPAWN_HP && lastBoostedHp < RESPAWN_HP)
+			{
+				demonicBrutus.cancel();
+				clownRespawn.respawned();
+			}
+			lastBoostedHp = hp;
+		}
 		int level = event.getLevel();
+		if (skill == Skill.RANGED)
+		{
+			cannonReminder(event.getXp(), level, lastRealLevel.get(skill));
+		}
 		Integer prev = lastRealLevel.put(skill, level);
 		// only fire on a genuine level increase, and never on the initial login population
 		if (prev == null || level <= prev || level <= 1)
@@ -2452,6 +2527,122 @@ public class BattleMagePlugin extends Plugin
 			return;
 		}
 		noteLevelUp(skill.getName(), level, skillColor(skill));
+	}
+
+	/**
+	 * Hitpoints just hit 0. Beside Brutus, with no Cowbell amulet worn or carried, Brutus turns into a
+	 * ring of Demonic Brutuses around the spot. Client thread (StatChanged).
+	 */
+	private void brutusOnDeath()
+	{
+		Player me = client.getLocalPlayer();
+		if (me == null || me.getWorldLocation() == null || carriesCowbell())
+		{
+			return;
+		}
+		boolean near = false;
+		for (NPC npc : client.getNpcs())
+		{
+			if (DemonicBrutus.isBrutus(npc) && npc.getWorldLocation() != null
+				&& npc.getWorldLocation().distanceTo(me.getWorldLocation()) <= BRUTUS_RANGE_TILES)
+			{
+				near = true;
+				break;
+			}
+		}
+		if (near)
+		{
+			demonicBrutus.trigger(me.getLocalLocation(), client.getTopLevelWorldView().getPlane());
+			clownRespawn.arm();
+		}
+	}
+
+	/**
+	 * The Dwarf Multicannon reminder, while the window is still open (Ranged under its limit, for a
+	 * god whose rules have the window): the first Ranged xp ever gained, then every Ranged level
+	 * gained below the limit. Client thread (StatChanged).
+	 */
+	private void cannonReminder(int xp, int level, Integer prevLevel)
+	{
+		int before = lastRangedXp;
+		lastRangedXp = xp;
+		// the first reading after login only sets the baseline
+		if (before < 0 || !oath.isSworn() || !rules.enforceCannonLevel() || level >= rules.cannonMaxRangedLevel())
+		{
+			return;
+		}
+		boolean firstXp = xp > before
+			&& !Boolean.TRUE.equals(configManager.getConfiguration(Oath.GROUP, KEY_CANNON_FIRST, Boolean.class));
+		boolean levelUp = prevLevel != null && level > prevLevel;
+		if (!firstXp && !levelUp)
+		{
+			return;
+		}
+		if (firstXp)
+		{
+			configManager.setConfiguration(Oath.GROUP, KEY_CANNON_FIRST, true);
+		}
+		combatNotice.remind("The Dwarf Multicannon is a window, not an unlock. You may place one while your Ranged is under "
+			+ rules.cannonMaxRangedLevel() + "; afterwards it becomes an over-priced souvenir.", KEY_CANNON_OFF);
+	}
+
+	/** Hitpoints at or above this after a death mean the player has respawned. */
+	private static final int RESPAWN_HP = 10;
+
+	/** How close Brutus has to be, in tiles, when the player dies. */
+	private static final int BRUTUS_RANGE_TILES = 15;
+
+	/** A Cowbell amulet in the inventory or the neck slot. */
+	private boolean carriesCowbell()
+	{
+		for (InventoryID where : new InventoryID[]{InventoryID.INVENTORY, InventoryID.EQUIPMENT})
+		{
+			ItemContainer c = client.getItemContainer(where);
+			if (c == null)
+			{
+				continue;
+			}
+			for (Item item : c.getItems())
+			{
+				if (item != null && isCowbell(item.getId()))
+				{
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Keeps the combat level the oath limits read, warns on reaching combat 85, 86 and 87 while
+	 * sworn, and rebuilds the side panel when the denounce lock switches on or off. Client thread.
+	 */
+	private void trackCombatLevel()
+	{
+		Player me = client.getLocalPlayer();
+		if (me == null || client.getGameState() != GameState.LOGGED_IN)
+		{
+			return;
+		}
+		int level = me.getCombatLevel();
+		if (level <= 0 || level == lastCombatLevel)
+		{
+			return;
+		}
+		int before = lastCombatLevel;
+		lastCombatLevel = level;
+		combatGate.setCombatLevel(level);
+		// a real level-up (not the first reading after login) onto 85, 86 or 87
+		if (before > 0 && level > before && level >= CombatGate.WARN_FROM && level < CombatGate.LOCK_COMBAT
+			&& oath.isSworn())
+		{
+			combatNotice.warn(CombatGate.warning(level));
+		}
+		boolean lockedNow = level >= CombatGate.LOCK_COMBAT;
+		if (panel != null && (before <= 0 || lockedNow != (before >= CombatGate.LOCK_COMBAT)))
+		{
+			javax.swing.SwingUtilities.invokeLater(panel::rebuild);
+		}
 	}
 
 	/** Queues a level-up card (themed to the skill); cards display one at a time from the top-right. */
@@ -2550,7 +2741,7 @@ public class BattleMagePlugin extends Plugin
 		lastSprite.put(fam, pendingCastSprite);
 		noteCast(fam, spell, pendingCastSprite);
 		double before = pkp;
-		applyCast(withPoison(costForSpell(spell)), spell);
+		applyCast(withPoison(carriedChanceDiscount(spell, costForSpell(spell))), spell);
 		notePkpChange(pkp - before);
 		lastCombatMs = now;
 	}
@@ -3073,11 +3264,16 @@ public class BattleMagePlugin extends Plugin
 	public void onClientTick(ClientTick event)
 	{
 		soulAura.update();
+		demonicBrutus.update();
+		clownRespawn.update();
+		randomPkpSwings();
 	}
 
 	@Subscribe
 	public void onGameTick(GameTick event)
 	{
+		trackCombatLevel();
+		clownRespawn.onGameTick();
 		final long now = System.currentTimeMillis();
 		tickCounter++;
 
@@ -4073,6 +4269,152 @@ public class BattleMagePlugin extends Plugin
 		return Math.max(0, base);
 	}
 
+	/**
+	 * Worn random-swing items (the Jester cape): each on its own timer, PKP goes up or down by its
+	 * amount, a coin flip each time. A gain stops at the maximum; a loss can deplete. Client thread.
+	 */
+	private void randomPkpSwings()
+	{
+		if (randomPkpByItem.isEmpty() || !oath.isSworn() || client.getGameState() != GameState.LOGGED_IN)
+		{
+			return;
+		}
+		ItemContainer eq = client.getItemContainer(InventoryID.EQUIPMENT);
+		if (eq == null)
+		{
+			return;
+		}
+		long now = System.currentTimeMillis();
+		Set<String> worn = new HashSet<>();
+		for (Item item : eq.getItems())
+		{
+			if (item == null || item.getId() <= 0)
+			{
+				continue;
+			}
+			String name = itemName(item.getId());
+			int[] r = randomPkpByItem.get(name);
+			if (r == null || !worn.add(name))
+			{
+				continue;
+			}
+			Long last = randomPkpLastMs.get(name);
+			if (last == null)
+			{
+				// just put on: the first swing comes one interval later
+				randomPkpLastMs.put(name, now);
+				continue;
+			}
+			if (now - last < r[1])
+			{
+				continue;
+			}
+			randomPkpLastMs.put(name, now);
+			double before = pkp;
+			addPkp(stateSaveRng.nextBoolean() ? r[0] : -r[0]);
+			notePkpChange(pkp - before);
+		}
+		// taken off: forget the timer, so putting it back on waits a full interval again
+		randomPkpLastMs.keySet().retainAll(worn);
+	}
+
+	/** Reads a codex chance table into {chance, target -> PKP off, targets made free}, keyed by lower-case name. */
+	private static void parseSpellChances(Map<String, ContentPack.CarriedSpellChance> from, Map<String, Object[]> into)
+	{
+		into.clear();
+		for (Map.Entry<String, ContentPack.CarriedSpellChance> e : from.entrySet())
+		{
+			ContentPack.CarriedSpellChance c = e.getValue();
+			if (e.getKey() == null || c == null || c.chance <= 0)
+			{
+				continue;
+			}
+			Map<String, Integer> targets = new HashMap<>();
+			if (c.discount != null)
+			{
+				for (Map.Entry<String, Integer> t : c.discount.entrySet())
+				{
+					if (t.getKey() != null && t.getValue() != null && t.getValue() > 0)
+					{
+						targets.put(t.getKey().trim().toLowerCase(Locale.ROOT), t.getValue());
+					}
+				}
+			}
+			Set<String> free = new HashSet<>();
+			if (c.free != null)
+			{
+				for (String t : c.free)
+				{
+					if (t != null && !t.trim().isEmpty())
+					{
+						free.add(t.trim().toLowerCase(Locale.ROOT));
+					}
+				}
+			}
+			if (!targets.isEmpty() || !free.isEmpty())
+			{
+				into.put(e.getKey().trim().toLowerCase(Locale.ROOT), new Object[]{Math.min(100, c.chance), targets, free});
+			}
+		}
+	}
+
+	/**
+	 * Rolls each chance item once for this cast: carried ones (the Airtight pot) from the inventory,
+	 * worn ones (the ancient sceptres) from the equipment. On a hit its discount for the spell comes
+	 * off, or the spell costs nothing. Each kind of item rolls once, however many there are.
+	 */
+	private int carriedChanceDiscount(String spell, int cost)
+	{
+		if (cost <= 0 || spell == null || (carriedChanceByItem.isEmpty() && wornChanceByItem.isEmpty()))
+		{
+			return cost;
+		}
+		PsiAction fam = familyForSpell(spell);
+		if (fam == null)
+		{
+			return cost;
+		}
+		List<String> targets = costTargets(spell.replaceAll("<[^>]*>", "").trim().toLowerCase(Locale.ROOT), fam);
+		cost = rollChances(client.getItemContainer(InventoryID.INVENTORY), carriedChanceByItem, targets, cost);
+		return rollChances(client.getItemContainer(InventoryID.EQUIPMENT), wornChanceByItem, targets, cost);
+	}
+
+	private int rollChances(ItemContainer where, Map<String, Object[]> table, List<String> targets, int cost)
+	{
+		if (where == null || table.isEmpty() || cost <= 0)
+		{
+			return cost;
+		}
+		Set<String> rolled = new HashSet<>();
+		for (Item item : where.getItems())
+		{
+			if (item == null || item.getId() <= 0)
+			{
+				continue;
+			}
+			String name = itemName(item.getId());
+			Object[] c = table.get(name);
+			if (c == null || !rolled.add(name))
+			{
+				continue;
+			}
+			@SuppressWarnings("unchecked") Map<String, Integer> off = (Map<String, Integer>) c[1];
+			@SuppressWarnings("unchecked") Set<String> free = (Set<String>) c[2];
+			int best = 0;
+			boolean makesFree = false;
+			for (String t : targets)
+			{
+				best = Math.max(best, off.getOrDefault(t, 0));
+				makesFree |= free.contains(t);
+			}
+			if ((best > 0 || makesFree) && stateSaveRng.nextInt(100) < (Integer) c[0])
+			{
+				cost = makesFree ? 0 : cost - best;
+			}
+		}
+		return Math.max(0, cost);
+	}
+
 	/** The cost before worn equipment: Magic-level cost, then the spell's own, then its family's. */
 	private int baseCostForSpell(String name, PsiAction fam)
 	{
@@ -4639,6 +4981,34 @@ public class BattleMagePlugin extends Plugin
 		return Math.max(0.3, Math.min(3.5, currentRegenPerTick() / base));
 	}
 
+	/**
+	 * The hover text for a spell in the spellbook or the autocast list: its PKP cost as a cast would
+	 * charge it right now (worn discounts, poison, drinks and the Cursed amulet of magic included).
+	 * Null for anything that costs nothing, or before an oath is sworn. The Expeditious bracelet's
+	 * chance of a free cast is a roll, so it is left out.
+	 */
+	String spellTooltipFor(MenuEntry me)
+	{
+		if (me == null || !rules.isActive())
+		{
+			return null;
+		}
+		for (String c : spellCandidates(me))
+		{
+			if (familyForSpell(c) == null)
+			{
+				continue;
+			}
+			int cost = (int) Math.round(withPoison(costForSpell(c)) * spendMultiplier());
+			if (cost <= 0)
+			{
+				return null;
+			}
+			return "<col=46c8ff>PKP</col> " + signedPkp(-cost) + " per cast";
+		}
+		return null;
+	}
+
 	String tooltipFor(int itemId)
 	{
 		if (itemId <= 0)
@@ -4773,6 +5143,34 @@ public class BattleMagePlugin extends Plugin
 			{
 				String label = costTargetLabel(t.getKey());
 				lines.add("<col=46c8ff>PKP</col> " + label + costVerb(label) + t.getValue() + " less while worn");
+			}
+		}
+		int[] swing = randomPkpByItem.get(tipName);
+		if (swing != null)
+		{
+			String every = swing[1] == 1000 ? "second" : (swing[1] % 1000 == 0 ? (swing[1] / 1000) + " seconds" : swing[1] + " ms");
+			lines.add("<col=46c8ff>PKP</col> +" + swing[0] + " or -" + swing[0] + " at random every " + every + " while worn");
+		}
+		for (Object[] chance : new Object[][]{carriedChanceByItem.get(tipName), wornChanceByItem.get(tipName)})
+		{
+			if (chance == null)
+			{
+				continue;
+			}
+			String when = chance == carriedChanceByItem.get(tipName) ? " while carried" : " while worn";
+			@SuppressWarnings("unchecked") Map<String, Integer> off = (Map<String, Integer>) chance[1];
+			@SuppressWarnings("unchecked") Set<String> free = (Set<String>) chance[2];
+			for (Map.Entry<String, Integer> t : off.entrySet())
+			{
+				String label = costTargetLabel(t.getKey());
+				lines.add("<col=46c8ff>PKP</col> " + chance[0] + "% chance: " + label
+					+ costVerb(label) + t.getValue() + " less" + when);
+			}
+			for (String t : free)
+			{
+				String label = costTargetLabel(t);
+				lines.add("<col=46c8ff>PKP</col> " + chance[0] + "% chance: " + label
+					+ costVerb(label) + "nothing" + when);
 			}
 		}
 		for (Object[] set : setBonusList)
@@ -6203,6 +6601,18 @@ public class BattleMagePlugin extends Plugin
 			{
 				wornBonusByName.put(e.getKey().trim().toLowerCase(Locale.ROOT),
 					new int[]{b.meleeGain, b.blockGain, Math.max(0, b.regenPercent), Math.max(0, b.restorePercent)});
+			}
+		}
+		parseSpellChances(rules.carriedSpellChances(), carriedChanceByItem);
+		parseSpellChances(rules.wornSpellChances(), wornChanceByItem);
+		randomPkpByItem.clear();
+		randomPkpLastMs.clear();
+		for (Map.Entry<String, ContentPack.RandomPkp> e : rules.randomPkpItems().entrySet())
+		{
+			ContentPack.RandomPkp r = e.getValue();
+			if (e.getKey() != null && r != null && r.amount > 0)
+			{
+				randomPkpByItem.put(e.getKey().trim().toLowerCase(Locale.ROOT), new int[]{r.amount, Math.max(200, r.everyMs)});
 			}
 		}
 		chanceByName.clear();
