@@ -1308,7 +1308,22 @@
       "Crumble Undead": 33,
       "Bind": 25,
       "Snare": 25,
-      "Entangle": 25
+      "Entangle": 25,
+      "Resurrect Lesser Ghost": 50,
+      "Resurrect Lesser Skeleton": 50,
+      "Resurrect Lesser Zombie": 50,
+      "Resurrect Superior Ghost": 50,
+      "Resurrect Superior Skeleton": 50,
+      "Resurrect Superior Zombie": 50,
+      "Resurrect Greater Ghost": 50,
+      "Resurrect Greater Skeleton": 50,
+      "Resurrect Greater Zombie": 50,
+      "Ghostly Grasp": 40,
+      "Skeletal Grasp": 40,
+      "Undead Grasp": 40,
+      "Inferior Demonbane": 40,
+      "Superior Demonbane": 40,
+      "Dark Demonbane": 40
     },
     "spellLevelCosts": {
       "Wind Strike": {
@@ -1576,6 +1591,45 @@
         "Blood Blitz",
         "Blood Barrage"
       ],
+      "thrall": [
+        "Resurrect Lesser Ghost",
+        "Resurrect Lesser Skeleton",
+        "Resurrect Lesser Zombie",
+        "Resurrect Superior Ghost",
+        "Resurrect Superior Skeleton",
+        "Resurrect Superior Zombie",
+        "Resurrect Greater Ghost",
+        "Resurrect Greater Skeleton",
+        "Resurrect Greater Zombie"
+      ],
+      "demonbane": [
+        "Inferior Demonbane",
+        "Superior Demonbane",
+        "Dark Demonbane"
+      ],
+      "grasp": [
+        "Ghostly Grasp",
+        "Skeletal Grasp",
+        "Undead Grasp"
+      ],
+      "smoke": [
+        "Smoke Rush",
+        "Smoke Burst",
+        "Smoke Blitz",
+        "Smoke Barrage"
+      ],
+      "shadow": [
+        "Shadow Rush",
+        "Shadow Burst",
+        "Shadow Blitz",
+        "Shadow Barrage"
+      ],
+      "ice": [
+        "Ice Rush",
+        "Ice Burst",
+        "Ice Blitz",
+        "Ice Barrage"
+      ],
       "elemental": [
         "Wind Strike",
         "Water Strike",
@@ -1631,6 +1685,36 @@
       ]
     },
     "wornSpellDiscounts": {
+      "Ring of shadows": {
+        "shadow": 20
+      },
+      "Ring of shadows (uncharged)": {
+        "shadow": 20
+      },
+      "Ice gloves": {
+        "ice": 10
+      },
+      "Facemask": {
+        "smoke": 10
+      },
+      "Circlet of water": {
+        "water": 5
+      },
+      "Tome of fire": {
+        "fire": 5
+      },
+      "Tome of earth": {
+        "earth": 5
+      },
+      "Tome of water": {
+        "water": 5
+      },
+      "Warm gloves": {
+        "fire": 5
+      },
+      "Earth tiara": {
+        "earth": 5
+      },
       "Toktz-mej-tal": {
         "fire": 10
       },
@@ -1688,6 +1772,11 @@
       }
     },
     "wornSpellCosts": {
+      "Book of the Dead": {
+        "thrall": 0,
+        "demonbane": 33,
+        "grasp": 33
+      },
       "Dramen staff": {
         "curse": 15
       },
@@ -1941,6 +2030,142 @@
       "Bracelet of slaughter": {
         "freeCast": 0,
         "noGain": 25
+      }
+    },
+    "carriedSpellChances": {
+      "Book of the Dead": {
+        "chance": 10,
+        "free": [
+          "demonbane"
+        ]
+      },
+      "Blood essence": {
+        "chance": 10,
+        "free": [
+          "blood"
+        ]
+      },
+      "Blood essence (active)": {
+        "chance": 10,
+        "free": [
+          "blood"
+        ]
+      },
+      "Airtight pot": {
+        "chance": 10,
+        "free": [
+          "air"
+        ]
+      }
+    },
+    "randomPkpItems": {
+      "Jester cape": {
+        "amount": 50,
+        "everyMs": 1000
+      }
+    },
+    "wornSpellChances": {
+      "Fire cape": {
+        "chance": 10,
+        "free": [
+          "fire"
+        ]
+      },
+      "Fire cape (l)": {
+        "chance": 10,
+        "free": [
+          "fire"
+        ]
+      },
+      "Fire max cape": {
+        "chance": 10,
+        "free": [
+          "fire"
+        ]
+      },
+      "Fire max cape (l)": {
+        "chance": 10,
+        "free": [
+          "fire"
+        ]
+      },
+      "Infernal cape": {
+        "chance": 25,
+        "free": [
+          "fire"
+        ]
+      },
+      "Infernal cape (l)": {
+        "chance": 25,
+        "free": [
+          "fire"
+        ]
+      },
+      "Infernal max cape": {
+        "chance": 25,
+        "free": [
+          "fire"
+        ]
+      },
+      "Infernal max cape (l)": {
+        "chance": 25,
+        "free": [
+          "fire"
+        ]
+      },
+      "Holy symbol": {
+        "chance": 50,
+        "free": [
+          "demonbane"
+        ]
+      },
+      "Blood ancient sceptre": {
+        "chance": 50,
+        "free": [
+          "blood"
+        ]
+      },
+      "Blood ancient sceptre (l)": {
+        "chance": 50,
+        "free": [
+          "blood"
+        ]
+      },
+      "Smoke ancient sceptre": {
+        "chance": 50,
+        "free": [
+          "smoke"
+        ]
+      },
+      "Smoke ancient sceptre (l)": {
+        "chance": 50,
+        "free": [
+          "smoke"
+        ]
+      },
+      "Shadow ancient sceptre": {
+        "chance": 50,
+        "free": [
+          "shadow"
+        ]
+      },
+      "Shadow ancient sceptre (l)": {
+        "chance": 50,
+        "free": [
+          "shadow"
+        ]
+      },
+      "Ice ancient sceptre": {
+        "chance": 50,
+        "free": [
+          "ice"
+        ]
+      },
+      "Ice ancient sceptre (l)": {
+        "chance": 50,
+        "free": [
+          "ice"
+        ]
       }
     },
     "wornBonuses": {
@@ -3483,7 +3708,8 @@
         1169
       ],
       "selfCastAnimationIds": [
-        811
+        811,
+        8973
       ],
       "sitAnimationIds": [
         10061
@@ -3698,10 +3924,23 @@
           "Verac's plateskirt 50",
           "Verac's plateskirt 25",
           "Verac's plateskirt 0",
-          "Hueycoatl Hide Body",
           "Hueycoatl Hide Chaps",
           "Hueycoatl Hide Vambraces",
-          "Dragonfire shield"
+          "Dragonfire shield",
+          "Torag's platebody",
+          "Torag's platebody 0",
+          "Torag's platebody 100",
+          "Torag's platebody 25",
+          "Torag's platebody 50",
+          "Torag's platebody 75",
+          "Torag's platelegs",
+          "Torag's platelegs 0",
+          "Torag's platelegs 100",
+          "Torag's platelegs 25",
+          "Torag's platelegs 50",
+          "Torag's platelegs 75",
+          "Rondache",
+          "Armadyl chainskirt"
         ],
         "shields": [
           "Saradomin Kiteshield",
@@ -3889,18 +4128,6 @@
           "Black helm (h5)",
           "Black platebody (h5)",
           "Black shield (h5)",
-          "Torag's platebody",
-          "Torag's platebody 100",
-          "Torag's platebody 75",
-          "Torag's platebody 50",
-          "Torag's platebody 25",
-          "Torag's platebody 0",
-          "Torag's platelegs",
-          "Torag's platelegs 100",
-          "Torag's platelegs 75",
-          "Torag's platelegs 50",
-          "Torag's platelegs 25",
-          "Torag's platelegs 0",
           "Dharok's platebody",
           "Dharok's platebody 100",
           "Dharok's platebody 75",
@@ -3963,8 +4190,9 @@
           "Crystal legs",
           "Crystal legs (inactive)",
           "Dragonfire ward",
-          "Armadyl chainskirt",
-          "Armadyl chainskirt (or)"
+          "Hueycoatl Hide Body",
+          "Zorya's tome",
+          "Zorya's tome (uncharged)"
         ]
       },
       "weapons": {
@@ -4075,7 +4303,6 @@
           "Abyssal Whip",
           "Abyssal Tentacle",
           "Voidwaker",
-          "Hunters' sunlight crossbow",
           "Venator Bow",
           "Zaryte Crossbow",
           "Staff of Balance",
@@ -4099,9 +4326,6 @@
           "Scythe of Vitur",
           "Dragon Hunter Crossbow",
           "Bandos Godsword",
-          "Toxic Blowpipe",
-          "Dinh's bulwark",
-          "Dinh's blazing bulwark",
           "Black scimitar"
         ],
         "weaponExceptions": [
@@ -4238,7 +4462,9 @@
           "Verac's flail 25",
           "Verac's flail 0",
           "Dragon Dagger",
-          "Arkan Blade"
+          "Arkan Blade",
+          "Dinh's bulwark",
+          "Dinh's blazing bulwark"
         ],
         "weaponExceptionDefaultPkp": 50,
         "pkpWeapons": {
@@ -4255,7 +4481,10 @@
           "Hunters' Crossbow",
           "Bow of faerdhinen",
           "Bow of faerdhinen (c)",
-          "Scorching Bow"
+          "Scorching Bow",
+          "Ascension crossbows",
+          "Toxic blowpipe",
+          "Hunters' sunlight crossbow"
         ],
         "rangedRestoreEnabled": true,
         "rangedRestore": 33
@@ -4549,7 +4778,6 @@
           "Verac's plateskirt 50",
           "Verac's plateskirt 25",
           "Verac's plateskirt 0",
-          "Hueycoatl Hide Body",
           "Hueycoatl Hide Chaps",
           "Hueycoatl Hide Vambraces",
           "Blood Moon Tassets",
@@ -4562,7 +4790,8 @@
           "Void ranger helm (l)",
           "Elite void top (l)",
           "Elite void robe (l)",
-          "Inquisitor's hauberk"
+          "Inquisitor's hauberk",
+          "Armadyl chainskirt"
         ],
         "shields": [
           "Adamant Kiteshield (Guthix)",
@@ -4844,8 +5073,16 @@
           "Crystal legs",
           "Crystal legs (inactive)",
           "Dragonfire ward",
-          "Armadyl chainskirt",
-          "Armadyl chainskirt (or)"
+          "Karil's leathertop",
+          "Karil's leathertop 0",
+          "Karil's leathertop 100",
+          "Karil's leathertop 25",
+          "Karil's leathertop 50",
+          "Karil's leathertop 75",
+          "Hueycoatl Hide Body",
+          "Rondache",
+          "Zorya's tome",
+          "Zorya's tome (uncharged)"
         ]
       },
       "weapons": {
@@ -4868,7 +5105,6 @@
           "Belle's folly",
           "Ghrazi Rapier",
           "Osmumten's fang",
-          "Osmumten's fang (or)",
           "Bronze Spear",
           "Bronze Spear(p)",
           "Bronze Spear(p+)",
@@ -5030,7 +5266,6 @@
           "Craw's Bow (u)",
           "Webweaver bow",
           "Webweaver bow (u)",
-          "Hunters' sunlight crossbow",
           "Venator Bow",
           "Zaryte Crossbow",
           "Saradomin staff",
@@ -5061,7 +5296,6 @@
           "Dharok's greataxe 0",
           "Scythe of Vitur",
           "Bandos Godsword",
-          "Toxic Blowpipe",
           "Black scimitar"
         ],
         "weaponExceptions": [
@@ -5127,7 +5361,10 @@
           "Dinh's blazing bulwark",
           "Dragon Dagger",
           "Blade of saeldor",
-          "Blade of saeldor (c)"
+          "Blade of saeldor (c)",
+          "Obligator",
+          "Obligator (uncharged)",
+          "Osmumten's fang (or)"
         ],
         "weaponExceptionDefaultPkp": 50,
         "pkpWeapons": {
@@ -5144,7 +5381,10 @@
           "Bow of faerdhinen",
           "Bow of faerdhinen (c)",
           "Dragon hunter crossbow (t)",
-          "Dragon hunter crossbow (b)"
+          "Dragon hunter crossbow (b)",
+          "Ascension crossbows",
+          "Toxic blowpipe",
+          "Hunters' sunlight crossbow"
         ],
         "rangedRestoreEnabled": true,
         "rangedRestore": 33
@@ -5434,9 +5674,9 @@
           "Dharok's platelegs 50",
           "Dharok's platelegs 25",
           "Dharok's platelegs 0",
-          "Hueycoatl Hide Body",
           "Hueycoatl Hide Chaps",
-          "Hueycoatl Hide Vambraces"
+          "Hueycoatl Hide Vambraces",
+          "Bandos tassets"
         ],
         "shields": [
           "Steel Kiteshield (Zamorak)",
@@ -5702,7 +5942,16 @@
           "Crystal legs (inactive)",
           "Dragonfire ward",
           "Armadyl chainskirt",
-          "Armadyl chainskirt (or)"
+          "Karil's leathertop",
+          "Karil's leathertop 0",
+          "Karil's leathertop 100",
+          "Karil's leathertop 25",
+          "Karil's leathertop 50",
+          "Karil's leathertop 75",
+          "Hueycoatl Hide Body",
+          "Rondache",
+          "Zorya's tome",
+          "Zorya's tome (uncharged)"
         ]
       },
       "weapons": {
@@ -5721,7 +5970,6 @@
           "Toktz-xil-ak",
           "Belle's folly",
           "Osmumten's fang",
-          "Osmumten's fang (or)",
           "Bronze Spear",
           "Bronze Spear(p)",
           "Bronze Spear(p+)",
@@ -5855,7 +6103,6 @@
           "Craw's Bow (u)",
           "Webweaver bow",
           "Webweaver bow (u)",
-          "Hunters' sunlight crossbow",
           "Venator Bow",
           "Zaryte Crossbow",
           "Saradomin staff",
@@ -5890,12 +6137,12 @@
           "Verac's flail 50",
           "Verac's flail 25",
           "Verac's flail 0",
-          "Toxic Blowpipe",
           "Dinh's bulwark",
           "Dinh's blazing bulwark",
           "Rune scimitar (guthix)",
           "Rune scimitar (saradomin)",
-          "White scimitar"
+          "White scimitar",
+          "Ascension crossbows"
         ],
         "weaponExceptions": [
           "Oak blackjack(o)",
@@ -5985,7 +6232,8 @@
           "Blade of saeldor",
           "Blade of saeldor (c)",
           "Brine sabre",
-          "Black scimitar"
+          "Black scimitar",
+          "Osmumten's fang (or)"
         ],
         "weaponExceptionDefaultPkp": 50,
         "pkpWeapons": {
@@ -6001,7 +6249,9 @@
           "Dragon crossbow",
           "Dragon hunter crossbow (t)",
           "Dragon hunter crossbow (b)",
-          "Scorching Bow"
+          "Scorching Bow",
+          "Toxic blowpipe",
+          "Hunters' sunlight crossbow"
         ],
         "rangedRestoreEnabled": true,
         "rangedRestore": 33
@@ -6231,7 +6481,6 @@
       },
       "gear": {
         "magicGearExceptions": [
-          "Verac's plateskirt",
           "Dagon'hai hat",
           "Dagon'hai robe top",
           "Dagon'hai robe bottom",
@@ -6291,11 +6540,6 @@
           "Bandos platebody",
           "Bandos platelegs",
           "Bandos plateskirt",
-          "Verac's plateskirt 100",
-          "Verac's plateskirt 75",
-          "Verac's plateskirt 50",
-          "Verac's plateskirt 25",
-          "Verac's plateskirt 0",
           "Eclipse Moon Chestplate",
           "Eclipse Moon Tassets",
           "Imbued ancient cape",
@@ -6307,7 +6551,10 @@
           "Group ironman bracers (unranked)",
           "Frog-leather boots",
           "Inquisitor's hauberk",
-          "Dragonfire ward"
+          "Dragonfire ward",
+          "Hueycoatl Hide Body",
+          "Armadyl chainskirt",
+          "Armadyl helmet"
         ],
         "shields": [
           "Ancient Kiteshield",
@@ -6447,7 +6694,6 @@
           "Armadyl coif",
           "Armadyl d'hide body",
           "Armadyl d'hide shield",
-          "Armadyl helmet",
           "Book of Law",
           "Honourable blessing",
           "Armadyl halo",
@@ -6543,7 +6789,6 @@
           "Dharok's platelegs 50",
           "Dharok's platelegs 25",
           "Dharok's platelegs 0",
-          "Hueycoatl Hide Body",
           "Iron Chainbody",
           "Blood Moon Tassets",
           "Blood Moon Chestplate",
@@ -6570,8 +6815,6 @@
           "Armadyl chaps",
           "Armadyl bracers",
           "Armadyl d'hide boots",
-          "Hueycoatl Hide Chaps",
-          "Hueycoatl Hide Vambraces",
           "Crystal shield",
           "Crystal shield (inactive)",
           "Crystal shield full",
@@ -6601,9 +6844,15 @@
           "Crystal helm (inactive)",
           "Crystal legs",
           "Crystal legs (inactive)",
-          "Armadyl chainskirt",
-          "Armadyl chainskirt (or)",
-          "Hueycoatl hide coif"
+          "Verac's plateskirt",
+          "Verac's plateskirt 0",
+          "Verac's plateskirt 100",
+          "Verac's plateskirt 25",
+          "Verac's plateskirt 50",
+          "Verac's plateskirt 75",
+          "Rondache",
+          "Zorya's tome",
+          "Zorya's tome (uncharged)"
         ]
       },
       "weapons": {
@@ -6832,16 +7081,20 @@
           "Scythe of Vitur",
           "Dinh's bulwark",
           "Dinh's blazing bulwark",
-          "Black scimitar"
+          "Black scimitar",
+          "Verac's flail",
+          "Verac's flail 0",
+          "Verac's flail 100",
+          "Verac's flail 25",
+          "Verac's flail 50",
+          "Verac's flail 75"
         ],
         "weaponExceptions": [
           "Thammaron's sceptre (a)",
           "Thammaron's sceptre (au)",
           "Accursed sceptre (a)",
           "Accursed sceptre (au)",
-          "Osmumten's fang",
           "Osmumten's fang (or)",
-          "Verac's flail",
           "Earthbound tecpatl",
           "Saradomin godsword",
           "Toxic staff of the dead",
@@ -6865,11 +7118,6 @@
           "Voidwaker",
           "Arkan Blade",
           "Ancient crozier",
-          "Verac's flail 100",
-          "Verac's flail 75",
-          "Verac's flail 50",
-          "Verac's flail 25",
-          "Verac's flail 0",
           "Bandos Godsword",
           "Dragon Dagger"
         ],
@@ -6897,7 +7145,9 @@
           "Dragon hunter crossbow (b)",
           "Armadyl Crossbow",
           "Bow of faerdhinen",
-          "Bow of faerdhinen (c)"
+          "Bow of faerdhinen (c)",
+          "Twisted bow",
+          "Ascension crossbows"
         ],
         "rangedRestoreEnabled": true,
         "rangedRestore": 33
