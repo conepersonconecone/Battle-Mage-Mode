@@ -125,6 +125,15 @@ public class ContentPack
 		/** The same, for worn items (the ancient sceptres). */
 		public Map<String, CarriedSpellChance> wornSpellChances = new LinkedHashMap<>();
 
+		/** The same, for a set worn together (the monk robes) - see {@link SetSpellChance}. */
+		public Map<String, SetSpellChance> setSpellChances = new LinkedHashMap<>();
+
+		/** Sets that give a chance on an attack (Void, the ranger kit) - see {@link SetActionChance}. */
+		public Map<String, SetActionChance> setActionChances = new LinkedHashMap<>();
+
+		/** Powered staves whose built-in attack costs PKP each swing - see {@link PoweredAttacks}. */
+		public PoweredAttacks poweredAttacks = new PoweredAttacks();
+
 		/** Worn items that swing PKP up or down at random on a timer - see {@link RandomPkp}. */
 		public Map<String, RandomPkp> randomPkpItems = new LinkedHashMap<>();
 
@@ -333,6 +342,8 @@ public class ContentPack
 		/** Item names; two worn items with the same name (a robe top and bottom) count twice. */
 		public List<String> pieces = new ArrayList<>();
 		public int minPieces = 2;
+		/** The most pieces it applies with (0 = no limit), so a bigger tier can take over. */
+		public int maxPieces;
 		/** {@code target -> percent of the normal cost}, targets as in {@link Shared#wornSpellCosts}. */
 		public Map<String, Integer> costPercent = new LinkedHashMap<>();
 		/** {@code target -> PKP taken off the cost}, after the percent. "all" means every spell. */
@@ -407,6 +418,55 @@ public class ContentPack
 		public int chance;
 		public Map<String, Integer> discount = new LinkedHashMap<>();
 		public java.util.List<String> free = new java.util.ArrayList<>();
+		/** Only while the player is poisoned (the Frog mask). */
+		public boolean whenPoisoned;
+	}
+
+	/**
+	 * A {@link CarriedSpellChance} that needs a whole set worn: {@code pieces} is one list per piece,
+	 * each listing the item names that count as that piece (a trimmed version, say).
+	 */
+	public static class SetSpellChance extends CarriedSpellChance
+	{
+		public java.util.List<java.util.List<String>> pieces = new java.util.ArrayList<>();
+		/** How many of the pieces must be worn; 0 means all of them. */
+		public int minPieces;
+		/** The most pieces it applies with (0 = no limit), so a bigger tier can take over. */
+		public int maxPieces;
+		/** The only gods it works for (SARADOMIN, ZAROS...); empty means every one. */
+		public java.util.List<String> factions = new java.util.ArrayList<>();
+	}
+
+	/**
+	 * A set worn (all of it, or {@code minPieces} of it) that gives a chance on an attack:
+	 * {@code effect} "doubleMeleeGain" doubles a melee hit's PKP gain, "noRangedGain" stops a ranged
+	 * hit's gain landing, "noMeleeGain" the same for a melee hit, "noRangedPkp" cancels a ranged hit's
+	 * PKP change either way, "doubleOrHalfMelee" doubles or halves every melee hit's PKP on a coin
+	 * flip, "doubleBlock" doubles a block's PKP
+	 * gain or loss, "meleeGainMinus" / "rangedGainMinus" take {@code amount} off a melee /
+	 * ranged hit's gain. Chances of the same effect add up into one roll.
+	 */
+	public static class SetActionChance
+	{
+		public java.util.List<java.util.List<String>> pieces = new java.util.ArrayList<>();
+		public int minPieces;
+		public java.util.List<String> factions = new java.util.ArrayList<>();
+		public int chance;
+		public String effect;
+		/** PKP taken off, for the "...GainMinus" effects. */
+		public int amount;
+		/** The most pieces it applies with (0 = no limit), so a bigger tier can take over. */
+		public int maxPieces;
+	}
+
+	/**
+	 * Powered staves (the crystal staves): each attack with the staff's own built-in spell costs
+	 * {@code costs.get(staff)} PKP, like a cast. An attack is told by {@code animationIds}.
+	 */
+	public static class PoweredAttacks
+	{
+		public java.util.List<Integer> animationIds = new java.util.ArrayList<>();
+		public Map<String, Integer> costs = new LinkedHashMap<>();
 	}
 
 	/** While worn: every {@code everyMs}, PKP goes up or down by {@code amount}, a coin flip each time. */

@@ -1001,6 +1001,22 @@ public class Rules
 		return sharedOr(s -> s.wornSpellChances, java.util.Collections.emptyMap());
 	}
 
+	public java.util.Map<String, ContentPack.SetSpellChance> setSpellChances()
+	{
+		return sharedOr(s -> s.setSpellChances, java.util.Collections.emptyMap());
+	}
+
+	public java.util.Map<String, ContentPack.SetActionChance> setActionChances()
+	{
+		return sharedOr(s -> s.setActionChances, java.util.Collections.emptyMap());
+	}
+
+	public ContentPack.PoweredAttacks poweredAttacks()
+	{
+		ContentPack.PoweredAttacks p = sharedOr(s -> s.poweredAttacks, null);
+		return p == null ? new ContentPack.PoweredAttacks() : p;
+	}
+
 	public java.util.Map<String, ContentPack.RandomPkp> randomPkpItems()
 	{
 		return sharedOr(s -> s.randomPkpItems, java.util.Collections.emptyMap());

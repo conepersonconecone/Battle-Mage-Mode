@@ -256,6 +256,16 @@ public class BattleMagePlugin extends Plugin
 	 */
 	private final Map<String, Object[]> carriedChanceByItem = new HashMap<>();
 	private final Map<String, Object[]> wornChanceByItem = new HashMap<>();
+	/**
+	 * Set chances: {chance, target -> PKP off, targets made free, List of Set of lower-case names per
+	 * piece, min pieces, Set of factions}.
+	 */
+	private final List<Object[]> setChances = new ArrayList<>();
+	/** Set attack chances: {chance, effect, pieces, min pieces, factions, display name, amount, max pieces}. */
+	private final List<Object[]> setActionChances = new ArrayList<>();
+	/** Powered staves whose own attack costs PKP: lower-case name -> cost, and the attack animations. */
+	private final Map<String, Integer> poweredAttackCost = new HashMap<>();
+	private final Set<Integer> poweredAttackAnimations = new HashSet<>();
 	/** Worn items that swing PKP at random: lower-case name -> {amount, every ms}. */
 	private final Map<String, int[]> randomPkpByItem = new HashMap<>();
 	/** When each random swing last fired, by item name. */
@@ -2418,6 +2428,21 @@ public class BattleMagePlugin extends Plugin
 			return;
 		}
 
+		// an attack with a powered staff's own spell (the crystal staves): it costs PKP like a cast
+		if (poweredAttackAnimations.contains(anim) && pendingCastFamily == null && attackingNow())
+		{
+			int weapon = equippedWeaponId();
+			Integer cost = weapon > 0 ? poweredAttackCost.get(itemName(weapon)) : null;
+			if (cost != null)
+			{
+				double before = pkp;
+				applyCast(withPoison(cost));
+				notePkpChange(pkp - before);
+				lastCombatMs = System.currentTimeMillis();
+				return;
+			}
+		}
+
 		if (meleeAnimations.contains(anim))
 		{
 			if (isRangedEquipped())
@@ -2446,7 +2471,7 @@ public class BattleMagePlugin extends Plugin
 			ContentPack.Decay decay = weapon > 0 ? decayByName.get(itemName(weapon)) : null;
 			if (decay != null)
 			{
-				handleAttackRestore(nextDecayGain(weapon, decay), "ranged", decay.neverOverload);
+				handleAttackRestore(setGainMinus("rangedGainMinus", nextDecayGain(weapon, decay)), "ranged", decay.neverOverload);
 				return;
 			}
 			Integer gain = rangedRestoreAmount(weapon);
@@ -2892,6 +2917,12 @@ public class BattleMagePlugin extends Plugin
 		{
 			return;
 		}
+		// a worn item (the Steel ring) may double what this block gives or takes
+		int dbl = setActionChance("doubleBlock");
+		if (dbl > 0 && stateSaveRng.nextInt(100) < dbl)
+		{
+			gain *= 2;
+		}
 		lastCombatMs = System.currentTimeMillis();
 		double before = pkp;
 		if (gain < 0)
@@ -2940,12 +2971,27 @@ public class BattleMagePlugin extends Plugin
 		{
 			gain += wornMeleeBonus;
 		}
+		// a set (Void melee with the Void knight mace) may double a hit's gain
+		int dbl = gain > 0 ? setActionChance("doubleMeleeGain") : 0;
+		if (dbl > 0 && stateSaveRng.nextInt(100) < dbl)
+		{
+			gain *= 2;
+		}
+		// a set (Void melee with the Void knight mace): every hit is a coin flip, its PKP gain or
+		// loss doubled or halved
+		if (gain != 0 && setActionChance("doubleOrHalfMelee") > 0)
+		{
+			gain = stateSaveRng.nextBoolean() ? gain * 2 : (int) Math.round(gain / 2.0);
+		}
+		// a set (rock-shell) may take PKP off a hit's gain
+		gain = setGainMinus("meleeGainMinus", gain);
 		handleAttackRestore(gain, "melee");
 	}
 
 	private void handleRangedRestore(int gain)
 	{
-		handleAttackRestore(gain, "ranged");
+		// a set (spined) may take PKP off a shot's gain
+		handleAttackRestore(setGainMinus("rangedGainMinus", gain), "ranged");
 	}
 
 	/**
@@ -2982,8 +3028,17 @@ public class BattleMagePlugin extends Plugin
 		{
 			gain = (int) Math.round(gain * gainMultiplier());
 		}
-		// a worn chance item (Bracelet of slaughter) may stop this gain landing at all
-		if (gain > 0 && wornNoGainChance > 0 && stateSaveRng.nextInt(100) < wornNoGainChance)
+		// a worn chance item (Bracelet of slaughter) may stop this gain landing at all; for a ranged
+		// hit, a set's no-gain chance (the ranger kit) adds to it in the same roll
+		int noGain = gain > 0 ? wornNoGainChance + ("ranged".equals(kind) ? setActionChance("noRangedGain")
+			: "melee".equals(kind) ? setActionChance("noMeleeGain") : 0) : 0;
+		if (noGain > 0 && stateSaveRng.nextInt(100) < Math.min(100, noGain))
+		{
+			gain = 0;
+		}
+		// a set (the full ranger kit) may cancel a ranged hit's PKP change entirely, gain or cost
+		int noPkp = gain != 0 && "ranged".equals(kind) ? setActionChance("noRangedPkp") : 0;
+		if (noPkp > 0 && stateSaveRng.nextInt(100) < noPkp)
 		{
 			gain = 0;
 		}
@@ -3876,7 +3931,7 @@ public class BattleMagePlugin extends Plugin
 					count++;
 				}
 			}
-			if (count >= (Integer) set[2])
+			if (count >= (Integer) set[2] && ((Integer) set[9] <= 0 || count <= (Integer) set[9]))
 			{
 				@SuppressWarnings("unchecked") Map<String, Integer> pct = (Map<String, Integer>) set[3];
 				for (Map.Entry<String, Integer> t : pct.entrySet())
@@ -3918,13 +3973,105 @@ public class BattleMagePlugin extends Plugin
 		return out;
 	}
 
-	/** "Curses", "Ancient spells", "Crumble Undead" - a cost target as a tooltip would say it. */
-	/** " cost " after a plural label ("Fire spells", "Curses"), " costs " after a single spell. */
-	private static String costVerb(String label)
+	// ---------------------------------------------------------------- tooltip cost wording
+	// Every tooltip line about a spell's cost reads the same way: "-10 cost for curse spells",
+	// "-50% cost for ancient spells", or "0 PKP for fire spells" when it makes a spell free.
+
+	/** "curse spells", "fire spells", "all spells", or a spell's own name. */
+	private String spellLabel(String target)
 	{
-		return label.endsWith("s") && (label.endsWith(" spells") || label.equals("Curses")) ? " cost " : " costs ";
+		switch (target)
+		{
+			case "curse":
+				return "curse spells";
+			case "combat":
+				return "combat spells";
+			case "all":
+				return "all spells";
+			case "arceuus":
+				return "Arceuus spells";
+			case "zamorak":
+				return "Zamorak spells";
+			default:
+				boolean isGroup = spellGroupsBySpell.values().stream().anyMatch(g -> g.contains(target));
+				return isGroup ? target + " spells" : costTargetLabel(target);
+		}
 	}
 
+	/** "0 PKP for X": the spell is free. */
+	private String freeChange(String target)
+	{
+		return "0 PKP for " + spellLabel(target);
+	}
+
+	/** "-N cost for X": a flat amount off. */
+	private String minusChange(String target, int minus)
+	{
+		return "-" + minus + " cost for " + spellLabel(target);
+	}
+
+	/** {@code percent} of the normal cost: "-50% cost for X", "+50% cost for X", or free at 0. */
+	private String percentChange(String target, int percent)
+	{
+		if (percent <= 0)
+		{
+			return freeChange(target);
+		}
+		int d = percent - 100;
+		return (d > 0 ? "+" : "") + d + "% cost for " + spellLabel(target);
+	}
+
+	/**
+	 * A worn item that sets a spell's cost (the Dramen staff makes curses 15): told as the change from
+	 * what it costs without the item, "-10 cost for curse spells", or "0 PKP" when it makes it free.
+	 */
+	private String overrideChange(String target, int cost)
+	{
+		if (cost <= 0)
+		{
+			return freeChange(target);
+		}
+		Integer base = baseCostForTarget(target);
+		if (base == null || base <= cost)
+		{
+			return cost + " PKP for " + spellLabel(target);
+		}
+		return minusChange(target, base - cost);
+	}
+
+	/** What a cost target costs before any worn item: a family, a group (its dearest spell) or one spell. */
+	private Integer baseCostForTarget(String target)
+	{
+		if ("curse".equals(target))
+		{
+			return rules.curseSpellCost();
+		}
+		if ("combat".equals(target) || "all".equals(target))
+		{
+			return manualCost(PsiAction.COMBAT);
+		}
+		Integer best = null;
+		for (Map.Entry<String, Set<String>> e : spellGroupsBySpell.entrySet())
+		{
+			if (e.getValue().contains(target))
+			{
+				PsiAction fam = familyForSpell(e.getKey());
+				if (fam != null)
+				{
+					int c = baseCostForSpell(e.getKey(), fam);
+					best = best == null ? c : Math.max(best, c);
+				}
+			}
+		}
+		if (best != null)
+		{
+			return best;
+		}
+		PsiAction fam = familyForSpell(target);
+		return fam == null ? null : baseCostForSpell(target, fam);
+	}
+
+	/** "Curses", "Ancient spells", "Crumble Undead" - a cost target as a title would say it. */
 	private String costTargetLabel(String target)
 	{
 		if ("curse".equals(target))
@@ -3935,12 +4082,17 @@ public class BattleMagePlugin extends Plugin
 		{
 			return "Combat spells";
 		}
+		if ("all".equals(target))
+		{
+			return "Spells";
+		}
 		StringBuilder sb = new StringBuilder();
 		for (String w : target.split(" "))
 		{
 			if (!w.isEmpty())
 			{
-				sb.append(sb.length() == 0 ? "" : " ").append(Character.toUpperCase(w.charAt(0))).append(w.substring(1));
+				boolean small = sb.length() > 0 && (w.equals("of") || w.equals("the"));
+				sb.append(sb.length() == 0 ? "" : " ").append(small ? w : Character.toUpperCase(w.charAt(0)) + w.substring(1));
 			}
 		}
 		boolean isGroup = spellGroupsBySpell.values().stream().anyMatch(g -> g.contains(target));
@@ -4353,19 +4505,25 @@ public class BattleMagePlugin extends Plugin
 			}
 			if (!targets.isEmpty() || !free.isEmpty())
 			{
-				into.put(e.getKey().trim().toLowerCase(Locale.ROOT), new Object[]{Math.min(100, c.chance), targets, free});
+				into.put(e.getKey().trim().toLowerCase(Locale.ROOT),
+					new Object[]{Math.min(100, c.chance), targets, free, c.whenPoisoned});
 			}
 		}
 	}
 
 	/**
-	 * Rolls each chance item once for this cast: carried ones (the Airtight pot) from the inventory,
-	 * worn ones (the ancient sceptres) from the equipment. On a hit its discount for the spell comes
-	 * off, or the spell costs nothing. Each kind of item rolls once, however many there are.
+	 * The chance items for this cast: carried ones (the Airtight pot) from the inventory, worn ones
+	 * (the ancient sceptres) from the equipment, and whole sets (the monk robes, Virtus). Each kind of
+	 * item, and each set, counts once.
+	 *
+	 * <p>Every chance of a FREE cast adds up into one roll, the Expeditious bracelet's included: a
+	 * 25% set and a 50% sceptre make a 75% chance, capped at 100. A discount (so much PKP off) still
+	 * rolls on its own. Sets {@link #freeCastRolled}, so applyCast does not roll the bracelet again.
 	 */
 	private int carriedChanceDiscount(String spell, int cost)
 	{
-		if (cost <= 0 || spell == null || (carriedChanceByItem.isEmpty() && wornChanceByItem.isEmpty()))
+		freeCastRolled = true;
+		if (cost <= 0 || spell == null)
 		{
 			return cost;
 		}
@@ -4375,13 +4533,248 @@ public class BattleMagePlugin extends Plugin
 			return cost;
 		}
 		List<String> targets = costTargets(spell.replaceAll("<[^>]*>", "").trim().toLowerCase(Locale.ROOT), fam);
-		cost = rollChances(client.getItemContainer(InventoryID.INVENTORY), carriedChanceByItem, targets, cost);
-		return rollChances(client.getItemContainer(InventoryID.EQUIPMENT), wornChanceByItem, targets, cost);
+		int[] pool = {Math.max(0, wornFreeCastChance)};
+		cost = rollChances(client.getItemContainer(InventoryID.INVENTORY), carriedChanceByItem, targets, cost, pool);
+		cost = rollChances(client.getItemContainer(InventoryID.EQUIPMENT), wornChanceByItem, targets, cost, pool);
+		Set<String> worn = wornNames();
+		for (Object[] c : setChances)
+		{
+			if (setWorn(c[3], c[4], c[5], worn) && withinMax(c[3], c[6], worn))
+			{
+				cost = rollOne(c, targets, cost, pool);
+			}
+		}
+		if (cost > 0 && pool[0] > 0 && stateSaveRng.nextInt(100) < Math.min(100, pool[0]))
+		{
+			cost = 0;
+		}
+		return Math.max(0, cost);
 	}
 
-	private int rollChances(ItemContainer where, Map<String, Object[]> table, List<String> targets, int cost)
+	/** True while a cast's free chances have already been rolled, so applyCast skips the bracelet. */
+	private boolean freeCastRolled;
+
+	/** A codex set's pieces: one set of lower-case names per piece, empty pieces dropped. */
+	private static List<Set<String>> parsePieces(List<List<String>> from)
 	{
-		if (where == null || table.isEmpty() || cost <= 0)
+		List<Set<String>> pieces = new ArrayList<>();
+		if (from == null)
+		{
+			return pieces;
+		}
+		for (List<String> piece : from)
+		{
+			Set<String> names = new HashSet<>();
+			if (piece != null)
+			{
+				for (String n : piece)
+				{
+					if (n != null && !n.trim().isEmpty())
+					{
+						names.add(n.trim().toLowerCase(Locale.ROOT));
+					}
+				}
+			}
+			if (!names.isEmpty())
+			{
+				pieces.add(names);
+			}
+		}
+		return pieces;
+	}
+
+	/** Codex faction names to factions; unknown names are skipped. */
+	private static Set<Faction> parseFactions(List<String> from)
+	{
+		Set<Faction> out = new HashSet<>();
+		if (from != null)
+		{
+			for (String f : from)
+			{
+				try
+				{
+					out.add(Faction.valueOf(f.trim().toUpperCase(Locale.ROOT)));
+				}
+				catch (RuntimeException ignored)
+				{
+					// not a faction
+				}
+			}
+		}
+		return out;
+	}
+
+	/** The summed chance, capped at 100, of every worn set with this attack effect. */
+	private int setActionChance(String effect)
+	{
+		if (setActionChances.isEmpty())
+		{
+			return 0;
+		}
+		Set<String> worn = wornNames();
+		int total = 0;
+		for (Object[] a : setActionChances)
+		{
+			if (effect.equals(a[1]) && setWorn(a[2], a[3], a[4], worn) && withinMax(a[2], a[7], worn))
+			{
+				total += (Integer) a[0];
+			}
+		}
+		return Math.min(100, total);
+	}
+
+	/** "Full set: ", "Any 2 pieces: ", with "(Zaros) " in front when only some gods get it. */
+	@SuppressWarnings("unchecked")
+	private static String setLabel(List<Set<String>> pieces, int min, Object factions, int max)
+	{
+		Set<Faction> only = (Set<Faction>) factions;
+		String who = "";
+		if (only != null && !only.isEmpty())
+		{
+			List<String> names = new ArrayList<>();
+			for (Faction f : only)
+			{
+				names.add(f.getDisplayName());
+			}
+			java.util.Collections.sort(names);
+			who = "(" + String.join("/", names) + ") ";
+		}
+		if (pieces.size() == 1)
+		{
+			// a single item, not really a set: "50% chance ..." on its own
+			return who;
+		}
+		if (min <= 0 || min >= pieces.size())
+		{
+			return who + "Full set: ";
+		}
+		return who + (max == min ? "Exactly " + min + " pieces: " : "Any " + min + " pieces: ");
+	}
+
+	/** The largest amount among the worn sets with this attack effect (for the "...GainMinus" ones). */
+	private int setActionAmount(String effect)
+	{
+		Set<String> worn = wornNames();
+		int best = 0;
+		for (Object[] a : setActionChances)
+		{
+			if (effect.equals(a[1]) && setWorn(a[2], a[3], a[4], worn) && withinMax(a[2], a[7], worn))
+			{
+				best = Math.max(best, (Integer) a[6]);
+			}
+		}
+		return best;
+	}
+
+	/** A set's chance to take PKP off an attack's gain: rolls once, never below 0. */
+	private int setGainMinus(String effect, int gain)
+	{
+		if (gain <= 0)
+		{
+			return gain;
+		}
+		int chance = setActionChance(effect);
+		if (chance > 0 && stateSaveRng.nextInt(100) < chance)
+		{
+			return Math.max(0, gain - setActionAmount(effect));
+		}
+		return gain;
+	}
+
+	/** Lower-case names of everything worn right now. */
+	private Set<String> wornNames()
+	{
+		Set<String> worn = new HashSet<>();
+		ItemContainer eq = client.getItemContainer(InventoryID.EQUIPMENT);
+		if (eq != null)
+		{
+			for (Item item : eq.getItems())
+			{
+				if (item != null && item.getId() > 0)
+				{
+					worn.add(itemName(item.getId()));
+				}
+			}
+		}
+		return worn;
+	}
+
+	/**
+	 * Is this set worn? {@code pieces} is one name set per piece; {@code min} pieces must be on (0 or
+	 * less means all of them); {@code factions}, when not empty, lists the only gods it works for.
+	 */
+	@SuppressWarnings("unchecked")
+	private boolean setWorn(Object pieces, Object min, Object factions, Set<String> worn)
+	{
+		Set<Faction> only = (Set<Faction>) factions;
+		if (only != null && !only.isEmpty() && !only.contains(oath.getFaction()))
+		{
+			return false;
+		}
+		List<Set<String>> list = (List<Set<String>>) pieces;
+		int need = (Integer) min <= 0 ? list.size() : (Integer) min;
+		int have = 0;
+		for (Set<String> piece : list)
+		{
+			if (!java.util.Collections.disjoint(piece, worn))
+			{
+				have++;
+			}
+		}
+		return have >= need;
+	}
+
+	/** True unless more than {@code max} pieces are worn (0 = no limit), so a bigger tier takes over. */
+	@SuppressWarnings("unchecked")
+	private static boolean withinMax(Object pieces, Object max, Set<String> worn)
+	{
+		if ((Integer) max <= 0)
+		{
+			return true;
+		}
+		int have = 0;
+		for (Set<String> piece : (List<Set<String>>) pieces)
+		{
+			if (!java.util.Collections.disjoint(piece, worn))
+			{
+				have++;
+			}
+		}
+		return have <= (Integer) max;
+	}
+
+	/** One chance entry against this spell: a free chance joins the pool, a discount rolls now. */
+	private int rollOne(Object[] c, List<String> targets, int cost, int[] pool)
+	{
+		// a poisoned-only chance (the Frog mask) sits out while the player is not poisoned
+		int flag = c.length > 7 ? 7 : 3;
+		if (c.length > flag && Boolean.TRUE.equals(c[flag]) && !isPoisoned())
+		{
+			return cost;
+		}
+		@SuppressWarnings("unchecked") Map<String, Integer> off = (Map<String, Integer>) c[1];
+		@SuppressWarnings("unchecked") Set<String> free = (Set<String>) c[2];
+		int best = 0;
+		boolean makesFree = false;
+		for (String t : targets)
+		{
+			best = Math.max(best, off.getOrDefault(t, 0));
+			makesFree |= free.contains(t);
+		}
+		if (makesFree)
+		{
+			pool[0] += (Integer) c[0];
+		}
+		else if (best > 0 && stateSaveRng.nextInt(100) < (Integer) c[0])
+		{
+			cost -= best;
+		}
+		return Math.max(0, cost);
+	}
+
+	private int rollChances(ItemContainer where, Map<String, Object[]> table, List<String> targets, int cost, int[] pool)
+	{
+		if (where == null || table.isEmpty())
 		{
 			return cost;
 		}
@@ -4394,25 +4787,12 @@ public class BattleMagePlugin extends Plugin
 			}
 			String name = itemName(item.getId());
 			Object[] c = table.get(name);
-			if (c == null || !rolled.add(name))
+			if (c != null && rolled.add(name))
 			{
-				continue;
-			}
-			@SuppressWarnings("unchecked") Map<String, Integer> off = (Map<String, Integer>) c[1];
-			@SuppressWarnings("unchecked") Set<String> free = (Set<String>) c[2];
-			int best = 0;
-			boolean makesFree = false;
-			for (String t : targets)
-			{
-				best = Math.max(best, off.getOrDefault(t, 0));
-				makesFree |= free.contains(t);
-			}
-			if ((best > 0 || makesFree) && stateSaveRng.nextInt(100) < (Integer) c[0])
-			{
-				cost = makesFree ? 0 : cost - best;
+				cost = rollOne(c, targets, cost, pool);
 			}
 		}
-		return Math.max(0, cost);
+		return cost;
 	}
 
 	/** The cost before worn equipment: Magic-level cost, then the spell's own, then its family's. */
@@ -5090,7 +5470,8 @@ public class BattleMagePlugin extends Plugin
 			// restoreForEquippedWeapon pays for it.
 			perHit = rules.meleeRestore();
 		}
-		if (perHit != null)
+		// a powered staff has no melee attack of its own: its line is the cost per attack below
+		if (perHit != null && !poweredAttackCost.containsKey(name))
 		{
 			lines.add("<col=46c8ff>PKP</col> " + signedPkp(perHit) + " per melee attack");
 		}
@@ -5108,9 +5489,7 @@ public class BattleMagePlugin extends Plugin
 		{
 			for (Map.Entry<String, Integer> t : wornCosts.entrySet())
 			{
-				String label = costTargetLabel(t.getKey());
-				lines.add("<col=46c8ff>PKP</col> " + label + costVerb(label)
-					+ (t.getValue() == 0 ? "nothing" : String.valueOf(t.getValue())) + " while worn");
+				lines.add("<col=46c8ff>PKP</col> " + overrideChange(t.getKey(), t.getValue()) + " while worn");
 			}
 		}
 		// raised maximum PKP (Magic cape, Kandarin headgear)
@@ -5132,7 +5511,7 @@ public class BattleMagePlugin extends Plugin
 			Integer capeCost = capeCosts == null ? null : capeCosts.get(capeSpell);
 			if (capeCost != null)
 			{
-				lines.add("<col=46c8ff>PKP</col> " + costTargetLabel(capeSpell) + " costs " + capeCost
+				lines.add("<col=46c8ff>PKP</col> " + overrideChange(capeSpell.toLowerCase(Locale.ROOT), capeCost)
 					+ " with your " + costTargetLabel(cape) + " worn");
 			}
 		}
@@ -5141,9 +5520,51 @@ public class BattleMagePlugin extends Plugin
 		{
 			for (Map.Entry<String, Integer> t : wornOff.entrySet())
 			{
-				String label = costTargetLabel(t.getKey());
-				lines.add("<col=46c8ff>PKP</col> " + label + costVerb(label) + t.getValue() + " less while worn");
+				lines.add("<col=46c8ff>PKP</col> " + minusChange(t.getKey(), t.getValue()) + " while worn");
 			}
+		}
+		for (Object[] c : setChances)
+		{
+			@SuppressWarnings("unchecked") List<Set<String>> pieces = (List<Set<String>>) c[3];
+			if (pieces.stream().noneMatch(p -> p.contains(tipName)))
+			{
+				continue;
+			}
+			String set = setLabel(pieces, (Integer) c[4], c[5], (Integer) c[6]);
+			@SuppressWarnings("unchecked") Map<String, Integer> off = (Map<String, Integer>) c[1];
+			@SuppressWarnings("unchecked") Set<String> free = (Set<String>) c[2];
+			for (Map.Entry<String, Integer> t : off.entrySet())
+			{
+				lines.add("<col=46c8ff>PKP</col> " + set + c[0] + "% chance: " + minusChange(t.getKey(), t.getValue()));
+			}
+			for (String t : free)
+			{
+				lines.add("<col=46c8ff>PKP</col> " + set + c[0] + "% chance: " + freeChange(t));
+			}
+		}
+		for (Object[] a : setActionChances)
+		{
+			@SuppressWarnings("unchecked") List<Set<String>> pieces = (List<Set<String>>) a[2];
+			if (pieces.stream().noneMatch(p -> p.contains(tipName)))
+			{
+				continue;
+			}
+			String what = "doubleMeleeGain".equals(a[1]) ? "a melee hit earns double PKP"
+				: "noRangedGain".equals(a[1]) ? "a ranged hit earns no PKP"
+				: "noMeleeGain".equals(a[1]) ? "a melee hit earns no PKP"
+				: "noRangedPkp".equals(a[1]) ? "a ranged hit neither earns nor costs PKP"
+				: "doubleBlock".equals(a[1]) ? "a block's PKP gain or loss is doubled"
+				: "doubleOrHalfMelee".equals(a[1]) ? "each melee hit's PKP gain or loss is doubled or halved (50/50)"
+				: "meleeGainMinus".equals(a[1]) ? "a melee hit earns " + a[6] + " less PKP"
+				: "rangedGainMinus".equals(a[1]) ? "a ranged hit earns " + a[6] + " less PKP" : String.valueOf(a[1]);
+			boolean always = (Integer) a[0] >= 100 || "doubleOrHalfMelee".equals(a[1]);
+			lines.add("<col=46c8ff>PKP</col> " + setLabel(pieces, (Integer) a[3], a[4], (Integer) a[7])
+				+ (always ? "" : a[0] + "% chance ") + what);
+		}
+		Integer poweredCost = poweredAttackCost.get(tipName);
+		if (poweredCost != null)
+		{
+			lines.add("<col=46c8ff>PKP</col> -" + poweredCost + " per attack");
 		}
 		int[] swing = randomPkpByItem.get(tipName);
 		if (swing != null)
@@ -5157,20 +5578,17 @@ public class BattleMagePlugin extends Plugin
 			{
 				continue;
 			}
-			String when = chance == carriedChanceByItem.get(tipName) ? " while carried" : " while worn";
+			String when = (chance == carriedChanceByItem.get(tipName) ? " while carried" : " while worn")
+				+ (Boolean.TRUE.equals(chance[3]) ? " and poisoned" : "");
 			@SuppressWarnings("unchecked") Map<String, Integer> off = (Map<String, Integer>) chance[1];
 			@SuppressWarnings("unchecked") Set<String> free = (Set<String>) chance[2];
 			for (Map.Entry<String, Integer> t : off.entrySet())
 			{
-				String label = costTargetLabel(t.getKey());
-				lines.add("<col=46c8ff>PKP</col> " + chance[0] + "% chance: " + label
-					+ costVerb(label) + t.getValue() + " less" + when);
+				lines.add("<col=46c8ff>PKP</col> " + chance[0] + "% chance: " + minusChange(t.getKey(), t.getValue()) + when);
 			}
 			for (String t : free)
 			{
-				String label = costTargetLabel(t);
-				lines.add("<col=46c8ff>PKP</col> " + chance[0] + "% chance: " + label
-					+ costVerb(label) + "nothing" + when);
+				lines.add("<col=46c8ff>PKP</col> " + chance[0] + "% chance: " + freeChange(t) + when);
 			}
 		}
 		for (Object[] set : setBonusList)
@@ -5181,10 +5599,7 @@ public class BattleMagePlugin extends Plugin
 				@SuppressWarnings("unchecked") Map<String, Integer> pct = (Map<String, Integer>) set[3];
 				for (Map.Entry<String, Integer> t : pct.entrySet())
 				{
-					String label = "all".equals(t.getKey()) ? "All spells" : costTargetLabel(t.getKey());
-					// a free spell reads as 0 PKP rather than 0%
-					lines.add("<col=46c8ff>PKP</col> " + set[0] + ": " + label + costVerb(label)
-						+ (t.getValue() == 0 ? "0 PKP" : t.getValue() + "%"));
+					lines.add("<col=46c8ff>PKP</col> " + set[0] + ": " + percentChange(t.getKey(), t.getValue()));
 				}
 				if ((Boolean) set[7])
 				{
@@ -5205,8 +5620,7 @@ public class BattleMagePlugin extends Plugin
 				@SuppressWarnings("unchecked") Map<String, Integer> minusTip = (Map<String, Integer>) set[4];
 				for (Map.Entry<String, Integer> t : minusTip.entrySet())
 				{
-					String label = "all".equals(t.getKey()) ? "All spells" : costTargetLabel(t.getKey());
-					lines.add("<col=46c8ff>PKP</col> " + set[0] + ": " + label + costVerb(label) + t.getValue() + " less");
+					lines.add("<col=46c8ff>PKP</col> " + set[0] + ": " + minusChange(t.getKey(), t.getValue()));
 				}
 			}
 		}
@@ -5235,7 +5649,7 @@ public class BattleMagePlugin extends Plugin
 		{
 			if (chanceTip[0] > 0)
 			{
-				lines.add("<col=46c8ff>PKP</col> " + chanceTip[0] + "% chance a cast costs nothing");
+				lines.add("<col=46c8ff>PKP</col> " + chanceTip[0] + "% chance: " + freeChange("all") + " while worn");
 			}
 			if (chanceTip[1] > 0)
 			{
@@ -5325,7 +5739,7 @@ public class BattleMagePlugin extends Plugin
 		}
 		if (spellCost != null && spellCost != 100)
 		{
-			lines.add("<col=ff7a6a>Spells cost " + multiplierLabel(spellCost / 100.0) + " PKP while worn</col>");
+			lines.add("<col=ff7a6a>" + percentChange("all", spellCost) + " while worn</col>");
 		}
 		addEffectLines(lines, specEffectFor(itemId), itemId, " on special attack");
 		if (isPacifistItem(itemId))
@@ -5487,11 +5901,13 @@ public class BattleMagePlugin extends Plugin
 	{
 		// drinks and the Cursed amulet of magic scale what this cast costs
 		cost = (int) Math.round(cost * spendMultiplier());
-		// a worn chance item (Expeditious bracelet) may make this cast free
-		if (cost > 0 && wornFreeCastChance > 0 && stateSaveRng.nextInt(100) < wornFreeCastChance)
+		// a worn chance item (Expeditious bracelet) may make this cast free - unless this cast's free
+		// chances were already pooled and rolled together (carriedChanceDiscount)
+		if (!freeCastRolled && cost > 0 && wornFreeCastChance > 0 && stateSaveRng.nextInt(100) < wornFreeCastChance)
 		{
 			cost = 0;
 		}
+		freeCastRolled = false;
 		// an armed freeze starts here, before any PKP moves, so this cast's cost is the one it cancels
 		startPendingFreeze();
 		// ...and this cast either renews a sustained freeze or breaks it
@@ -6554,12 +6970,15 @@ public class BattleMagePlugin extends Plugin
 				}
 			}
 			int min = Math.max(1, b.minPieces);
+			int max = b.maxPieces > 0 ? Math.max(min, b.maxPieces) : 0;
 			String shown = b.name != null && !b.name.trim().isEmpty() ? b.name.trim() : e.getKey();
-			// tooltips say "(full set)" for a set that needs every slot, else the exact count it needs
-			String label = shown + (b.fullSet ? " (full set)" : " (" + min + (min == 1 ? " piece)" : " pieces)"));
+			// tooltips say "(full set)" for a set that needs every slot, else the count it needs
+			String count = max == min ? String.valueOf(min) : max > min ? min + "-" + max : min + "+";
+			String label = shown + (b.fullSet ? " (full set)" : " (" + (max == 0 && min == 1 ? "1" : count)
+				+ (min == 1 && max <= 1 ? " piece)" : " pieces)"));
 			setBonusList.add(new Object[]{label, pieces, min, pct, minus,
 				Math.max(0, b.bufferOverload), Math.max(0, b.bufferDepletion), b.noCritical,
-				Math.max(0, Math.min(100, b.saveOverload))});
+				Math.max(0, Math.min(100, b.saveOverload)), max});
 		}
 		criticalSaveByName.clear();
 		for (Map.Entry<String, Integer> e : rules.criticalSaveItems().entrySet())
@@ -6605,6 +7024,59 @@ public class BattleMagePlugin extends Plugin
 		}
 		parseSpellChances(rules.carriedSpellChances(), carriedChanceByItem);
 		parseSpellChances(rules.wornSpellChances(), wornChanceByItem);
+		setActionChances.clear();
+		for (Map.Entry<String, ContentPack.SetActionChance> e : rules.setActionChances().entrySet())
+		{
+			ContentPack.SetActionChance a = e.getValue();
+			List<Set<String>> pieces = parsePieces(a == null ? null : a.pieces);
+			if (a == null || a.chance <= 0 || a.effect == null || pieces.isEmpty())
+			{
+				continue;
+			}
+			setActionChances.add(new Object[]{Math.min(100, a.chance), a.effect.trim(), pieces, a.minPieces,
+				parseFactions(a.factions), e.getKey(), Math.max(0, a.amount), a.maxPieces});
+		}
+		setChances.clear();
+		Map<String, Object[]> parsedSets = new HashMap<>();
+		Map<String, ContentPack.CarriedSpellChance> asChances = new java.util.LinkedHashMap<>(rules.setSpellChances());
+		parseSpellChances(asChances, parsedSets);
+		for (Map.Entry<String, ContentPack.SetSpellChance> e : rules.setSpellChances().entrySet())
+		{
+			Object[] base = e.getKey() == null ? null : parsedSets.get(e.getKey().trim().toLowerCase(Locale.ROOT));
+			if (base == null || e.getValue().pieces == null || e.getValue().pieces.isEmpty())
+			{
+				continue;
+			}
+			List<Set<String>> pieces = parsePieces(e.getValue().pieces);
+			if (!pieces.isEmpty())
+			{
+				setChances.add(new Object[]{base[0], base[1], base[2], pieces, e.getValue().minPieces,
+					parseFactions(e.getValue().factions), e.getValue().maxPieces, base[3]});
+			}
+		}
+		poweredAttackCost.clear();
+		poweredAttackAnimations.clear();
+		ContentPack.PoweredAttacks powered = rules.poweredAttacks();
+		if (powered.costs != null)
+		{
+			for (Map.Entry<String, Integer> e : powered.costs.entrySet())
+			{
+				if (e.getKey() != null && e.getValue() != null && e.getValue() > 0)
+				{
+					poweredAttackCost.put(e.getKey().trim().toLowerCase(Locale.ROOT), e.getValue());
+				}
+			}
+		}
+		if (powered.animationIds != null)
+		{
+			for (Integer a : powered.animationIds)
+			{
+				if (a != null && a > 0)
+				{
+					poweredAttackAnimations.add(a);
+				}
+			}
+		}
 		randomPkpByItem.clear();
 		randomPkpLastMs.clear();
 		for (Map.Entry<String, ContentPack.RandomPkp> e : rules.randomPkpItems().entrySet())
