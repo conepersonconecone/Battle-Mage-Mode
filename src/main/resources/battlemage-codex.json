@@ -1591,6 +1591,65 @@
         "Blood Blitz",
         "Blood Barrage"
       ],
+      "standard": [
+        "Wind Strike",
+        "Wind Bolt",
+        "Wind Blast",
+        "Wind Wave",
+        "Wind Surge",
+        "Water Strike",
+        "Water Bolt",
+        "Water Blast",
+        "Water Wave",
+        "Water Surge",
+        "Earth Strike",
+        "Earth Bolt",
+        "Earth Blast",
+        "Earth Wave",
+        "Earth Surge",
+        "Fire Strike",
+        "Fire Bolt",
+        "Fire Blast",
+        "Fire Wave",
+        "Fire Surge",
+        "Crumble Undead",
+        "Iban Blast",
+        "Magic Dart",
+        "Saradomin Strike",
+        "Claws of Guthix",
+        "Flames of Zamorak",
+        "Confuse",
+        "Weaken",
+        "Curse",
+        "Vulnerability",
+        "Enfeeble",
+        "Stun",
+        "Bind",
+        "Snare",
+        "Entangle",
+        "Teleport Block",
+        "Tele Block"
+      ],
+      "arceuus": [
+        "Resurrect Lesser Ghost",
+        "Resurrect Lesser Skeleton",
+        "Resurrect Lesser Zombie",
+        "Resurrect Superior Ghost",
+        "Resurrect Superior Skeleton",
+        "Resurrect Superior Zombie",
+        "Resurrect Greater Ghost",
+        "Resurrect Greater Skeleton",
+        "Resurrect Greater Zombie",
+        "Inferior Demonbane",
+        "Superior Demonbane",
+        "Dark Demonbane",
+        "Ghostly Grasp",
+        "Skeletal Grasp",
+        "Undead Grasp"
+      ],
+      "zamorak": [
+        "Flames of Zamorak"
+      ],
       "thrall": [
         "Resurrect Lesser Ghost",
         "Resurrect Lesser Skeleton",
@@ -1685,6 +1744,18 @@
       ]
     },
     "wornSpellDiscounts": {
+      "Wizard boots": {
+        "all": 5
+      },
+      "Eternal boots": {
+        "all": 5
+      },
+      "Ring of the elements": {
+        "air": 10,
+        "water": 10,
+        "earth": 10,
+        "fire": 10
+      },
       "Ring of shadows": {
         "shadow": 20
       },
@@ -1803,6 +1874,172 @@
       }
     },
     "setBonuses": {
+      "Ancestral robes (2)": {
+        "name": "Ancestral robes",
+        "pieces": [
+          "Ancestral hat",
+          "Ancestral robe top",
+          "Ancestral robe bottom",
+          "Twisted ancestral hat",
+          "Twisted ancestral robe top",
+          "Twisted ancestral robe bottom"
+        ],
+        "minPieces": 2,
+        "maxPieces": 2,
+        "costPercent": {},
+        "costMinus": {
+          "ancient": 10
+        }
+      },
+      "Ancestral robes (3)": {
+        "name": "Ancestral robes",
+        "pieces": [
+          "Ancestral hat",
+          "Ancestral robe top",
+          "Ancestral robe bottom",
+          "Twisted ancestral hat",
+          "Twisted ancestral robe top",
+          "Twisted ancestral robe bottom"
+        ],
+        "minPieces": 3,
+        "costPercent": {},
+        "costMinus": {
+          "ancient": 20
+        }
+      },
+      "Obsidian armour (2)": {
+        "name": "Obsidian armour",
+        "pieces": [
+          "Obsidian helmet",
+          "Obsidian platebody",
+          "Obsidian platelegs",
+          "Obsidian cape",
+          "Obsidian cape (r)",
+          "Fire cape",
+          "Fire cape (l)"
+        ],
+        "minPieces": 2,
+        "maxPieces": 3,
+        "costPercent": {},
+        "costMinus": {
+          "fire": 10,
+          "earth": 10
+        }
+      },
+      "Obsidian armour (4)": {
+        "name": "Obsidian armour",
+        "pieces": [
+          "Obsidian helmet",
+          "Obsidian platebody",
+          "Obsidian platelegs",
+          "Obsidian cape",
+          "Obsidian cape (r)",
+          "Fire cape",
+          "Fire cape (l)"
+        ],
+        "minPieces": 4,
+        "costPercent": {},
+        "costMinus": {
+          "fire": 20,
+          "earth": 20
+        }
+      },
+      "Blue Moon armour (2)": {
+        "name": "Blue Moon armour",
+        "pieces": [
+          "Blue Moon helm",
+          "Blue Moon chestplate",
+          "Blue Moon tassets",
+          "Blue Moon spear"
+        ],
+        "minPieces": 2,
+        "maxPieces": 3,
+        "costPercent": {},
+        "costMinus": {
+          "ice": 15,
+          "water": 15
+        }
+      },
+      "Blue Moon armour (4)": {
+        "name": "Blue Moon armour",
+        "pieces": [
+          "Blue Moon helm",
+          "Blue Moon chestplate",
+          "Blue Moon tassets",
+          "Blue Moon spear"
+        ],
+        "minPieces": 4,
+        "costPercent": {},
+        "costMinus": {
+          "ice": 25,
+          "water": 25
+        }
+      },
+      "Xerician robes (2)": {
+        "name": "Xerician robes",
+        "pieces": [
+          "Xerician hat",
+          "Xerician top",
+          "Xerician robe"
+        ],
+        "minPieces": 2,
+        "maxPieces": 2,
+        "costPercent": {},
+        "costMinus": {
+          "arceuus": 5
+        }
+      },
+      "Xerician robes (3)": {
+        "name": "Xerician robes",
+        "pieces": [
+          "Xerician hat",
+          "Xerician top",
+          "Xerician robe"
+        ],
+        "minPieces": 3,
+        "costPercent": {},
+        "costMinus": {
+          "arceuus": 10
+        }
+      },
+      "Elder chaos robes (2)": {
+        "name": "Elder chaos robes",
+        "pieces": [
+          "Elder chaos hood",
+          "Elder chaos top",
+          "Elder chaos robe"
+        ],
+        "minPieces": 2,
+        "maxPieces": 2,
+        "costPercent": {},
+        "costMinus": {
+          "fire": 10,
+          "zamorak": 10
+        }
+      },
+      "Elder chaos robes (3)": {
+        "name": "Elder chaos robes",
+        "pieces": [
+          "Elder chaos hood",
+          "Elder chaos top",
+          "Elder chaos robe"
+        ],
+        "minPieces": 3,
+        "costPercent": {},
+        "costMinus": {
+          "fire": 15,
+          "zamorak": 15
+        }
+      },
+      "3rd age amulet": {
+        "pieces": [
+          "3rd age amulet"
+        ],
+        "minPieces": 1,
+        "costPercent": {
+          "all": 67
+        }
+      },
       "Infinity robes (full set)": {
         "pieces": [
           "Infinity hat",
@@ -2058,13 +2295,734 @@
         ]
       }
     },
+    "poweredAttacks": {
+      "animationIds": [
+        1167
+      ],
+      "costs": {
+        "Crystal staff (basic)": 50,
+        "Crystal staff (attuned)": 50,
+        "Crystal staff (perfected)": 50,
+        "Corrupted staff (basic)": 50,
+        "Corrupted staff (attuned)": 50,
+        "Corrupted staff (perfected)": 50
+      }
+    },
     "randomPkpItems": {
       "Jester cape": {
         "amount": 50,
         "everyMs": 1000
       }
     },
+    "setActionChances": {
+      "Steel ring": {
+        "chance": 50,
+        "effect": "doubleBlock",
+        "pieces": [
+          [
+            "Steel ring"
+          ]
+        ]
+      },
+      "Dharok's set + Amulet of the Damned": {
+        "chance": 25,
+        "effect": "noMeleeGain",
+        "pieces": [
+          [
+            "Dharok's helm",
+            "Dharok's helm 100",
+            "Dharok's helm 75",
+            "Dharok's helm 50",
+            "Dharok's helm 25",
+            "Dharok's helm 0"
+          ],
+          [
+            "Dharok's platebody",
+            "Dharok's platebody 100",
+            "Dharok's platebody 75",
+            "Dharok's platebody 50",
+            "Dharok's platebody 25",
+            "Dharok's platebody 0"
+          ],
+          [
+            "Dharok's platelegs",
+            "Dharok's platelegs 100",
+            "Dharok's platelegs 75",
+            "Dharok's platelegs 50",
+            "Dharok's platelegs 25",
+            "Dharok's platelegs 0"
+          ],
+          [
+            "Dharok's greataxe",
+            "Dharok's greataxe 100",
+            "Dharok's greataxe 75",
+            "Dharok's greataxe 50",
+            "Dharok's greataxe 25",
+            "Dharok's greataxe 0"
+          ],
+          [
+            "Amulet of the Damned",
+            "Amulet of the Damned (full)"
+          ]
+        ]
+      },
+      "Torag's set + Amulet of the Damned": {
+        "chance": 25,
+        "effect": "noMeleeGain",
+        "pieces": [
+          [
+            "Torag's helm",
+            "Torag's helm 100",
+            "Torag's helm 75",
+            "Torag's helm 50",
+            "Torag's helm 25",
+            "Torag's helm 0"
+          ],
+          [
+            "Torag's platebody",
+            "Torag's platebody 100",
+            "Torag's platebody 75",
+            "Torag's platebody 50",
+            "Torag's platebody 25",
+            "Torag's platebody 0"
+          ],
+          [
+            "Torag's platelegs",
+            "Torag's platelegs 100",
+            "Torag's platelegs 75",
+            "Torag's platelegs 50",
+            "Torag's platelegs 25",
+            "Torag's platelegs 0"
+          ],
+          [
+            "Torag's hammers",
+            "Torag's hammers 100",
+            "Torag's hammers 75",
+            "Torag's hammers 50",
+            "Torag's hammers 25",
+            "Torag's hammers 0"
+          ],
+          [
+            "Amulet of the Damned",
+            "Amulet of the Damned (full)"
+          ]
+        ]
+      },
+      "Guthan's set + Amulet of the Damned": {
+        "chance": 25,
+        "effect": "noMeleeGain",
+        "pieces": [
+          [
+            "Guthan's helm",
+            "Guthan's helm 100",
+            "Guthan's helm 75",
+            "Guthan's helm 50",
+            "Guthan's helm 25",
+            "Guthan's helm 0"
+          ],
+          [
+            "Guthan's platebody",
+            "Guthan's platebody 100",
+            "Guthan's platebody 75",
+            "Guthan's platebody 50",
+            "Guthan's platebody 25",
+            "Guthan's platebody 0"
+          ],
+          [
+            "Guthan's chainskirt",
+            "Guthan's chainskirt 100",
+            "Guthan's chainskirt 75",
+            "Guthan's chainskirt 50",
+            "Guthan's chainskirt 25",
+            "Guthan's chainskirt 0"
+          ],
+          [
+            "Guthan's warspear",
+            "Guthan's warspear 100",
+            "Guthan's warspear 75",
+            "Guthan's warspear 50",
+            "Guthan's warspear 25",
+            "Guthan's warspear 0"
+          ],
+          [
+            "Amulet of the Damned",
+            "Amulet of the Damned (full)"
+          ]
+        ]
+      },
+      "Verac's set + Amulet of the Damned": {
+        "chance": 25,
+        "effect": "noMeleeGain",
+        "pieces": [
+          [
+            "Verac's helm",
+            "Verac's helm 100",
+            "Verac's helm 75",
+            "Verac's helm 50",
+            "Verac's helm 25",
+            "Verac's helm 0"
+          ],
+          [
+            "Verac's brassard",
+            "Verac's brassard 100",
+            "Verac's brassard 75",
+            "Verac's brassard 50",
+            "Verac's brassard 25",
+            "Verac's brassard 0"
+          ],
+          [
+            "Verac's plateskirt",
+            "Verac's plateskirt 100",
+            "Verac's plateskirt 75",
+            "Verac's plateskirt 50",
+            "Verac's plateskirt 25",
+            "Verac's plateskirt 0"
+          ],
+          [
+            "Verac's flail",
+            "Verac's flail 100",
+            "Verac's flail 75",
+            "Verac's flail 50",
+            "Verac's flail 25",
+            "Verac's flail 0"
+          ],
+          [
+            "Amulet of the Damned",
+            "Amulet of the Damned (full)"
+          ]
+        ]
+      },
+      "Karil's set + Amulet of the Damned": {
+        "chance": 25,
+        "effect": "noRangedGain",
+        "pieces": [
+          [
+            "Karil's coif",
+            "Karil's coif 100",
+            "Karil's coif 75",
+            "Karil's coif 50",
+            "Karil's coif 25",
+            "Karil's coif 0"
+          ],
+          [
+            "Karil's leathertop",
+            "Karil's leathertop 100",
+            "Karil's leathertop 75",
+            "Karil's leathertop 50",
+            "Karil's leathertop 25",
+            "Karil's leathertop 0"
+          ],
+          [
+            "Karil's leatherskirt",
+            "Karil's leatherskirt 100",
+            "Karil's leatherskirt 75",
+            "Karil's leatherskirt 50",
+            "Karil's leatherskirt 25",
+            "Karil's leatherskirt 0"
+          ],
+          [
+            "Karil's crossbow",
+            "Karil's crossbow 100",
+            "Karil's crossbow 75",
+            "Karil's crossbow 50",
+            "Karil's crossbow 25",
+            "Karil's crossbow 0"
+          ],
+          [
+            "Amulet of the Damned",
+            "Amulet of the Damned (full)"
+          ]
+        ]
+      },
+      "Granite (2) melee": {
+        "chance": 50,
+        "effect": "meleeGainMinus",
+        "amount": 15,
+        "minPieces": 2,
+        "maxPieces": 3,
+        "pieces": [
+          [
+            "Granite helm"
+          ],
+          [
+            "Granite shield"
+          ],
+          [
+            "Granite gloves"
+          ],
+          [
+            "Granite boots"
+          ],
+          [
+            "Granite ring",
+            "Granite ring (i)"
+          ],
+          [
+            "Granite maul",
+            "Granite longsword",
+            "Granite hammer"
+          ]
+        ]
+      },
+      "Granite (4) melee": {
+        "chance": 100,
+        "effect": "meleeGainMinus",
+        "amount": 15,
+        "minPieces": 4,
+        "pieces": [
+          [
+            "Granite helm"
+          ],
+          [
+            "Granite shield"
+          ],
+          [
+            "Granite gloves"
+          ],
+          [
+            "Granite boots"
+          ],
+          [
+            "Granite ring",
+            "Granite ring (i)"
+          ],
+          [
+            "Granite maul",
+            "Granite longsword",
+            "Granite hammer"
+          ]
+        ]
+      },
+      "Granite (2) ranged": {
+        "chance": 50,
+        "effect": "rangedGainMinus",
+        "amount": 15,
+        "minPieces": 2,
+        "maxPieces": 3,
+        "pieces": [
+          [
+            "Granite helm"
+          ],
+          [
+            "Granite shield"
+          ],
+          [
+            "Granite gloves"
+          ],
+          [
+            "Granite boots"
+          ],
+          [
+            "Granite ring",
+            "Granite ring (i)"
+          ],
+          [
+            "Granite maul",
+            "Granite longsword",
+            "Granite hammer"
+          ]
+        ]
+      },
+      "Granite (4) ranged": {
+        "chance": 100,
+        "effect": "rangedGainMinus",
+        "amount": 15,
+        "minPieces": 4,
+        "pieces": [
+          [
+            "Granite helm"
+          ],
+          [
+            "Granite shield"
+          ],
+          [
+            "Granite gloves"
+          ],
+          [
+            "Granite boots"
+          ],
+          [
+            "Granite ring",
+            "Granite ring (i)"
+          ],
+          [
+            "Granite maul",
+            "Granite longsword",
+            "Granite hammer"
+          ]
+        ]
+      },
+      "Spined armour": {
+        "chance": 25,
+        "effect": "rangedGainMinus",
+        "amount": 15,
+        "minPieces": 2,
+        "pieces": [
+          [
+            "Spined helm"
+          ],
+          [
+            "Spined chaps"
+          ],
+          [
+            "Spined gloves"
+          ],
+          [
+            "Spined boots"
+          ]
+        ]
+      },
+      "Rock-shell armour": {
+        "chance": 20,
+        "effect": "meleeGainMinus",
+        "amount": 25,
+        "minPieces": 2,
+        "pieces": [
+          [
+            "Rock-shell helm"
+          ],
+          [
+            "Rock-shell gloves"
+          ],
+          [
+            "Rock-shell boots"
+          ]
+        ]
+      },
+      "Void melee": {
+        "chance": 100,
+        "effect": "doubleOrHalfMelee",
+        "pieces": [
+          [
+            "Void knight top",
+            "Void knight top (l)",
+            "Void knight top (or)",
+            "Void knight top (l)(or)",
+            "Elite void top",
+            "Elite void top (l)",
+            "Elite void top (or)",
+            "Elite void top (l)(or)"
+          ],
+          [
+            "Void knight robe",
+            "Void knight robe (l)",
+            "Void knight robe (or)",
+            "Void knight robe (l)(or)",
+            "Elite void robe",
+            "Elite void robe (l)",
+            "Elite void robe (or)",
+            "Elite void robe (l)(or)"
+          ],
+          [
+            "Void knight gloves",
+            "Void knight gloves (l)",
+            "Void knight gloves (or)",
+            "Void knight gloves (l)(or)"
+          ],
+          [
+            "Void melee helm",
+            "Void melee helm (l)",
+            "Void melee helm (or)",
+            "Void melee helm (l)(or)"
+          ],
+          [
+            "Void knight mace",
+            "Void knight mace (l)"
+          ]
+        ]
+      },
+      "Ranger kit": {
+        "chance": 33,
+        "effect": "noRangedGain",
+        "minPieces": 2,
+        "maxPieces": 3,
+        "pieces": [
+          [
+            "Robin Hood hat"
+          ],
+          [
+            "Rangers' tights"
+          ],
+          [
+            "Ranger gloves"
+          ],
+          [
+            "Ranger boots"
+          ],
+          [
+            "Rangers' tunic"
+          ]
+        ]
+      },
+      "Ranger kit (4)": {
+        "chance": 75,
+        "effect": "noRangedPkp",
+        "minPieces": 4,
+        "pieces": [
+          [
+            "Robin Hood hat"
+          ],
+          [
+            "Rangers' tights"
+          ],
+          [
+            "Ranger gloves"
+          ],
+          [
+            "Ranger boots"
+          ],
+          [
+            "Rangers' tunic"
+          ]
+        ]
+      }
+    },
+    "setSpellChances": {
+      "Ahrim's set + Amulet of the Damned": {
+        "chance": 25,
+        "free": [
+          "all"
+        ],
+        "pieces": [
+          [
+            "Ahrim's hood",
+            "Ahrim's hood 100",
+            "Ahrim's hood 75",
+            "Ahrim's hood 50",
+            "Ahrim's hood 25",
+            "Ahrim's hood 0"
+          ],
+          [
+            "Ahrim's robetop",
+            "Ahrim's robetop 100",
+            "Ahrim's robetop 75",
+            "Ahrim's robetop 50",
+            "Ahrim's robetop 25",
+            "Ahrim's robetop 0"
+          ],
+          [
+            "Ahrim's robeskirt",
+            "Ahrim's robeskirt 100",
+            "Ahrim's robeskirt 75",
+            "Ahrim's robeskirt 50",
+            "Ahrim's robeskirt 25",
+            "Ahrim's robeskirt 0"
+          ],
+          [
+            "Ahrim's staff",
+            "Ahrim's staff 100",
+            "Ahrim's staff 75",
+            "Ahrim's staff 50",
+            "Ahrim's staff 25",
+            "Ahrim's staff 0"
+          ],
+          [
+            "Amulet of the Damned",
+            "Amulet of the Damned (full)"
+          ]
+        ]
+      },
+      "Elder chaos robes (2)": {
+        "chance": 5,
+        "free": [
+          "fire",
+          "Flames of Zamorak",
+          "Iban Blast"
+        ],
+        "minPieces": 2,
+        "maxPieces": 2,
+        "pieces": [
+          [
+            "Elder chaos hood"
+          ],
+          [
+            "Elder chaos top"
+          ],
+          [
+            "Elder chaos robe"
+          ]
+        ]
+      },
+      "Elder chaos robes (3)": {
+        "chance": 15,
+        "free": [
+          "fire",
+          "Flames of Zamorak",
+          "Iban Blast"
+        ],
+        "minPieces": 3,
+        "pieces": [
+          [
+            "Elder chaos hood"
+          ],
+          [
+            "Elder chaos top"
+          ],
+          [
+            "Elder chaos robe"
+          ]
+        ]
+      },
+      "Skeletal armour": {
+        "chance": 15,
+        "minPieces": 2,
+        "discount": {
+          "all": 33
+        },
+        "pieces": [
+          [
+            "Skeletal helm"
+          ],
+          [
+            "Skeletal top"
+          ],
+          [
+            "Skeletal bottoms"
+          ],
+          [
+            "Skeletal gloves"
+          ],
+          [
+            "Skeletal boots"
+          ]
+        ]
+      },
+      "Virtus robes": {
+        "chance": 25,
+        "minPieces": 2,
+        "free": [
+          "ancient"
+        ],
+        "factions": [
+          "ZAROS"
+        ],
+        "pieces": [
+          [
+            "Virtus mask"
+          ],
+          [
+            "Virtus robe top"
+          ],
+          [
+            "Virtus robe bottom"
+          ]
+        ]
+      },
+      "Void mage": {
+        "chance": 33,
+        "free": [
+          "all"
+        ],
+        "pieces": [
+          [
+            "Void knight top",
+            "Void knight top (l)",
+            "Void knight top (or)",
+            "Void knight top (l)(or)",
+            "Elite void top",
+            "Elite void top (l)",
+            "Elite void top (or)",
+            "Elite void top (l)(or)"
+          ],
+          [
+            "Void knight robe",
+            "Void knight robe (l)",
+            "Void knight robe (or)",
+            "Void knight robe (l)(or)",
+            "Elite void robe",
+            "Elite void robe (l)",
+            "Elite void robe (or)",
+            "Elite void robe (l)(or)"
+          ],
+          [
+            "Void knight gloves",
+            "Void knight gloves (l)",
+            "Void knight gloves (or)",
+            "Void knight gloves (l)(or)"
+          ],
+          [
+            "Void mage helm",
+            "Void mage helm (l)",
+            "Void mage helm (or)",
+            "Void mage helm (l)(or)"
+          ],
+          [
+            "Void knight mace",
+            "Void knight mace (l)"
+          ]
+        ]
+      },
+      "Zamorak monk robes": {
+        "chance": 5,
+        "free": [
+          "fire",
+          "Flames of Zamorak",
+          "Iban Blast"
+        ],
+        "pieces": [
+          [
+            "Zamorak monk top"
+          ],
+          [
+            "Zamorak monk bottom"
+          ]
+        ]
+      },
+      "Monk's robes": {
+        "chance": 10,
+        "free": [
+          "water",
+          "air",
+          "Saradomin Strike"
+        ],
+        "pieces": [
+          [
+            "Monk's robe top",
+            "Monk's robe top (g)",
+            "Monk's robe top (t)"
+          ],
+          [
+            "Monk's robe",
+            "Monk's robe (g)",
+            "Monk's robe (t)"
+          ]
+        ]
+      }
+    },
     "wornSpellChances": {
+      "Bryophyta's staff": {
+        "chance": 25,
+        "free": [
+          "earth",
+          "curse"
+        ]
+      },
+      "Bryophyta's staff (uncharged)": {
+        "chance": 25,
+        "free": [
+          "earth",
+          "curse"
+        ]
+      },
+      "Harmonised Nightmare staff": {
+        "chance": 20,
+        "free": [
+          "elemental"
+        ]
+      },
+      "Frog mask": {
+        "chance": 50,
+        "free": [
+          "all"
+        ],
+        "whenPoisoned": true
+      },
+      "Tribal mask": {
+        "chance": 25,
+        "discount": {
+          "all": 25
+        }
+      },
       "Fire cape": {
         "chance": 10,
         "free": [
@@ -2338,6 +3296,7 @@
       "Holy Water",
       "Hunter's Spear",
       "Magic Shortbow",
+      "Magic shortbow (i)",
       "Magic Longbow",
       "Seercull",
       "3rd Age Bow",
@@ -2356,7 +3315,12 @@
       "Crystal bow (perfected)",
       "Corrupted bow (basic)",
       "Corrupted bow (attuned)",
-      "Corrupted bow (perfected)"
+      "Corrupted bow (perfected)",
+      "Orange Salamander",
+      "Red Salamander",
+      "Black Salamander",
+      "Tecu Salamander",
+      "Swamp lizard"
     ],
     "gearExceptions": [
       "Ahrim's hood",
@@ -2486,7 +3450,30 @@
       "Tome of fire",
       "Tome of fire (empty)",
       "Malediction ward",
-      "Malediction ward (or)"
+      "Malediction ward (or)",
+      "Crystal shield",
+      "Crystal shield (inactive)",
+      "Crystal shield full",
+      "Crystal shield 9/10",
+      "Crystal shield 8/10",
+      "Crystal shield 7/10",
+      "Crystal shield 6/10",
+      "Crystal shield 5/10",
+      "Crystal shield 4/10",
+      "Crystal shield 3/10",
+      "Crystal shield 2/10",
+      "Crystal shield 1/10",
+      "Crystal shield full (i)",
+      "Crystal shield 9/10 (i)",
+      "Crystal shield 8/10 (i)",
+      "Crystal shield 7/10 (i)",
+      "Crystal shield 6/10 (i)",
+      "Crystal shield 5/10 (i)",
+      "Crystal shield 4/10 (i)",
+      "Crystal shield 3/10 (i)",
+      "Crystal shield 2/10 (i)",
+      "Crystal shield 1/10 (i)",
+      "Granite shield"
     ],
     "shieldBlockPkp": {
       "Broodoo shield": 25,
@@ -2561,17 +3548,29 @@
       "Ghommal's avernic defender 5 (l)": 15,
       "Ghommal's avernic defender 6 (l)": 15
     },
-    "weaponExceptions": ["Keris partisan of the sun", "Ham joint", "Keris partisan of corruption", "Dawnbringer", "Abyssal dagger", "Abyssal dagger (p)", "Abyssal dagger (p+)", "Abyssal dagger (p++)", "Ahrim's staff", "Ahrim's staff 100", "Ahrim's staff 75", "Ahrim's staff 50", "Ahrim's staff 25", "Ahrim's staff 0", "Oak blackjack(d)", "Willow blackjack(d)", 
+    "weaponExceptions": [
+      "Keris partisan of the sun",
+      "Ham joint",
+      "Keris partisan of corruption",
+      "Dawnbringer",
+      "Abyssal dagger",
+      "Abyssal dagger (p)",
+      "Abyssal dagger (p+)",
+      "Abyssal dagger (p++)",
+      "Ahrim's staff",
+      "Ahrim's staff 100",
+      "Ahrim's staff 75",
+      "Ahrim's staff 50",
+      "Ahrim's staff 25",
+      "Ahrim's staff 0",
+      "Oak blackjack(d)",
+      "Willow blackjack(d)",
       "3rd Age Longsword",
       "Emberlight",
       "Arclight",
       "Darklight",
       "Silverlight",
       "Excalibur",
-      "Orange Salamander",
-      "Red Salamander",
-      "Black Salamander",
-      "Tecu Salamander",
       "Gilded Spear",
       "Gilded Spear(p)",
       "Gilded Spear(p+)",
@@ -2775,6 +3774,13 @@
       },
       {
         "name": "Magic Shortbow",
+        "delta": 66,
+        "effects": [
+          "CD"
+        ]
+      },
+      {
+        "name": "Magic shortbow (i)",
         "delta": 66,
         "effects": [
           "CD"
@@ -3489,6 +4495,11 @@
       }
     ],
     "pkpRangedWeapons": {
+      "Orange Salamander": 40,
+      "Red Salamander": 40,
+      "Black Salamander": 40,
+      "Tecu Salamander": 40,
+      "Swamp lizard": 40,
       "Karil's crossbow": 50,
       "Karil's crossbow 100": 50,
       "Karil's crossbow 75": 50,
@@ -3501,7 +4512,7 @@
       "Holy Water": 25,
       "Hunter's Spear": 50,
       "Magic Longbow": 50,
-      "Dark Bow": 50,
+      "Dark Bow": 66,
       "Zaryte Crossbow": 33,
       "Black Knife": 25,
       "Armadyl Crossbow": 50,
@@ -3656,6 +4667,7 @@
         14472
       ],
       "rangedAnimationIds": [
+        5247,
         426,
         806,
         2075,
@@ -3940,7 +4952,9 @@
           "Torag's platelegs 50",
           "Torag's platelegs 75",
           "Rondache",
-          "Armadyl chainskirt"
+          "Armadyl chainskirt",
+          "Sunfire fanatic cuirass",
+          "Rangers' tunic"
         ],
         "shields": [
           "Saradomin Kiteshield",
@@ -4161,30 +5175,7 @@
           "Mithril kiteshield",
           "Adamant kiteshield",
           "Odium ward (or)",
-          "Crystal shield",
-          "Crystal shield (inactive)",
-          "Crystal shield full",
-          "Crystal shield 9/10",
-          "Crystal shield 8/10",
-          "Crystal shield 7/10",
-          "Crystal shield 6/10",
-          "Crystal shield 5/10",
-          "Crystal shield 4/10",
-          "Crystal shield 3/10",
-          "Crystal shield 2/10",
-          "Crystal shield 1/10",
-          "Crystal shield full (i)",
-          "Crystal shield 9/10 (i)",
-          "Crystal shield 8/10 (i)",
-          "Crystal shield 7/10 (i)",
-          "Crystal shield 6/10 (i)",
-          "Crystal shield 5/10 (i)",
-          "Crystal shield 4/10 (i)",
-          "Crystal shield 3/10 (i)",
-          "Crystal shield 2/10 (i)",
-          "Crystal shield 1/10 (i)",
           "Toktz-ket-xil",
-          "Granite shield",
           "Crystal helm",
           "Crystal helm (inactive)",
           "Crystal legs",
@@ -4468,7 +5459,10 @@
         ],
         "weaponExceptionDefaultPkp": 50,
         "pkpWeapons": {
-          "3rd Age Longsword": 0
+          "3rd Age Longsword": 0,
+          "Sulphur blades": 66,
+          "Glacial temotli": 66,
+          "Earthbound tecpatl": 66
         }
       },
       "ranged": {
@@ -5043,30 +6037,7 @@
           "Mithril kiteshield",
           "Adamant kiteshield",
           "Odium ward (or)",
-          "Crystal shield",
-          "Crystal shield (inactive)",
-          "Crystal shield full",
-          "Crystal shield 9/10",
-          "Crystal shield 8/10",
-          "Crystal shield 7/10",
-          "Crystal shield 6/10",
-          "Crystal shield 5/10",
-          "Crystal shield 4/10",
-          "Crystal shield 3/10",
-          "Crystal shield 2/10",
-          "Crystal shield 1/10",
-          "Crystal shield full (i)",
-          "Crystal shield 9/10 (i)",
-          "Crystal shield 8/10 (i)",
-          "Crystal shield 7/10 (i)",
-          "Crystal shield 6/10 (i)",
-          "Crystal shield 5/10 (i)",
-          "Crystal shield 4/10 (i)",
-          "Crystal shield 3/10 (i)",
-          "Crystal shield 2/10 (i)",
-          "Crystal shield 1/10 (i)",
           "Toktz-ket-xil",
-          "Granite shield",
           "Dragonfire shield",
           "Crystal helm",
           "Crystal helm (inactive)",
@@ -5368,7 +6339,10 @@
         ],
         "weaponExceptionDefaultPkp": 50,
         "pkpWeapons": {
-          "3rd Age Longsword": 0
+          "3rd Age Longsword": 0,
+          "Sulphur blades": 66,
+          "Glacial temotli": 66,
+          "Earthbound tecpatl": 66
         }
       },
       "ranged": {
@@ -5911,6 +6885,24 @@
           "Mithril kiteshield",
           "Adamant kiteshield",
           "Odium ward (or)",
+          "Toktz-ket-xil",
+          "Dragonfire shield",
+          "Crystal helm",
+          "Crystal helm (inactive)",
+          "Crystal legs",
+          "Crystal legs (inactive)",
+          "Dragonfire ward",
+          "Armadyl chainskirt",
+          "Karil's leathertop",
+          "Karil's leathertop 0",
+          "Karil's leathertop 100",
+          "Karil's leathertop 25",
+          "Karil's leathertop 50",
+          "Karil's leathertop 75",
+          "Hueycoatl Hide Body",
+          "Rondache",
+          "Zorya's tome",
+          "Zorya's tome (uncharged)",
           "Crystal shield",
           "Crystal shield (inactive)",
           "Crystal shield full",
@@ -5932,26 +6924,7 @@
           "Crystal shield 4/10 (i)",
           "Crystal shield 3/10 (i)",
           "Crystal shield 2/10 (i)",
-          "Crystal shield 1/10 (i)",
-          "Toktz-ket-xil",
-          "Granite shield",
-          "Dragonfire shield",
-          "Crystal helm",
-          "Crystal helm (inactive)",
-          "Crystal legs",
-          "Crystal legs (inactive)",
-          "Dragonfire ward",
-          "Armadyl chainskirt",
-          "Karil's leathertop",
-          "Karil's leathertop 0",
-          "Karil's leathertop 100",
-          "Karil's leathertop 25",
-          "Karil's leathertop 50",
-          "Karil's leathertop 75",
-          "Hueycoatl Hide Body",
-          "Rondache",
-          "Zorya's tome",
-          "Zorya's tome (uncharged)"
+          "Crystal shield 1/10 (i)"
         ]
       },
       "weapons": {
@@ -6237,7 +7210,10 @@
         ],
         "weaponExceptionDefaultPkp": 50,
         "pkpWeapons": {
-          "3rd Age Longsword": 0
+          "3rd Age Longsword": 0,
+          "Sulphur blades": 66,
+          "Glacial temotli": 66,
+          "Earthbound tecpatl": 66
         }
       },
       "ranged": {
@@ -6554,7 +7530,8 @@
           "Dragonfire ward",
           "Hueycoatl Hide Body",
           "Armadyl chainskirt",
-          "Armadyl helmet"
+          "Armadyl helmet",
+          "Rangers' tunic"
         ],
         "shields": [
           "Ancient Kiteshield",
@@ -6815,30 +7792,7 @@
           "Armadyl chaps",
           "Armadyl bracers",
           "Armadyl d'hide boots",
-          "Crystal shield",
-          "Crystal shield (inactive)",
-          "Crystal shield full",
-          "Crystal shield 9/10",
-          "Crystal shield 8/10",
-          "Crystal shield 7/10",
-          "Crystal shield 6/10",
-          "Crystal shield 5/10",
-          "Crystal shield 4/10",
-          "Crystal shield 3/10",
-          "Crystal shield 2/10",
-          "Crystal shield 1/10",
-          "Crystal shield full (i)",
-          "Crystal shield 9/10 (i)",
-          "Crystal shield 8/10 (i)",
-          "Crystal shield 7/10 (i)",
-          "Crystal shield 6/10 (i)",
-          "Crystal shield 5/10 (i)",
-          "Crystal shield 4/10 (i)",
-          "Crystal shield 3/10 (i)",
-          "Crystal shield 2/10 (i)",
-          "Crystal shield 1/10 (i)",
           "Toktz-ket-xil",
-          "Granite shield",
           "Dragonfire shield",
           "Crystal helm",
           "Crystal helm (inactive)",
@@ -7123,7 +8077,10 @@
         ],
         "weaponExceptionDefaultPkp": 50,
         "pkpWeapons": {
-          "3rd Age Longsword": 0
+          "3rd Age Longsword": 0,
+          "Sulphur blades": 66,
+          "Glacial temotli": 66,
+          "Earthbound tecpatl": 66
         }
       },
       "ranged": {
@@ -7656,7 +8613,10 @@
         ],
         "weaponExceptionDefaultPkp": 50,
         "pkpWeapons": {
-          "3rd Age Longsword": 0
+          "3rd Age Longsword": 0,
+          "Sulphur blades": 66,
+          "Glacial temotli": 66,
+          "Earthbound tecpatl": 66
         }
       },
       "ranged": {
