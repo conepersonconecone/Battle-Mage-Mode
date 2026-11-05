@@ -702,6 +702,12 @@ public class Rules
 		return active == null ? 0 : active.pool.blockRestore;
 	}
 
+	/** Each block's coin-flip swing on top of the base (Guthix), or 0. */
+	public int blockSwing()
+	{
+		return active == null ? 0 : Math.max(0, active.pool.blockSwing);
+	}
+
 	public boolean poisonCostEnabled()
 	{
 		return active != null && active.pool.poisonCostEnabled;
@@ -1009,6 +1015,18 @@ public class Rules
 	public java.util.Map<String, ContentPack.SetActionChance> setActionChances()
 	{
 		return sharedOr(s -> s.setActionChances, java.util.Collections.emptyMap());
+	}
+
+	public ContentPack.ThrallBeads thrallBeads()
+	{
+		ContentPack.ThrallBeads t = sharedOr(s -> s.thrallBeads, null);
+		return t == null ? new ContentPack.ThrallBeads() : t;
+	}
+
+	public ContentPack.ElementSwap elementSwap()
+	{
+		ContentPack.ElementSwap e = sharedOr(s -> s.elementSwap, null);
+		return e == null ? new ContentPack.ElementSwap() : e;
 	}
 
 	public ContentPack.PoweredAttacks poweredAttacks()

@@ -263,6 +263,22 @@ public class BattleMagePlugin extends Plugin
 	private final List<Object[]> setChances = new ArrayList<>();
 	/** Set attack chances: {chance, effect, pieces, min pieces, factions, display name, amount, max pieces}. */
 	private final List<Object[]> setActionChances = new ArrayList<>();
+	// ---- thrall beads and the element swap
+	/** The style of the thrall you have out ("magic", "melee", "ranged"), or null, and when it goes. */
+	private String thrallKind;
+	private long thrallUntilMs;
+	private final Set<String> thrallBeadNames = new HashSet<>();
+	private int beadMagicPercent = 100;
+	private int beadMeleePercent = 100;
+	private int beadRangedPercent = 100;
+	private final Set<String> elementSwapNames = new HashSet<>();
+	private int elementSwapBuffer;
+	/** The element of the last spell cast (null after a non-elemental one), and whether it was free. */
+	private String lastCastElement;
+	private boolean lastCastSwapFree;
+	/** Extra depletion room for the cast now being paid (the Elemental tiara). */
+	private int castBufferExtra;
+
 	/** Powered staves whose own attack costs PKP: lower-case name -> cost, and the attack animations. */
 	private final Map<String, Integer> poweredAttackCost = new HashMap<>();
 	private final Set<Integer> poweredAttackAnimations = new HashSet<>();
@@ -630,7 +646,7 @@ public class BattleMagePlugin extends Plugin
 	 * Attack-count overload and depletion immunity lapse on their own this long after they were
 	 * granted or last used up an attack; every use starts the clock over.
 	 */
-	static final long IMMUNITY_ATTACKS_IDLE_MS = 15000L;
+	static final long IMMUNITY_ATTACKS_IDLE_MS = 30000L;
 	private long immunityAttacksExpireMs;
 
 	@Provides
@@ -1224,7 +1240,8 @@ public class BattleMagePlugin extends Plugin
 		if (oath.isSworn() && "Examine".equalsIgnoreCase(option))
 		{
 			int shield = resolveItemId(event);
-			if (shield > 0 && isShieldSlotItem(shield) && blockAmountForItem(shield) != 0)
+			if (shield > 0 && isShieldSlotItem(shield)
+				&& (blockAmountForItem(shield) != 0 || (rules.blockSwing() > 0 && !isNoBlockPkpItem(shield))))
 			{
 				client.getMenu().createMenuEntry(-2)
 					.setOption(TOGGLE_SHIELD_PKP)
@@ -2179,6 +2196,12 @@ public class BattleMagePlugin extends Plugin
 	@Subscribe
 	public void onChatMessage(ChatMessage event)
 	{
+		// your thrall leaving ends the Beads of the dead effect
+		if (thrallKind != null && event.getMessage() != null
+			&& event.getMessage().toLowerCase(Locale.ROOT).contains("thrall returns to the grave"))
+		{
+			thrallKind = null;
+		}
 		// game messages that set off effects (a Phoenix necklace saving you clears both states)
 		if (!chatTriggerEffects.isEmpty() && rules.isActive()
 			&& (event.getType() == ChatMessageType.GAMEMESSAGE || event.getType() == ChatMessageType.SPAM)
@@ -2436,6 +2459,10 @@ public class BattleMagePlugin extends Plugin
 			if (cost != null)
 			{
 				double before = pkp;
+				if ("magic".equals(beadThrall()))
+				{
+					cost = (int) Math.round(cost * beadMagicPercent / 100.0);
+				}
 				applyCast(withPoison(cost));
 				notePkpChange(pkp - before);
 				lastCombatMs = System.currentTimeMillis();
@@ -2471,7 +2498,7 @@ public class BattleMagePlugin extends Plugin
 			ContentPack.Decay decay = weapon > 0 ? decayByName.get(itemName(weapon)) : null;
 			if (decay != null)
 			{
-				handleAttackRestore(setGainMinus("rangedGainMinus", nextDecayGain(weapon, decay)), "ranged", decay.neverOverload);
+				handleAttackRestore(setGainMinus("rangedGainMinus", beadRanged(nextDecayGain(weapon, decay))), "ranged", decay.neverOverload);
 				return;
 			}
 			Integer gain = rangedRestoreAmount(weapon);
@@ -2531,6 +2558,7 @@ public class BattleMagePlugin extends Plugin
 			if (hp <= 0 && lastBoostedHp > 0)
 			{
 				brutusOnDeath();
+				thrallKind = null;
 			}
 			// back to 10 or more after dying: respawned. The ring stops, and the clown routine starts.
 			else if (hp >= RESPAWN_HP && lastBoostedHp < RESPAWN_HP)
@@ -2766,7 +2794,35 @@ public class BattleMagePlugin extends Plugin
 		lastSprite.put(fam, pendingCastSprite);
 		noteCast(fam, spell, pendingCastSprite);
 		double before = pkp;
-		applyCast(withPoison(carriedChanceDiscount(spell, costForSpell(spell))), spell);
+		int cost = costForSpell(spell);
+		// the Elemental tiara: an elemental spell of a different element from the last cast is free,
+		// but never two free casts in a row; elemental spells also get its depletion buffer
+		String element = elementOf(spell);
+		boolean swapFree = false;
+		if (element != null && hasAny(elementSwapNames, false))
+		{
+			swapFree = lastCastElement != null && !element.equals(lastCastElement) && !lastCastSwapFree;
+			castBufferExtra = elementSwapBuffer;
+		}
+		lastCastElement = element;
+		lastCastSwapFree = swapFree;
+		if (swapFree)
+		{
+			freeCastRolled = true;
+			cost = 0;
+		}
+		else
+		{
+			cost = carriedChanceDiscount(spell, cost);
+		}
+		// Beads of the dead with a ghost thrall out: spells cost less
+		if (cost > 0 && "magic".equals(beadThrall()))
+		{
+			cost = (int) Math.round(cost * beadMagicPercent / 100.0);
+		}
+		applyCast(withPoison(cost), spell);
+		castBufferExtra = 0;
+		noteThrallCast(spell);
 		notePkpChange(pkp - before);
 		lastCombatMs = now;
 	}
@@ -2794,6 +2850,12 @@ public class BattleMagePlugin extends Plugin
 			return 0;
 		}
 		int amount = blockAmountForItem(shieldId);
+		// a god with a block swing (Guthix): each block also gains or loses that much on a coin flip
+		int swing = isNoBlockPkpItem(shieldId) ? 0 : rules.blockSwing();
+		if (swing > 0)
+		{
+			amount += stateSaveRng.nextBoolean() ? swing : -swing;
+		}
 		// worn block bonus (Runner hat) adds to a block that earns PKP, never to one that costs it
 		return amount > 0 ? amount + wornBlockBonus : amount;
 	}
@@ -2923,6 +2985,11 @@ public class BattleMagePlugin extends Plugin
 		{
 			gain *= 2;
 		}
+		// a worn item (the Bearhead) scales every block, gain or loss, by its percent
+		if (setActionChance("blockPercent") > 0)
+		{
+			gain = (int) Math.round(gain * setActionAmount("blockPercent") / 100.0);
+		}
 		lastCombatMs = System.currentTimeMillis();
 		double before = pkp;
 		if (gain < 0)
@@ -2983,6 +3050,11 @@ public class BattleMagePlugin extends Plugin
 		{
 			gain = stateSaveRng.nextBoolean() ? gain * 2 : (int) Math.round(gain / 2.0);
 		}
+		// Beads of the dead with a zombie thrall out: melee hits earn less
+		if (gain > 0 && "melee".equals(beadThrall()))
+		{
+			gain = (int) Math.round(gain * beadMeleePercent / 100.0);
+		}
 		// a set (rock-shell) may take PKP off a hit's gain
 		gain = setGainMinus("meleeGainMinus", gain);
 		handleAttackRestore(gain, "melee");
@@ -2991,7 +3063,13 @@ public class BattleMagePlugin extends Plugin
 	private void handleRangedRestore(int gain)
 	{
 		// a set (spined) may take PKP off a shot's gain
-		handleAttackRestore(setGainMinus("rangedGainMinus", gain), "ranged");
+		handleAttackRestore(setGainMinus("rangedGainMinus", beadRanged(gain)), "ranged");
+	}
+
+	/** Beads of the dead with a skeleton thrall out: ranged hits earn less. */
+	private int beadRanged(int gain)
+	{
+		return gain > 0 && "ranged".equals(beadThrall()) ? (int) Math.round(gain * beadRangedPercent / 100.0) : gain;
 	}
 
 	/**
@@ -3233,22 +3311,21 @@ public class BattleMagePlugin extends Plugin
 	/** Block PKP this off-hand item would give, by the same rules as blockGain. Negative = lost. */
 	private int blockAmountForItem(int itemId)
 	{
-		Integer penalty = blockPenaltyAmount(itemId);
-		if (penalty != null)
-		{
-			return -Math.abs(penalty);
-		}
 		if (isNoBlockPkpItem(itemId))
 		{
 			return 0;
 		}
-		Integer own = shieldBlockAmount(itemId);
-		if (own != null)
+		// The god's own block amount (+15 Saradomin, -15 Zamorak, 0 Guthix and Zaros) is the base, and
+		// a shield's own amount adds to it: a +10 book blocks for +25 under Saradomin and -5 under
+		// Zamorak, a -10 defender for +5 and -25. Toggling a shield's PKP off stops the whole sum.
+		int base = rules.blockRestore();
+		Integer penalty = blockPenaltyAmount(itemId);
+		if (penalty != null)
 		{
-			return Math.max(0, own);
+			return base - Math.abs(penalty);
 		}
-		// Any other shield: the god's own amount, which may be negative (Zamorak drains on a block).
-		return rules.blockRestore();
+		Integer own = shieldBlockAmount(itemId);
+		return own != null ? base + own : base;
 	}
 
 	/** The sworn god's name for tooltips, e.g. "Saradomin". */
@@ -3831,24 +3908,27 @@ public class BattleMagePlugin extends Plugin
 	 */
 	private boolean rollStateSave(int side)
 	{
-		// the best worn chance for this state, and that item's effect
-		int chance = 0;
+		// Every worn save for this state rolls on its own, and any one landing saves you - so the
+		// chances combine multiplicatively: a 50% ring and a 33% blessing miss together only
+		// 50% x 67% of the time, a 66.5% save in all. The first to land shows its effect.
+		boolean saved = false;
 		int fx = 0;
 		for (int[] sv : wornSaves)
 		{
-			if ((sv[2] & side) != 0 && sv[0] > chance)
+			if ((sv[2] & side) != 0 && sv[0] > 0 && stateSaveRng.nextInt(100) < sv[0])
 			{
-				chance = sv[0];
+				saved = true;
 				fx = sv[1];
+				break;
 			}
 		}
 		// a worn set's own overload chance (Verac's), with no effect of its own
-		if ((side & SAVE_OVERLOAD) != 0 && setSaveOverload > chance)
+		if (!saved && (side & SAVE_OVERLOAD) != 0 && setSaveOverload > 0
+			&& stateSaveRng.nextInt(100) < setSaveOverload)
 		{
-			chance = setSaveOverload;
-			fx = 0;
+			saved = true;
 		}
-		if (chance <= 0 || stateSaveRng.nextInt(100) >= chance)
+		if (!saved)
 		{
 			return false;
 		}
@@ -3946,7 +4026,8 @@ public class BattleMagePlugin extends Plugin
 				setOver += (Integer) set[5];
 				setUnder += (Integer) set[6];
 				noCrit |= (Boolean) set[7];
-				saveOver = Math.max(saveOver, (Integer) set[8]);
+				// several sets' overload saves combine like the worn ones: each would have to miss
+				saveOver = 100 - (100 - saveOver) * (100 - (Integer) set[8]) / 100;
 			}
 		}
 		wornCostOverride = override;
@@ -4553,6 +4634,88 @@ public class BattleMagePlugin extends Plugin
 
 	/** True while a cast's free chances have already been rolled, so applyCast skips the bracelet. */
 	private boolean freeCastRolled;
+
+	private static void addLowerNames(Set<String> into, List<String> from)
+	{
+		if (from != null)
+		{
+			for (String n : from)
+			{
+				if (n != null && !n.trim().isEmpty())
+				{
+					into.add(n.trim().toLowerCase(Locale.ROOT));
+				}
+			}
+		}
+	}
+
+	/** True when any of these items is worn, or carried in the inventory too when {@code carried}. */
+	private boolean hasAny(Set<String> names, boolean carried)
+	{
+		if (names.isEmpty())
+		{
+			return false;
+		}
+		for (InventoryID where : carried ? new InventoryID[]{InventoryID.EQUIPMENT, InventoryID.INVENTORY}
+			: new InventoryID[]{InventoryID.EQUIPMENT})
+		{
+			ItemContainer c = client.getItemContainer(where);
+			if (c == null)
+			{
+				continue;
+			}
+			for (Item item : c.getItems())
+			{
+				if (item != null && item.getId() > 0 && names.contains(itemName(item.getId())))
+				{
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
+	/** The style of the thrall out right now, when its beads are worn or carried; else null. */
+	private String beadThrall()
+	{
+		if (thrallKind == null || System.currentTimeMillis() >= thrallUntilMs)
+		{
+			thrallKind = null;
+			return null;
+		}
+		return hasAny(thrallBeadNames, true) ? thrallKind : null;
+	}
+
+	/** A Resurrect spell was just paid for: that thrall is out for one tick per Magic level. */
+	private void noteThrallCast(String spell)
+	{
+		String s = spell == null ? "" : spell.toLowerCase(Locale.ROOT);
+		if (!s.startsWith("resurrect"))
+		{
+			return;
+		}
+		thrallKind = s.endsWith("ghost") ? "magic" : s.endsWith("skeleton") ? "ranged" : s.endsWith("zombie") ? "melee" : null;
+		thrallUntilMs = System.currentTimeMillis() + Math.max(1, magicLevel()) * 600L;
+	}
+
+	/** "air", "water", "earth" or "fire" for an elemental spell, else null. */
+	private String elementOf(String spell)
+	{
+		Set<String> groups = spell == null ? null
+			: spellGroupsBySpell.get(spell.replaceAll("<[^>]*>", "").trim().toLowerCase(Locale.ROOT));
+		if (groups == null)
+		{
+			return null;
+		}
+		for (String e : new String[]{"air", "water", "earth", "fire"})
+		{
+			if (groups.contains(e))
+			{
+				return e;
+			}
+		}
+		return null;
+	}
 
 	/** A codex set's pieces: one set of lower-case names per piece, empty pieces dropped. */
 	private static List<Set<String>> parsePieces(List<List<String>> from)
@@ -5480,8 +5643,11 @@ public class BattleMagePlugin extends Plugin
 		if (isShieldSlotItem(itemId))
 		{
 			int perBlock = blockAmountForItem(itemId);
-			lines.add("<col=46c8ff>PKP</col> " + signedPkp(perBlock) + " per block"
-				+ (perBlock != 0 && isShieldPkpOff(itemId) ? " <col=9f9f9f>(toggled off)</col>" : ""));
+			int swing = isNoBlockPkpItem(itemId) ? 0 : rules.blockSwing();
+			String amount = swing > 0 ? signedPkp(perBlock - swing) + " or " + signedPkp(perBlock + swing)
+				: signedPkp(perBlock);
+			lines.add("<col=46c8ff>PKP</col> " + amount + " per block"
+				+ ((perBlock != 0 || swing > 0) && isShieldPkpOff(itemId) ? " <col=9f9f9f>(toggled off)</col>" : ""));
 		}
 		String tipName = itemId > 0 ? itemName(itemId) : "";
 		Map<String, Integer> wornCosts = wornSpellCostByItem.get(tipName);
@@ -5539,7 +5705,8 @@ public class BattleMagePlugin extends Plugin
 			}
 			for (String t : free)
 			{
-				lines.add("<col=46c8ff>PKP</col> " + set + c[0] + "% chance: " + freeChange(t));
+				lines.add("<col=46c8ff>PKP</col> " + set + c[0] + "% chance: " + freeChange(t)
+					+ (Boolean.TRUE.equals(c[7]) ? " while poisoned" : ""));
 			}
 		}
 		for (Object[] a : setActionChances)
@@ -5554,12 +5721,36 @@ public class BattleMagePlugin extends Plugin
 				: "noMeleeGain".equals(a[1]) ? "a melee hit earns no PKP"
 				: "noRangedPkp".equals(a[1]) ? "a ranged hit neither earns nor costs PKP"
 				: "doubleBlock".equals(a[1]) ? "a block's PKP gain or loss is doubled"
+				: "blockPercent".equals(a[1]) ? "blocks gain or lose " + (Integer) a[6] / 100.0 + "x as much PKP"
 				: "doubleOrHalfMelee".equals(a[1]) ? "each melee hit's PKP gain or loss is doubled or halved (50/50)"
 				: "meleeGainMinus".equals(a[1]) ? "a melee hit earns " + a[6] + " less PKP"
 				: "rangedGainMinus".equals(a[1]) ? "a ranged hit earns " + a[6] + " less PKP" : String.valueOf(a[1]);
 			boolean always = (Integer) a[0] >= 100 || "doubleOrHalfMelee".equals(a[1]);
 			lines.add("<col=46c8ff>PKP</col> " + setLabel(pieces, (Integer) a[3], a[4], (Integer) a[7])
 				+ (always ? "" : a[0] + "% chance ") + what);
+		}
+		if (thrallBeadNames.contains(tipName))
+		{
+			if (beadMagicPercent != 100)
+			{
+				lines.add("<col=46c8ff>PKP</col> Ghost thrall out: " + percentChange("all", beadMagicPercent));
+			}
+			if (beadMeleePercent != 100)
+			{
+				lines.add("<col=46c8ff>PKP</col> Zombie thrall out: melee hits earn " + beadMeleePercent + "% PKP");
+			}
+			if (beadRangedPercent != 100)
+			{
+				lines.add("<col=46c8ff>PKP</col> Skeleton thrall out: ranged hits earn " + beadRangedPercent + "% PKP");
+			}
+		}
+		if (elementSwapNames.contains(tipName))
+		{
+			lines.add("<col=46c8ff>PKP</col> Switch elements: 0 PKP for the next elemental spell (not twice in a row)");
+			if (elementSwapBuffer > 0)
+			{
+				lines.add("<col=46c8ff>PKP</col> Elemental spells: buffer +" + elementSwapBuffer + " vs depletion");
+			}
 		}
 		Integer poweredCost = poweredAttackCost.get(tipName);
 		if (poweredCost != null)
@@ -5928,9 +6119,9 @@ public class BattleMagePlugin extends Plugin
 			// buffer counts as PKP you still have for this check, so it widens how far a cast may
 			// overreach. It only helps from a positive bar: casting from empty still depletes.
 			boolean bigOverspend = rules.bigMoveTriggers() && !depletionImmune()
-				&& cost > 2 * (before + wornBufferDepletion + setBufferDepletion);
+				&& cost > 2 * (before + wornBufferDepletion + setBufferDepletion + castBufferExtra);
 			// the buffer was what kept this cast from depleting: say so
-			if (!bigOverspend && !wasDepleted && wornBufferDepletion + setBufferDepletion > 0 && rules.bigMoveTriggers()
+			if (!bigOverspend && !wasDepleted && wornBufferDepletion + setBufferDepletion + castBufferExtra > 0 && rules.bigMoveTriggers()
 				&& !depletionImmune() && cost > 2 * before)
 			{
 				noteAverted(AVERTED_DEPLETION);
@@ -6171,8 +6362,9 @@ public class BattleMagePlugin extends Plugin
 			}
 			return;
 		}
-		// A freeze is armed here but does not start ticking until the next attack or cast - see
-		// startPendingFreeze(). That first action is itself frozen, so its PKP gain or loss is cancelled.
+		// A timed freeze starts ticking right away, in combat or out of it, so its seconds are never
+		// banked for later. A freeze counted in attacks is still armed here and starts at the next
+		// attack or cast - see startPendingFreeze() - and that first action is itself frozen.
 		// A freeze on a weapon with a sustained-freeze pairing is an ordinary timed freeze with an
 		// extra way to die: the authored F number is its CEILING, and breaking the pairing ends it
 		// early. So the duration machinery below is shared with every other freeze, and the pairing
@@ -6181,7 +6373,7 @@ public class BattleMagePlugin extends Plugin
 		boolean wantsFreeze = fx.freezeSeconds > 0 || fx.freezeAttacks > 0;
 		if (fx.freezeSeconds > 0)
 		{
-			pendingFreezeSeconds = Math.max(pendingFreezeSeconds, fx.freezeSeconds);
+			freezeUntilMs = Math.max(freezeUntilMs, now + fx.freezeSeconds * 1000L);
 		}
 		if (fx.freezeAttacks > 0)
 		{
@@ -7054,6 +7246,16 @@ public class BattleMagePlugin extends Plugin
 					parseFactions(e.getValue().factions), e.getValue().maxPieces, base[3]});
 			}
 		}
+		ContentPack.ThrallBeads beads = rules.thrallBeads();
+		thrallBeadNames.clear();
+		addLowerNames(thrallBeadNames, beads.items);
+		beadMagicPercent = Math.max(0, beads.magicCostPercent);
+		beadMeleePercent = Math.max(0, beads.meleeGainPercent);
+		beadRangedPercent = Math.max(0, beads.rangedGainPercent);
+		ContentPack.ElementSwap swap = rules.elementSwap();
+		elementSwapNames.clear();
+		addLowerNames(elementSwapNames, swap.items);
+		elementSwapBuffer = Math.max(0, swap.depletionBuffer);
 		poweredAttackCost.clear();
 		poweredAttackAnimations.clear();
 		ContentPack.PoweredAttacks powered = rules.poweredAttacks();

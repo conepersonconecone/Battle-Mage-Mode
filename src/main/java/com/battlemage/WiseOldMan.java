@@ -423,7 +423,9 @@ public class WiseOldMan
 	private List<Line> blocking()
 	{
 		int block = rules.blockRestore();
-		String plain = block > 0 ? "restores " + block + " PKP"
+		int swing = rules.blockSwing();
+		String plain = swing > 0 && block == 0 ? "gains or loses " + swing + " PKP, at random"
+			: block > 0 ? "restores " + block + " PKP"
 			: block < 0 ? "costs you " + (-block) + " PKP"
 			: "does nothing to your PKP";
 		return Arrays.asList(

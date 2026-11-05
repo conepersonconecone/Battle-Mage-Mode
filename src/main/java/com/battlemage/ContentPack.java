@@ -134,6 +134,12 @@ public class ContentPack
 		/** Powered staves whose built-in attack costs PKP each swing - see {@link PoweredAttacks}. */
 		public PoweredAttacks poweredAttacks = new PoweredAttacks();
 
+		/** Beads that soften the combat style matching your thrall - see {@link ThrallBeads}. */
+		public ThrallBeads thrallBeads = new ThrallBeads();
+
+		/** Items that reward switching elements between casts - see {@link ElementSwap}. */
+		public ElementSwap elementSwap = new ElementSwap();
+
 		/** Worn items that swing PKP up or down at random on a timer - see {@link RandomPkp}. */
 		public Map<String, RandomPkp> randomPkpItems = new LinkedHashMap<>();
 
@@ -442,7 +448,7 @@ public class ContentPack
 	 * {@code effect} "doubleMeleeGain" doubles a melee hit's PKP gain, "noRangedGain" stops a ranged
 	 * hit's gain landing, "noMeleeGain" the same for a melee hit, "noRangedPkp" cancels a ranged hit's
 	 * PKP change either way, "doubleOrHalfMelee" doubles or halves every melee hit's PKP on a coin
-	 * flip, "doubleBlock" doubles a block's PKP
+	 * flip, "blockPercent" scales every block's PKP to {@code amount} percent, "doubleBlock" doubles a block's PKP
 	 * gain or loss, "meleeGainMinus" / "rangedGainMinus" take {@code amount} off a melee /
 	 * ranged hit's gain. Chances of the same effect add up into one roll.
 	 */
@@ -467,6 +473,31 @@ public class ContentPack
 	{
 		public java.util.List<Integer> animationIds = new java.util.ArrayList<>();
 		public Map<String, Integer> costs = new LinkedHashMap<>();
+	}
+
+	/**
+	 * Worn or carried {@code items} (Beads of the dead) while one of your thralls is out: a ghost
+	 * (magic) thrall makes spells cost {@code magicCostPercent} of normal, a zombie (melee) thrall makes
+	 * melee hits earn {@code meleeGainPercent}, a skeleton (ranged) thrall ranged hits
+	 * {@code rangedGainPercent}.
+	 */
+	public static class ThrallBeads
+	{
+		public java.util.List<String> items = new java.util.ArrayList<>();
+		public int magicCostPercent = 100;
+		public int meleeGainPercent = 100;
+		public int rangedGainPercent = 100;
+	}
+
+	/**
+	 * Worn {@code items} (the Elemental tiara): an elemental spell of a different element from the
+	 * cast before it is free - though never two free casts in a row - and elemental spells get
+	 * {@code depletionBuffer} extra room before a cast depletes you.
+	 */
+	public static class ElementSwap
+	{
+		public java.util.List<String> items = new java.util.ArrayList<>();
+		public int depletionBuffer;
 	}
 
 	/** While worn: every {@code everyMs}, PKP goes up or down by {@code amount}, a coin flip each time. */
@@ -515,7 +546,7 @@ public class ContentPack
 		 * The first Ranged level at which the cannon is no longer yours to place. Strictly a ceiling:
 		 * 45 means 44 may set one up and 45 may not.
 		 */
-		public int maxRangedLevel = 45;
+		public int maxRangedLevel = 55;
 
 		/**
 		 * The menu options that place a cannon. Matched case-insensitively against the whole option.
@@ -685,6 +716,8 @@ public class ContentPack
 		 * it off for this god. Never overcharges and never causes an overload.
 		 */
 		public int blockRestore = 0;
+		/** Each block also gains or loses this much on a coin flip (Guthix: balance). 0 = none. */
+		public int blockSwing = 0;
 		public boolean poisonCostEnabled = true;
 		/** While poisoned, spells and PKP costs are this much MORE expensive (50 = 1.5x). */
 		public int poisonCostPercent = 50;
