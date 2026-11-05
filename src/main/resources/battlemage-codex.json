@@ -1479,84 +1479,84 @@
     },
     "stateSaveItems": {
       "Beacon ring": {
-        "chance": 10,
+        "chance": 33,
         "spotanim": 353
       },
       "Ring of shadows": {
-        "chance": 50,
+        "chance": 75,
         "spotanim": 383
       },
       "Ring of shadows (uncharged)": {
-        "chance": 50,
+        "chance": 75,
         "spotanim": 383
       },
       "Rada's blessing 1": {
-        "chance": 2,
+        "chance": 5,
         "spotanim": 321
       },
       "Rada's blessing 2": {
-        "chance": 4,
+        "chance": 10,
         "spotanim": 321
       },
       "Rada's blessing 3": {
-        "chance": 6,
+        "chance": 25,
         "spotanim": 321
       },
       "Rada's blessing 4": {
-        "chance": 8,
+        "chance": 33,
         "spotanim": 321
       },
       "Ring of the gods": {
-        "chance": 50,
+        "chance": 75,
         "spotanim": 321,
         "overload": false,
         "depletion": true,
         "critical": false
       },
       "Ring of the gods (i)": {
-        "chance": 50,
+        "chance": 75,
         "spotanim": 321,
         "overload": false,
         "depletion": true,
         "critical": false
       },
       "Tyrannical ring": {
-        "chance": 50,
+        "chance": 60,
         "spotanim": 246,
         "overload": true,
         "depletion": false,
         "critical": true
       },
       "Tyrannical ring (i)": {
-        "chance": 50,
+        "chance": 60,
         "spotanim": 246,
         "overload": true,
         "depletion": false,
         "critical": true
       },
       "Warrior ring": {
-        "chance": 25,
+        "chance": 50,
         "spotanim": 2112,
         "overload": true,
         "depletion": false,
         "critical": false
       },
       "Warrior ring (i)": {
-        "chance": 25,
+        "chance": 50,
         "spotanim": 2112,
         "overload": true,
         "depletion": false,
         "critical": false
       },
       "Berserker ring": {
-        "chance": 25,
+        "chance": 50,
         "spotanim": 246,
         "overload": false,
         "depletion": false,
         "critical": true
       },
       "Berserker ring (i)": {
-        "chance": 25,
+        "chance": 50,
         "spotanim": 246,
         "overload": false,
         "depletion": false,
@@ -1744,6 +1744,10 @@
       ]
     },
     "wornSpellDiscounts": {
+      "Ghostspeak amulet": {
+        "thrall": 10,
+        "Crumble Undead": 10
+      },
       "Wizard boots": {
         "all": 5
       },
@@ -1874,6 +1878,15 @@
       }
     },
     "setBonuses": {
+      "Cow slippers + Mooleta": {
+        "pieces": [
+          "Cow slippers",
+          "Mooleta"
+        ],
+        "minPieces": 2,
+        "costPercent": {},
+        "saveOverload": 25
+      },
       "Ancestral robes (2)": {
         "name": "Ancestral robes",
         "pieces": [
@@ -2308,6 +2321,20 @@
         "Corrupted staff (perfected)": 50
       }
     },
+    "thrallBeads": {
+      "items": [
+        "Beads of the dead"
+      ],
+      "magicCostPercent": 50,
+      "meleeGainPercent": 50,
+      "rangedGainPercent": 50
+    },
+    "elementSwap": {
+      "items": [
+        "Elemental tiara"
+      ],
+      "depletionBuffer": 10
+    },
     "randomPkpItems": {
       "Jester cape": {
         "amount": 50,
@@ -2315,6 +2342,16 @@
       }
     },
     "setActionChances": {
+      "Bearhead": {
+        "chance": 100,
+        "effect": "blockPercent",
+        "amount": 150,
+        "pieces": [
+          [
+            "Bearhead"
+          ]
+        ]
+      },
       "Steel ring": {
         "chance": 50,
         "effect": "doubleBlock",
@@ -2778,6 +2815,21 @@
       }
     },
     "setSpellChances": {
+      "Frog mask + Frog slippers": {
+        "chance": 25,
+        "free": [
+          "all"
+        ],
+        "whenPoisoned": true,
+        "pieces": [
+          [
+            "Frog mask"
+          ],
+          [
+            "Frog slippers"
+          ]
+        ]
+      },
       "Ahrim's set + Amulet of the Damned": {
         "chance": 25,
         "free": [
@@ -3186,6 +3238,12 @@
       "Bracelet of ethereum"
     ],
     "itemOptionEffects": {
+      "Silver Sickle (b)": {
+        "Cast Bloom": {
+          "delta": 25,
+          "effects": ""
+        }
+      },
       "Dwarven rock cake": {
         "Eat": {
           "delta": -5,
@@ -3489,7 +3547,7 @@
       "Broodoo shield (1)": 25,
       "Blessed Spirit Shield": 33,
       "Elysian Spirit Shield": 50,
-      "Book of the Dead": 25,
+      "Book of the Dead": 15,
       "Malediction ward": 25,
       "Malediction ward (or)": 25,
       "Holy book": 15,
@@ -3517,7 +3575,7 @@
       "Falador Shield 3": 33,
       "Falador Shield 4": 33,
       "Imcando hammer (off-hand)": 15,
-      "Mooleta": 25,
+      "Mooleta": 15,
       "Spectral Spirit Shield": 25,
       "Amy's saw (off-hand)": 15,
       "V's Shield": 33,
@@ -3611,7 +3669,9 @@
       "Corrupted staff (basic)",
       "Corrupted staff (attuned)",
       "Corrupted staff (perfected)",
-      "Dragon scimitar (or)"
+      "Dragon scimitar (or)",
+      "Training shortsword",
+      "Wooden shortsword"
     ],
     "pacifistItems": [
       "Oak blackjack",
@@ -3866,7 +3926,7 @@
         ]
       },
       {
-        "name": "Dragon Sword",
+        "name": "Dragon shortsword",
         "delta": 0,
         "effects": [
           "CD"
@@ -4812,7 +4872,7 @@
     },
     "cannon": {
       "enforceCannonLevel": true,
-      "maxRangedLevel": 45,
+      "maxRangedLevel": 55,
       "setupActions": [
         "Set-up"
       ],
@@ -5193,7 +5253,7 @@
           "Thammaron's sceptre (au)",
           "Accursed sceptre (a)",
           "Accursed sceptre (au)",
-          "Black Sword",
+          "Black shortsword",
           "Zamorak Staff",
           "Guthix Staff",
           "Iban's staff",
@@ -5320,14 +5380,13 @@
           "Black scimitar"
         ],
         "weaponExceptions": [
-          "Bronze Sword",
-          "Training Sword",
-          "Iron Sword",
-          "White Sword",
-          "Mithril Sword",
-          "Adamant Sword",
-          "Rune Sword",
-          "Dragon Sword",
+          "Bronze shortsword",
+          "Iron shortsword",
+          "White shortsword",
+          "Mithril shortsword",
+          "Adamant shortsword",
+          "Rune shortsword",
+          "Dragon shortsword",
           "Leaf-bladed Sword",
           "Toktz-xil-ak",
           "Belle's folly",
@@ -5455,14 +5514,16 @@
           "Dragon Dagger",
           "Arkan Blade",
           "Dinh's bulwark",
-          "Dinh's blazing bulwark"
+          "Dinh's blazing bulwark",
+          "Steel shortsword"
         ],
         "weaponExceptionDefaultPkp": 50,
         "pkpWeapons": {
           "3rd Age Longsword": 0,
           "Sulphur blades": 66,
           "Glacial temotli": 66,
-          "Earthbound tecpatl": 66
+          "Earthbound tecpatl": 66,
+          "Magic secateurs": 65
         }
       },
       "ranged": {
@@ -6062,15 +6123,14 @@
           "Thammaron's sceptre (au)",
           "Accursed sceptre (a)",
           "Accursed sceptre (au)",
-          "Bronze Sword",
-          "Training Sword",
-          "Iron Sword",
-          "Black Sword",
-          "White Sword",
-          "Mithril Sword",
-          "Adamant Sword",
-          "Rune Sword",
-          "Dragon Sword",
+          "Bronze shortsword",
+          "Iron shortsword",
+          "Black shortsword",
+          "White shortsword",
+          "Mithril shortsword",
+          "Adamant shortsword",
+          "Rune shortsword",
+          "Dragon shortsword",
           "Leaf-bladed Sword",
           "Toktz-xil-ak",
           "Belle's folly",
@@ -6342,7 +6402,8 @@
           "3rd Age Longsword": 0,
           "Sulphur blades": 66,
           "Glacial temotli": 66,
-          "Earthbound tecpatl": 66
+          "Earthbound tecpatl": 66,
+          "Magic secateurs": 65
         }
       },
       "ranged": {
@@ -6409,6 +6470,7 @@
         ],
         "meleeRestore": 50,
         "blockRestore": 0,
+        "blockSwing": 10,
         "poisonCostEnabled": true,
         "poisonCostPercent": 50,
         "poisonRestorePercent": 100,
@@ -6931,14 +6993,13 @@
         "blockedWeapons": [
           "Thammaron's sceptre (a)",
           "Thammaron's sceptre (au)",
-          "Bronze Sword",
-          "Training Sword",
-          "Iron Sword",
-          "White Sword",
-          "Mithril Sword",
-          "Adamant Sword",
-          "Rune Sword",
-          "Dragon Sword",
+          "Bronze shortsword",
+          "Iron shortsword",
+          "White shortsword",
+          "Mithril shortsword",
+          "Adamant shortsword",
+          "Rune shortsword",
+          "Dragon shortsword",
           "Leaf-bladed Sword",
           "Toktz-xil-ak",
           "Belle's folly",
@@ -7125,7 +7186,7 @@
           "Crimson Kisten",
           "Accursed sceptre (a)",
           "Accursed sceptre (au)",
-          "Black Sword",
+          "Black shortsword",
           "Ghrazi Rapier",
           "Zamorak Staff",
           "Iban's staff",
@@ -7213,7 +7274,8 @@
           "3rd Age Longsword": 0,
           "Sulphur blades": 66,
           "Glacial temotli": 66,
-          "Earthbound tecpatl": 66
+          "Earthbound tecpatl": 66,
+          "Magic secateurs": 65
         }
       },
       "ranged": {
@@ -7811,15 +7873,14 @@
       },
       "weapons": {
         "blockedWeapons": [
-          "Bronze Sword",
-          "Training Sword",
-          "Iron Sword",
-          "Black Sword",
-          "White Sword",
-          "Mithril Sword",
-          "Adamant Sword",
-          "Rune Sword",
-          "Dragon Sword",
+          "Bronze shortsword",
+          "Iron shortsword",
+          "Black shortsword",
+          "White shortsword",
+          "Mithril shortsword",
+          "Adamant shortsword",
+          "Rune shortsword",
+          "Dragon shortsword",
           "Leaf-bladed Sword",
           "Toktz-xil-ak",
           "Belle's folly",
@@ -8080,7 +8141,8 @@
           "3rd Age Longsword": 0,
           "Sulphur blades": 66,
           "Glacial temotli": 66,
-          "Earthbound tecpatl": 66
+          "Earthbound tecpatl": 66,
+          "Magic secateurs": 65
         }
       },
       "ranged": {
@@ -8104,7 +8166,18 @@
           "Bow of faerdhinen",
           "Bow of faerdhinen (c)",
           "Twisted bow",
-          "Ascension crossbows"
+          "Ascension crossbows",
+          "Training bow",
+          "Shortbow",
+          "Longbow",
+          "Oak shortbow",
+          "Oak longbow",
+          "Willow shortbow",
+          "Willow longbow",
+          "Maple shortbow",
+          "Maple longbow",
+          "Yew shortbow",
+          "Yew longbow"
         ],
         "rangedRestoreEnabled": true,
         "rangedRestore": 33
@@ -8342,14 +8415,13 @@
       "weapons": {
         "blockedWeapons": [],
         "weaponExceptions": [
-          "Bronze Sword",
-          "Training Sword",
-          "Iron Sword",
-          "White Sword",
-          "Mithril Sword",
-          "Adamant Sword",
-          "Rune Sword",
-          "Dragon Sword",
+          "Bronze shortsword",
+          "Iron shortsword",
+          "White shortsword",
+          "Mithril shortsword",
+          "Adamant shortsword",
+          "Rune shortsword",
+          "Dragon shortsword",
           "Leaf-bladed Sword",
           "Toktz-xil-ak",
           "Belle's folly",
@@ -8533,7 +8605,7 @@
           "Blade of saeldor (c)",
           "Accursed sceptre (a)",
           "Accursed sceptre (au)",
-          "Black Sword",
+          "Black shortsword",
           "Zamorak Staff",
           "Iban's staff",
           "Iban's staff (u)",
@@ -8616,7 +8688,8 @@
           "3rd Age Longsword": 0,
           "Sulphur blades": 66,
           "Glacial temotli": 66,
-          "Earthbound tecpatl": 66
+          "Earthbound tecpatl": 66,
+          "Magic secateurs": 65
         }
       },
       "ranged": {
