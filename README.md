@@ -15,9 +15,13 @@ A self-imposed challenge mode for Old School RuneScape. Swear an oath to one of 
 2. Have fun flowing through the combat triangle! Figure out what is possible!
 3. Don't forget your Tea Flask and Cowbell Amulet!
 
+## Party
+
+Create or join a RuneLite party from the Battle-Mage side panel. Teammates also playing Battle-Mage Mode see each other's god, PKP status (Overloaded, Depleted and so on) and party pictures, and can cast **Heal Other** or **Vengeance Other** on each other to help with PKP.
+
 ## Privacy
 
-The plugin makes no network requests and stores no account details. It saves only your chosen god and your appearance settings, in RuneLite's normal plugin configuration. It does not send any game input. It only reads client state, removes menu options that break the rules, and draws overlays.
+Outside a party, the plugin makes no network requests and stores no account details. In a party, it shares your god, PKP status, aura and (if you set one) party picture with your teammates through RuneLite's own party service. It saves only your chosen god and your appearance settings, in RuneLite's normal plugin configuration. It does not send any game input. It only reads client state, removes menu options that break the rules, and draws overlays.
 
 ## Rules data
 
