@@ -18,6 +18,14 @@ import net.runelite.client.ui.overlay.OverlayPosition;
 /**
  * Floats +/- PKP change notifications upward just above the Report button box. Newer changes appear at the
  * bottom and push older ones up; each fades over the configured duration.
+ *
+ * <p>While the PKP orb is showing (the in-game style), they come off the orb instead: above it when it
+ * is in the lower half of the screen and below it in the upper half, scrolling away from it; or, set
+ * from the orb's right-click menu, sideways - to its right on the left half of the screen and to its
+ * left on the right half. Newest nearest the orb either way.
+ *
+ * <p>With the HUD bar showing, its right-click menu can move them to any corner of the bar instead:
+ * above or below it, lined up with its left or right end.
  */
 class PkpPopupOverlay extends Overlay
 {
@@ -28,10 +36,12 @@ class PkpPopupOverlay extends Overlay
 	private final BattleMagePlugin plugin;
 	private final Appearance look;
 	private final Rules rules;
+	private final PkpOrbOverlay orb;
 
 	@Inject
-	PkpPopupOverlay(Client client, BattleMagePlugin plugin, Appearance look, Rules rules)
+	PkpPopupOverlay(Client client, BattleMagePlugin plugin, Appearance look, Rules rules, PkpOrbOverlay orb)
 	{
+		this.orb = orb;
 		this.client = client;
 		this.plugin = plugin;
 		this.look = look;
@@ -51,6 +61,21 @@ class PkpPopupOverlay extends Overlay
 		if (popups.isEmpty())
 		{
 			return null;
+		}
+		final Rectangle ob = orb.shownBounds();
+		if (ob != null)
+		{
+			renderFromOrb(g, popups, ob);
+			return null;
+		}
+		if (look.pkpBarPopupsAtBar())
+		{
+			final Rectangle bb = plugin.pkpBarShownBounds();
+			if (bb != null)
+			{
+				renderAtBar(g, popups, bb);
+				return null;
+			}
 		}
 		Widget w = client.getWidget(rules.reportWidgetGroup(), rules.reportWidgetChild());
 		if (w == null || w.isHidden())
@@ -118,6 +143,150 @@ class PkpPopupOverlay extends Overlay
 			g.drawString(text, tx, y);
 		}
 		return null;
+	}
+
+	/** One live popup, measured: what it says, in which font and colour, how faded. */
+	private static final class Line
+	{
+		final String text;
+		final Font font;
+		final Color color;
+		final int alpha;
+		final double age;
+		final int width;
+
+		Line(String text, Font font, Color color, int alpha, double age, int width)
+		{
+			this.text = text;
+			this.font = font;
+			this.color = color;
+			this.alpha = alpha;
+			this.age = age;
+			this.width = width;
+		}
+	}
+
+	private static final Font NUMBER_FONT = new Font(Font.SANS_SERIF, Font.BOLD, 16);
+	/** How far each number drifts away from the orb over its life. */
+	private static final int DRIFT = 12;
+
+	/**
+	 * The popups at a corner of the PKP bar, as chosen from its right-click menu: lined up with its
+	 * left or right end, rising from above it or falling from below it. Newest nearest the bar.
+	 */
+	private void renderAtBar(Graphics2D g, List<BattleMagePlugin.PkpPopup> popups, Rectangle bb)
+	{
+		final List<Line> lines = lines(g, popups);
+		final boolean right = look.pkpBarPopupsRight();
+		final boolean below = look.pkpBarPopupsBelow();
+		int offset = 0;
+		for (Line l : lines)
+		{
+			FontMetrics fm = g.getFontMetrics(l.font);
+			int drift = (int) Math.round(l.age * DRIFT);
+			int x = right ? bb.x + bb.width - l.width : bb.x;
+			int y = below ? bb.y + bb.height + fm.getAscent() + 2 + offset + drift : bb.y - 6 - offset - drift;
+			draw(g, l, x, y);
+			offset += fm.getAscent() + 2;
+		}
+	}
+
+	/** The popups coming off the PKP orb: up/down by screen half, or sideways by screen side. */
+	private void renderFromOrb(Graphics2D g, List<BattleMagePlugin.PkpPopup> popups, Rectangle ob)
+	{
+		final List<Line> lines = lines(g, popups);
+		if (lines.isEmpty())
+		{
+			return;
+		}
+		renderLinesFromOrb(g, lines, ob);
+	}
+
+	/** The live popups, newest first, measured. */
+	private List<Line> lines(Graphics2D g, List<BattleMagePlugin.PkpPopup> popups)
+	{
+		g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+		final long now = System.currentTimeMillis();
+		final long life = Math.max(1, look.pkpPopupSeconds()) * 1000L;
+
+		// newest first: it sits nearest the orb, older ones further out
+		final java.util.ArrayList<Line> lines = new java.util.ArrayList<>();
+		for (int i = popups.size() - 1; i >= 0; i--)
+		{
+			BattleMagePlugin.PkpPopup p = popups.get(i);
+			double age = (now - p.spawnMs) / (double) life;
+			if (age < 0 || age >= 1.0)
+			{
+				continue;
+			}
+			int alpha = Math.max(0, Math.min(255, (int) Math.round(255 * (1.0 - age))));
+			Font font = p.label != null ? LABEL_FONT : NUMBER_FONT;
+			String text = p.label != null ? p.label : plugin.fmtPkpDelta(p.delta);
+			Color col = p.label != null ? p.color : numberColor(p.delta);
+			lines.add(new Line(text, font, col, alpha, age, g.getFontMetrics(font).stringWidth(text)));
+		}
+		return lines;
+	}
+
+	private void renderLinesFromOrb(Graphics2D g, List<Line> lines, Rectangle ob)
+	{
+
+		final int cx = ob.x + ob.width / 2;
+		final int cy = ob.y + ob.height / 2;
+		final boolean sideways = look.pkpOrbPopupsSideways();
+		if (sideways)
+		{
+			// away from the nearer side: rightwards on the left half of the screen, leftwards on the right
+			final boolean rightwards = cx < client.getCanvasWidth() / 2;
+			int offset = 6;
+			for (Line l : lines)
+			{
+				FontMetrics fm = g.getFontMetrics(l.font);
+				int drift = (int) Math.round(l.age * DRIFT);
+				int x = rightwards ? ob.x + ob.width + offset + drift : ob.x - offset - drift - l.width;
+				int y = cy + (fm.getAscent() - fm.getDescent()) / 2;
+				draw(g, l, x, y);
+				offset += l.width + 8;
+			}
+		}
+		else
+		{
+			// away from the nearer edge: upwards in the lower half of the screen, downwards in the upper
+			final boolean upwards = cy >= client.getCanvasHeight() / 2;
+			int offset = 0;
+			for (Line l : lines)
+			{
+				FontMetrics fm = g.getFontMetrics(l.font);
+				int drift = (int) Math.round(l.age * DRIFT);
+				// centred on the number, not on the whole orb-and-number
+				Integer numberX = orb.numberCentreX();
+				int x = (numberX != null ? numberX : cx) - l.width / 2;
+				int y = upwards ? ob.y - 6 - offset - drift : ob.y + ob.height + fm.getAscent() + 2 + offset + drift;
+				draw(g, l, x, y);
+				offset += fm.getAscent() + 2;
+			}
+		}
+	}
+
+	private static void draw(Graphics2D g, Line l, int x, int y)
+	{
+		g.setFont(l.font);
+		g.setColor(new Color(0, 0, 0, (int) (l.alpha * 0.8)));
+		g.drawString(l.text, x + 1, y + 1);
+		g.drawString(l.text, x - 1, y + 1);
+		g.setColor(new Color(l.color.getRed(), l.color.getGreen(), l.color.getBlue(), l.alpha));
+		g.drawString(l.text, x, y);
+	}
+
+	/** Loss red, gain the overcharge colour; both turned sickly green while poisoned. */
+	private Color numberColor(double delta)
+	{
+		Color col = delta >= 0 ? look.overchargeColor() : new Color(0xFF2A2A);
+		if (plugin.isPoisoned())
+		{
+			col = blend(col, new Color(80, 200, 85), 0.55f);
+		}
+		return col;
 	}
 
 	private static Color blend(Color a, Color b, float f)

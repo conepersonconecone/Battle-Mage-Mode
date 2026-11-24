@@ -3,11 +3,8 @@ package com.battlemage;
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Dimension;
-import java.awt.Font;
-import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
-import java.awt.Shape;
 import javax.inject.Inject;
 import net.runelite.api.Client;
 import net.runelite.client.ui.overlay.Overlay;
@@ -15,11 +12,15 @@ import net.runelite.client.ui.overlay.OverlayLayer;
 import net.runelite.client.ui.overlay.OverlayPosition;
 
 /**
- * Full-canvas punishment overlay. While PKP is depleted it stays on screen (grey wash + PKP DEPLETED)
- * until you melee back to full; while overloaded it shows PKP OVERLOAD until you cast. Both pulse gently.
+ * Full-canvas state washes. While depleted, a grey wash (its own setting, in either style); in the HUD
+ * style, a dark wash in the overload or critical colour while overloaded or in Critical Overload. All
+ * pulse gently. The state's name shows on the PKP bar (HUD) or floats off your character (in-game).
  */
 class PkpStateOverlay extends Overlay
 {
+	/** How strong the overload and critical washes are at their peak, out of 255. */
+	private static final int WASH_ALPHA = 50;
+
 	private final Client client;
 	private final BattleMagePlugin plugin;
 	private final Appearance look;
@@ -69,8 +70,6 @@ class PkpStateOverlay extends Overlay
 
 		// gentle continuous pulse (0..1)
 		double blink = 0.5 + 0.5 * Math.sin(System.currentTimeMillis() / 320.0);
-		// the exact curve the PKP bar's frame uses, so the state text breathes in lockstep with the bar
-		double pulse = look.barPulse() ? 0.6 + 0.4 * blink : 1.0;
 
 		if (depleted && look.desaturateScreen())
 		{
@@ -78,10 +77,16 @@ class PkpStateOverlay extends Overlay
 			g.setColor(new Color(128, 128, 128, a));
 			g.fillRect(0, 0, cw, ch);
 		}
+		else if (look.inGameStyle())
+		{
+			// the overload and critical washes are the HUD style's; in-game the orb's rim shows them
+			look.setStateTextBounds(null);
+			return null;
+		}
 		else if (overloaded)
 		{
 			Color o = look.overloadColor();
-			int a = clamp((int) Math.round(70 * (0.7 + 0.3 * blink)));
+			int a = clamp((int) Math.round(WASH_ALPHA * (0.7 + 0.3 * blink)));
 			g.setColor(new Color(o.getRed() / 3, 0, o.getBlue() / 3, a));
 			g.fillRect(0, 0, cw, ch);
 		}
@@ -90,104 +95,13 @@ class PkpStateOverlay extends Overlay
 			// CRITICAL OVERLOAD keeps the centre of the screen clear - no hazard tape - so the yellow
 			// reads as a wash at exactly the opacity the overload and depletion states use.
 			Color c = look.criticalColor();
-			int a = clamp((int) Math.round(70 * (0.7 + 0.3 * blink)));
+			int a = clamp((int) Math.round(WASH_ALPHA * (0.7 + 0.3 * blink)));
 			g.setColor(new Color(c.getRed() / 2, c.getGreen() / 3, 0, a));
 			g.fillRect(0, 0, cw, ch);
 		}
 
-		String text = critical ? look.criticalText()
-			: (depleted ? look.depletedText() : look.overloadText());
-		text = text == null ? "" : text;
-		if (text.isEmpty())
-		{
-			look.setStateTextBounds(null);
-			return null;
-		}
-		Color base = critical ? look.criticalColor()
-			: (depleted ? look.depletedColor() : look.overloadColor());
-
-		int baseSize = critical ? Math.max(20, ch / 15) : Math.max(28, ch / 9);
-		int scale = critical ? look.criticalTextScalePercent()
-			: (depleted ? look.depletedTextScalePercent() : look.overloadTextScalePercent());
-		int size = (int) Math.round(baseSize * (scale / 100.0));
-		// the text itself pulses (like the bar frame) instead of being wrapped in a soft halo, so it
-		// stays fully saturated at its brightest and never washes out against a busy scene
-		int textAlpha = clamp((int) Math.round(255 * pulse));
-
-		g.setFont(new Font(Font.SANS_SERIF, Font.BOLD, size));
-		FontMetrics fm = g.getFontMetrics();
-
-		// Each text sits wherever the player dragged it in the appearance editor (CRITICAL has its own
-		// spot; depleted and overload share one). Until it is moved by hand it sits centred above the
-		// PKP bar with its bottom ANCHOR_GAP_PX above the bar's top edge. With the bar hidden it falls
-		// back to the middle of the screen.
-		final double xp = critical ? look.criticalTextXPercent() : look.stateTextXPercent();
-		final double yp = critical ? look.criticalTextYPercent() : look.stateTextYPercent();
-		int tx;
-		int ty;
-		java.awt.Rectangle bar = plugin.pkpBarBounds();
-		if ((xp < 0 || yp < 0) && look.showBar() && bar.width > 0 && bar.height > 0)
-		{
-			ty = bar.y - Appearance.ANCHOR_GAP_PX - fm.getDescent();
-			tx = (int) Math.round(bar.getCenterX()) - fm.stringWidth(text) / 2;
-		}
-		else
-		{
-			int cx = (int) Math.round(cw * ((xp < 0 ? 50 : xp) / 100.0));
-			int cy = (int) Math.round(ch * ((yp < 0 ? 50 : yp) / 100.0));
-			ty = cy + fm.getAscent() / 2;
-			tx = cx - fm.stringWidth(text) / 2;
-		}
-
-		// Build the glyph outline once: stroking it gives a clean, gap-free black edge at any font
-		// size, which reads far better over the 3D scene than the old offset-drawString halo.
-		Shape glyphs = g.getFont()
-			.createGlyphVector(g.getFontRenderContext(), text)
-			.getOutline(tx, ty);
-
-		// hard drop shadow for depth
-		Graphics2D sh = (Graphics2D) g.create();
-		try
-		{
-			sh.translate(Math.max(3, size / 22), Math.max(3, size / 22));
-			sh.setColor(new Color(0, 0, 0, 210));
-			sh.fill(glyphs);
-		}
-		finally
-		{
-			sh.dispose();
-		}
-
-		// solid black outline, thickness scaled to the font
-		g.setColor(new Color(0, 0, 0, 240));
-		g.setStroke(new BasicStroke(Math.max(3f, size / 16f),
-			BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-		g.draw(glyphs);
-
-		// pulsing fill
-		g.setColor(new Color(base.getRed(), base.getGreen(), base.getBlue(), textAlpha));
-		g.fill(glyphs);
-
-		// Remember where the text is, so the appearance editor can drag it. While previewing a
-		// movable state, a dashed box and a hint show that it can be picked up.
-		java.awt.Rectangle bounds = glyphs.getBounds();
-		bounds.grow(8, 8);
-		look.setStateTextBounds(bounds);
-		if (previewing)
-		{
-			g.setColor(new Color(255, 255, 255, 170));
-			g.setStroke(new BasicStroke(1.5f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER, 10f,
-				new float[]{6f, 5f}, 0f));
-			g.draw(bounds);
-			g.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 12));
-			String hint = "Drag to move";
-			int hw = g.getFontMetrics().stringWidth(hint);
-			g.setColor(new Color(0, 0, 0, 200));
-			g.drawString(hint, bounds.x + (bounds.width - hw) / 2 + 1, bounds.y + bounds.height + 15);
-			g.setColor(Color.WHITE);
-			g.drawString(hint, bounds.x + (bounds.width - hw) / 2, bounds.y + bounds.height + 14);
-		}
-
+		// the state's name now shows on the PKP bar itself: no words over the game
+		look.setStateTextBounds(null);
 		return null;
 	}
 

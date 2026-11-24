@@ -12,13 +12,16 @@ import net.runelite.api.ModelData;
 import net.runelite.api.Player;
 import net.runelite.api.RuneLiteObject;
 import net.runelite.api.coords.LocalPoint;
+import net.runelite.client.util.Text;
 
 /**
  * The Soul aura: the game's own Soul Wars glow (the one shown under a player who has just
  * respawned and is immune), recoloured to your god and kept under your feet. Only its opening
  * frames are played, slowly and back and forth, so it breathes rather than flares.
  *
- * <p>It is a client-side object: only you see it, and nothing is sent to the game. The glow model
+ * <p>It is a client-side object, and nothing is sent to the game. Party members who also play
+ * Battle Mage Mode are told which aura you chose and show this glow under you on their screens (and
+ * you see theirs). The glow model
  * and its animation come straight from the game cache, and only its one glow colour is swapped,
  * the same way the game itself makes its red, blue and green versions of this glow.
  *
@@ -42,82 +45,151 @@ class SoulAura
 	private static final int AMBIENT = 64;
 	private static final int CONTRAST = 850 + 60;
 
+	/** The key for your own glow; party members' glows are keyed by their standardised name. */
+	private static final String SELF = "";
+
 	private final Client client;
 	private final Oath oath;
 	private final Appearance look;
+	private final PartySync party;
 
-	private RuneLiteObject glow;
-	/** The god the current model was coloured for. */
-	private Faction coloured;
+	/** One glow in the world, and the god it was coloured for. */
+	private static final class Glow
+	{
+		final RuneLiteObject obj;
+		Faction coloured;
+
+		Glow(RuneLiteObject obj)
+		{
+			this.obj = obj;
+		}
+	}
+
+	/** The glows in the world: yours, and one per party member who chose the Soul aura. */
+	private final java.util.Map<String, Glow> glows = new java.util.HashMap<>();
+	/** The recoloured glow model for each god, built once. */
+	private final java.util.EnumMap<Faction, Model> models = new java.util.EnumMap<>(Faction.class);
 
 	@Inject
-	SoulAura(Client client, Oath oath, Appearance look)
+	SoulAura(Client client, Oath oath, Appearance look, PartySync party)
 	{
 		this.client = client;
 		this.oath = oath;
 		this.look = look;
+		this.party = party;
 	}
 
-	/** Called every client tick: shows, recolours, moves or hides the glow. */
+	/** Called every client tick: shows, recolours, moves or hides each glow. */
 	void update()
 	{
-		Faction faction = oath.getFaction();
-		Player me = client.getLocalPlayer();
-		if (look.auraMode() != AuraMode.SOUL || faction == null || me == null
-			|| client.getGameState() != GameState.LOGGED_IN)
+		if (client.getGameState() != GameState.LOGGED_IN)
 		{
 			hide();
 			return;
 		}
-		LocalPoint at = me.getLocalLocation();
-		if (at == null)
+		int plane = client.getTopLevelWorldView().getPlane();
+		java.util.Set<String> wanted = new java.util.HashSet<>();
+
+		Player me = client.getLocalPlayer();
+		Faction faction = oath.getFaction();
+		if (me != null && faction != null && look.shownAura() == AuraMode.SOUL)
 		{
-			hide();
-			return;
+			place(SELF, me, faction, plane, wanted);
 		}
 
+		// party members who chose the Soul aura get theirs under them too
+		if (look.partyAuras())
+		{
+			java.util.Map<String, PartySync.Mate> mates = party.matesByName();
+			if (!mates.isEmpty())
+			{
+				for (Player p : client.getPlayers())
+				{
+					if (p == null || p == me || p.getName() == null)
+					{
+						continue;
+					}
+					String key = Text.standardize(p.getName());
+					PartySync.Mate m = mates.get(key);
+					if (m != null && m.aura == AuraMode.SOUL && m.faction != null)
+					{
+						place(key, p, m.faction, plane, wanted);
+					}
+				}
+			}
+		}
+
+		// anyone no longer wanting a glow (or out of sight) loses it
+		java.util.Iterator<java.util.Map.Entry<String, Glow>> it = glows.entrySet().iterator();
+		while (it.hasNext())
+		{
+			java.util.Map.Entry<String, Glow> e = it.next();
+			if (!wanted.contains(e.getKey()))
+			{
+				e.getValue().obj.setActive(false);
+				it.remove();
+			}
+		}
+	}
+
+	/** Puts the glow for {@code key} under {@code who}, in {@code faction}'s colour. */
+	private void place(String key, Player who, Faction faction, int plane, java.util.Set<String> wanted)
+	{
+		LocalPoint at = who.getLocalLocation();
+		if (at == null)
+		{
+			return;
+		}
+		Glow glow = glows.get(key);
 		if (glow == null)
 		{
-			glow = client.createRuneLiteObject();
+			RuneLiteObject obj = client.createRuneLiteObject();
 			Animation anim = client.loadAnimation(GLOW_ANIM);
 			if (anim != null)
 			{
-				glow.setAnimationController(new GentlePulse(client, anim));
+				obj.setAnimationController(new GentlePulse(client, anim));
 			}
+			glow = new Glow(obj);
+			glows.put(key, glow);
 		}
-		if (faction != coloured)
+		if (faction != glow.coloured)
 		{
-			Model m = buildModel(faction);
+			Model m = models.get(faction);
 			if (m == null)
 			{
-				return;
+				m = buildModel(faction);
+				if (m == null)
+				{
+					return;
+				}
+				models.put(faction, m);
 			}
-			glow.setModel(m);
-			coloured = faction;
+			glow.obj.setModel(m);
+			glow.coloured = faction;
 		}
-
-		glow.setLocation(at, client.getTopLevelWorldView().getPlane());
-		if (!glow.isActive())
+		wanted.add(key);
+		glow.obj.setLocation(at, plane);
+		if (!glow.obj.isActive())
 		{
-			glow.setActive(true);
+			glow.obj.setActive(true);
 		}
 	}
 
-	/** Takes the glow out of the world (it is rebuilt on the next update that wants it). */
+	/** Takes every glow out of the world (they are rebuilt on the next update that wants them). */
 	void hide()
 	{
-		if (glow != null && glow.isActive())
+		for (Glow g : glows.values())
 		{
-			glow.setActive(false);
+			g.obj.setActive(false);
 		}
+		glows.clear();
 	}
 
-	/** Removes the glow for good, for plugin shutdown. */
+	/** Removes the glows for good, for plugin shutdown. */
 	void remove()
 	{
 		hide();
-		glow = null;
-		coloured = null;
+		models.clear();
 	}
 
 	private Model buildModel(Faction faction)

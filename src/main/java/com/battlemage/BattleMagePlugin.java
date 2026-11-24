@@ -100,6 +100,7 @@ public class BattleMagePlugin extends Plugin
 	@Inject private OnboardingOverlay onboardingOverlay;
 	@Inject private ClientToolbar clientToolbar;
 	@Inject private ItemManager itemManager;
+	@Inject private net.runelite.client.game.SpriteManager spriteManager;
 	@Inject private Sfx sfx;
 	@Inject private OverlayManager overlayManager;
 	@Inject private PkpBarOverlay barOverlay;
@@ -110,6 +111,9 @@ public class BattleMagePlugin extends Plugin
 	@Inject private IllegalBehaviorOverlay illegalOverlay;
 	@Inject private CastCardOverlay castCardOverlay;
 	@Inject private LevelUpCardOverlay levelUpCardOverlay;
+	@Inject private DeathSignposts deathSignposts;
+	@Inject private FactionlessBlackoutOverlay factionlessBlackout;
+	@Inject private LunarBlessings lunarBlessings;
 	@Inject private OffLimitItemOverlay offLimitOverlay;
 	@Inject private SpellBlockOverlay spellBlockOverlay;
 	@Inject private CombatLockOverlay combatLockOverlay;
@@ -121,12 +125,25 @@ public class BattleMagePlugin extends Plugin
 	@Inject private ClownRespawn clownRespawn;
 	@Inject private CombatGate combatGate;
 	@Inject private CombatNoticeOverlay combatNotice;
+	@Inject private PartySync partySync;
+	@Inject private MoonsOfPeril moons;
+	@Inject private CowbellRing cowbellRing;
+	@Inject private PartyAvatar partyAvatar;
+	@Inject private PartyPkpOverlay partyPkpOverlay;
+	@Inject private FloatingStateTextOverlay floatingStateText;
+	@Inject private PkpOrbOverlay pkpOrbOverlay;
+	@Inject private RespectsOverlay respectsOverlay;
+	@Inject private net.runelite.client.party.PartyDataService partyDataService;
 	/** Combat level as last seen, so a level-up across the warning levels is caught once. */
 	private int lastCombatLevel;
 	/** Ranged xp as last seen (-1 until the login reading), for the first-xp cannon reminder. */
 	private int lastRangedXp = -1;
 	/** Saved once the first-Ranged-xp cannon reminder has been shown. */
 	private static final String KEY_CANNON_FIRST = "cannonFirstXpShown";
+	/** Saved once the Combat Level 99 renewal notice has been shown. */
+	private static final String KEY_RENEW_SEEN = "renewNoticeShown";
+	/** Saved when "Don't remind me again" is ticked on the renewal notice. */
+	private static final String KEY_RENEW_OFF = "renewNoticeOff";
 	/** Saved when "Don't remind me again" is ticked on the cannon reminder. */
 	private static final String KEY_CANNON_OFF = "cannonReminderOff";
 
@@ -375,6 +392,8 @@ public class BattleMagePlugin extends Plugin
 	private boolean overloadActive;
 	private long overloadFoodUnlockMs;
 	private long lastCombatMs;
+	/** The Moon of Peril whose chamber you are in, checked once a game tick. */
+	private MoonsOfPeril.Moon moon = MoonsOfPeril.Moon.NONE;
 	private long lastManualCastMs;
 	private long lastCastMs;
 	private long inCombatUntilMs;
@@ -764,6 +783,7 @@ public class BattleMagePlugin extends Plugin
 		overlayManager.add(spellBlockOverlay);
 		overlayManager.add(combatLockOverlay);
 		overlayManager.add(onboardingOverlay);
+		overlayManager.add(factionlessBlackout);
 		overlayManager.add(beginHintOverlay);
 		beginHintOverlay.start();
 		log.info("[BATTLE-MAGE] Crests: {}", FactionSigils.crestReport());
@@ -782,6 +802,23 @@ public class BattleMagePlugin extends Plugin
 		wiseOldMan.setOnDenounce(this::denounceCeremony);
 		wiseOldMan.setOnFactionless(this::factionlessCeremony);
 		eventBus.register(wiseOldMan);
+		partyAvatar.load();
+		partySync.start();
+		eventBus.register(partySync);
+		eventBus.register(deathSignposts);
+		eventBus.register(lunarBlessings);
+		lunarBlessings.setOnBlessed(this::blessed);
+		partySync.setOnOrdain(this::ordainOn);
+		eventBus.register(cowbellRing);
+		// RuneLite's own party data: names, stats, spec, run energy, inventory, gear, prayers, rune
+		// pouch and quiver, for the side panel's member views. Asking for it is also what makes this
+		// client share yours with the party.
+		partyDataService.subscribe(this, PARTY_DATA);
+		partyDataService.subscribe(this, Skill.values());
+		overlayManager.add(partyPkpOverlay);
+		overlayManager.add(floatingStateText);
+		overlayManager.add(pkpOrbOverlay);
+		overlayManager.add(respectsOverlay);
 		beginHintShown = false;
 		panel = new BattleMagePanel(oath, rules, combatGate, look,
 			new AppearanceEditor.Previews()
@@ -803,7 +840,9 @@ public class BattleMagePlugin extends Plugin
 				{
 					clientThread.invoke(() -> noteLevelUp("Magic", 88, skillColor(Skill.MAGIC)));
 				}
-			});
+			}, new PartyBox(partySync, look, spriteManager, itemManager, partyAvatar));
+		panel.setOpenOath(() -> clientThread.invoke(this::openOnboarding));
+		panel.setOpenRenewal(() -> clientThread.invoke(this::openRenewal));
 		panel.setOnTithesHover(this::tithesChoir);
 		panel.setOnTithesClick(this::tithesClicked);
 		refreshNavButton();
@@ -880,7 +919,7 @@ public class BattleMagePlugin extends Plugin
 	 * The ordination: the moment a god is sworn, the player performs that god's emote inside that
 	 * god's effects, drawn from the game's own animations. Only emotes are used - nothing borrowed
 	 * from a weapon's attack, and nothing (like a teleport cast) that hides the player - so whatever is
-	 * held stays as it is. Client-side only: nobody else sees it and nothing is sent to the game.
+	 * held stays as it is. Drawn by each client; party members playing Battle Mage Mode see it on you too. Nothing is sent to the game.
 	 * Client thread only.
 	 *
 	 * <ul>
@@ -899,7 +938,55 @@ public class BattleMagePlugin extends Plugin
 	 */
 	private void ordain(Faction faction)
 	{
-		if (faction == null)
+		final Player me = client.getLocalPlayer();
+		if (faction == null || me == null)
+		{
+			return;
+		}
+		ordainOn(me, faction);
+		// party members playing Battle Mage Mode see it on you too
+		partySync.announceOrdain(faction);
+		customizeTips();
+	}
+
+	/** How far apart the customisation tips arrive after an oath, in milliseconds. */
+	private static final long TIP_GAP_MS = 3000L;
+
+	/**
+	 * A few chat lines after an oath is sealed, once the ordination has had its moment: how to move
+	 * and set up the PKP bar and orb.
+	 */
+	private void customizeTips()
+	{
+		// by the level an oath can be renewed from the side panel, they've heard it all before
+		if (combatGate.combatLevel() >= CombatGate.RENEW_COMBAT)
+		{
+			return;
+		}
+		final String[] tips = {
+			"Hold <col=ffffff>Alt</col> and drag your PKP bar or PKP orb to move it anywhere on screen.",
+			"<col=ffffff>Shift + right-click</col> the PKP bar or orb to change where your PKP gains and losses"
+				+ " appear. The orb can also be flipped and resized.",
+			"Switch between the HUD bar and the in-game orb with the <col=ffffff>PKP Style</col> slider in the"
+				+ " Battle Mage side panel, and restyle either with <col=ffffff>Customize appearance</col>.",
+		};
+		for (int i = 0; i < tips.length; i++)
+		{
+			final String tip = tips[i];
+			executor.schedule(() -> clientThread.invoke(() ->
+			{
+				if (oath.isSworn() && client.getGameState() == GameState.LOGGED_IN)
+				{
+					client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", "<col=7f1fff>Battle Mage Mode:</col> " + tip, null);
+				}
+			}), TIP_GAP_MS * (i + 2), java.util.concurrent.TimeUnit.MILLISECONDS);
+		}
+	}
+
+	/** The ordination for {@code faction}, played on {@code who} (you, or a party member). Client thread. */
+	private void ordainOn(Player who, Faction faction)
+	{
+		if (faction == null || who == null)
 		{
 			return;
 		}
@@ -907,13 +994,13 @@ public class BattleMagePlugin extends Plugin
 		{
 			case SARADOMIN:
 				// EMOTE_SLAP_HEAD; Saradomin sword special attack, then Excalibur's blue glow as it ends
-				ordainBeat(4275, new int[][]{{1213, 0}, {247, SARADOMIN_GLOW_DELAY_CYCLES}});
+				ordainBeat(who, 4275, new int[][]{{1213, 0}, {247, SARADOMIN_GLOW_DELAY_CYCLES}});
 				break;
 			case ZAMORAK:
 				// EMOTE_BECKON in one pillar of ZAMORAK_FLAME and a SPELL_BLOOD_BARRAGE_IMPACT swirl of red;
 				// as the flame ends, a FIREBLAST_IMPACT and the dragon battleaxe special's red glow
 				// (SP_ATTACKGLOW_RED - the effect only, no shout)
-				ordainBeat(864, new int[][]{
+				ordainBeat(who, 864, new int[][]{
 					{78, 0},
 					{377, 0},
 					{131, FLAME_CYCLES},
@@ -922,7 +1009,7 @@ public class BattleMagePlugin extends Plugin
 			case GUTHIX:
 				// HUMAN_PRAY; DRUIDICSPIRIT_BLOOM_PLAYER_SPOTANIM, XBOWS_EARTHS_FURY_SPOT_ANIM, and
 				// EARTHBLAST_IMPACT three times over
-				ordainBeat(645, new int[][]{
+				ordainBeat(who, 645, new int[][]{
 					{264, 0},
 					{755, 0},
 					{140, 0},
@@ -932,11 +1019,11 @@ public class BattleMagePlugin extends Plugin
 			case ZAROS:
 				// EMOTE_CHEER (arms raised) - an emote, NOT the teleport cast, which ends by hiding the
 				// player model; MARK_OF_DARKNESS_CAST_SPOTANIM, SHADOW_BARRAGE_IMPACT
-				ordainBeat(862, new int[][]{{1852, 0}, {383, 0}});
+				ordainBeat(who, 862, new int[][]{{1852, 0}, {383, 0}});
 				break;
 			case FACTIONLESS:
 				// EMOTE_JUMP_WITH_JOY in SP_ATTACKGLOW_YELLOW, rising again as the jump lands
-				ordainBeat(2109, new int[][]{{2112, 0}, {2112, FACTIONLESS_GLOW_GAP_CYCLES}});
+				ordainBeat(who, 2109, new int[][]{{2112, 0}, {2112, FACTIONLESS_GLOW_GAP_CYCLES}});
 				break;
 			default:
 				break;
@@ -947,9 +1034,8 @@ public class BattleMagePlugin extends Plugin
 	 * Plays one emote on the local player with effects on top, each given as {spot-anim id, delay in
 	 * client cycles}. Clears any effect left from an earlier ordination first. Client thread only.
 	 */
-	private void ordainBeat(int anim, int[][] spots)
+	private void ordainBeat(Player me, int anim, int[][] spots)
 	{
-		Player me = client.getLocalPlayer();
 		if (me == null)
 		{
 			return;
@@ -1009,9 +1095,10 @@ public class BattleMagePlugin extends Plugin
 		}
 		executor.schedule(() -> clientThread.invoke(() ->
 		{
-			if (oath.isSworn())
+			// denouncing a god leaves you Faction-less
+			if (oath.isSworn() && oath.getFaction().isGod())
 			{
-				oath.clear();
+				oath.denounce();
 			}
 			if (after != null)
 			{
@@ -1058,7 +1145,21 @@ public class BattleMagePlugin extends Plugin
 		if (event.getGameState() == GameState.LOGGED_IN)
 		{
 			showBeginHint();
+			partySync.onLoggedIn();
 		}
+		else if (event.getGameState() == GameState.LOGIN_SCREEN)
+		{
+			partySync.onLoggedOut();
+			cowbellRing.clear();
+			deathSignposts.clear();
+		}
+	}
+
+	/** Every 10 seconds: leaves the party after half an hour at the login screen. */
+	@net.runelite.client.task.Schedule(period = 10, unit = java.time.temporal.ChronoUnit.SECONDS)
+	public void checkPartyIdle()
+	{
+		partySync.checkIdle(client.getGameState());
 	}
 
 	/** One chat line per session telling an unsworn player how to begin. Client thread only. */
@@ -1091,6 +1192,21 @@ public class BattleMagePlugin extends Plugin
 			return;
 		}
 		onboardingOverlay.open();
+	}
+
+	/**
+	 * Combat Level 99: the side panel's Select faction opens the oath screen with only your own god
+	 * choosable, to renew the oath without visiting the Wise Old Man.
+	 */
+	void openRenewal()
+	{
+		if (!combatGate.canRenewFromPanel())
+		{
+			return;
+		}
+		onboardingOverlay.close();
+		clearReveal();
+		onboardingOverlay.openLockedTo(oath.getFaction());
 	}
 
 	/** The god whose crest the toolbar icon shows, so it is only rebuilt when the god changes. */
@@ -1192,6 +1308,24 @@ public class BattleMagePlugin extends Plugin
 		// an editor left open must not leave its preview (or its mouse listener) behind
 		look.cancel();
 		overlayManager.remove(factionAuraOverlay);
+		overlayManager.remove(partyPkpOverlay);
+		overlayManager.remove(floatingStateText);
+		overlayManager.remove(pkpOrbOverlay);
+		overlayManager.remove(respectsOverlay);
+		eventBus.unregister(partySync);
+		eventBus.unregister(cowbellRing);
+		eventBus.unregister(deathSignposts);
+		eventBus.unregister(lunarBlessings);
+		lunarBlessings.setOnBlessed(null);
+		partySync.setOnOrdain(null);
+		clientThread.invoke(deathSignposts::clear);
+		overlayManager.remove(factionlessBlackout);
+		factionlessBarred = java.util.Collections.emptyList();
+		clientThread.invoke(cowbellRing::clear);
+		partySync.setOnChange(null);
+		partySync.stop();
+		partyDataService.unsubscribe(this, PARTY_DATA);
+		partyDataService.unsubscribe(this, Skill.values());
 		clientThread.invoke(soulAura::remove);
 		clientThread.invoke(demonicBrutus::stop);
 		clientThread.invoke(clownRespawn::stop);
@@ -1309,6 +1443,15 @@ public class BattleMagePlugin extends Plugin
 
 
 		final boolean attack = option != null && option.equalsIgnoreCase("Attack");
+
+		// 1c. wearing gear your faction doesn't allow: no spells (from the book or cast on anything)
+		//     and no attacking, until it comes off
+		if (barredGearWorn() && (attack || isSpellEntry(me) || (option != null && option.equalsIgnoreCase("Cast"))))
+		{
+			removeEntry(me);
+			return;
+		}
+
 		// Both the ILLEGAL BEHAVIOR warning and CRITICAL OVERLOAD strip the same options.
 		final boolean illegal = lockdownActive();
 
@@ -1858,12 +2001,6 @@ public class BattleMagePlugin extends Plugin
 	 */
 	private BlockKind blockKind(int itemId)
 	{
-		// Faction-less: the bar, its costs and every item effect stay, but no gear or weapon is barred.
-		if (oath.getFaction() == Faction.FACTIONLESS)
-		{
-			return BlockKind.NONE;
-		}
-
 		final ItemComposition comp = itemManager.getItemComposition(itemId);
 		final String name = ornamentAsBase(comp == null ? "" : comp.getName().toLowerCase(Locale.ROOT));
 
@@ -2091,6 +2228,7 @@ public class BattleMagePlugin extends Plugin
 			{
 				restore *= wornRestoreFactor;
 			}
+			restore = moonScale(restore);
 			// Beer overrides depletion immunity: a sip that would take the bar below 0 (or the Keg,
 			// which always depletes) strips the immunity first, so the drink lands in full.
 			if (forcesDepletion || (restore < 0 && pkp + restore < 0 && isAlcohol(itemId)))
@@ -2691,11 +2829,36 @@ public class BattleMagePlugin extends Plugin
 		{
 			combatNotice.warn(CombatGate.warning(level));
 		}
+		renewalNotice(before, level);
 		boolean lockedNow = level >= CombatGate.LOCK_COMBAT;
-		if (panel != null && (before <= 0 || lockedNow != (before >= CombatGate.LOCK_COMBAT)))
+		boolean renewNow = level >= CombatGate.RENEW_COMBAT;
+		if (panel != null && (before <= 0 || lockedNow != (before >= CombatGate.LOCK_COMBAT)
+			|| renewNow != (before >= CombatGate.RENEW_COMBAT)))
 		{
 			javax.swing.SwingUtilities.invokeLater(panel::rebuild);
 		}
+	}
+
+	/**
+	 * Reaching Combat Level 99 (or first logging in at 99+ with the notice never seen): a notice like
+	 * the cannon one, saying the oath can now be renewed from the side panel.
+	 */
+	private void renewalNotice(int before, int level)
+	{
+		if (level < CombatGate.RENEW_COMBAT || !combatGate.canRenewFromPanel())
+		{
+			return;
+		}
+		boolean reached = before > 0 && before < CombatGate.RENEW_COMBAT;
+		boolean neverSeen = !Boolean.TRUE.equals(configManager.getConfiguration(Oath.GROUP, KEY_RENEW_SEEN, Boolean.class));
+		if (!reached && !(before <= 0 && neverSeen))
+		{
+			return;
+		}
+		configManager.setConfiguration(Oath.GROUP, KEY_RENEW_SEEN, true);
+		combatNotice.remind("Combat Level " + CombatGate.RENEW_COMBAT + ". The Wise Old Man has no more to teach you: "
+			+ "renew your oath to " + oath.getFaction().getDisplayName()
+			+ " from Select faction in the side panel, wherever you stand.", KEY_RENEW_OFF);
 	}
 
 	/** Queues a level-up card (themed to the skill); cards display one at a time from the top-right. */
@@ -2764,6 +2927,16 @@ public class BattleMagePlugin extends Plugin
 			inCombatUntilMs = now + COMBAT_GRACE_MS;
 		}
 
+		// in the Blood Moon's chamber, damage you take also takes that much PKP (down to empty, never
+		// into depletion)
+		if (local != null && event.getActor() == local && moon == MoonsOfPeril.Moon.BLOOD
+			&& h.getAmount() > 0 && h.getHitsplatType() != net.runelite.api.HitsplatID.HEAL
+			&& pkp > 0 && !isPkpFrozen())
+		{
+			double before = pkp;
+			setPkp(Math.max(0, pkp - h.getAmount()), true, false);
+			notePkpChange(pkp - before);
+		}
 	}
 
 	/**
@@ -2990,6 +3163,7 @@ public class BattleMagePlugin extends Plugin
 		{
 			gain = (int) Math.round(gain * setActionAmount("blockPercent") / 100.0);
 		}
+		gain = (int) Math.round(moonScale(gain));
 		lastCombatMs = System.currentTimeMillis();
 		double before = pkp;
 		if (gain < 0)
@@ -3106,6 +3280,8 @@ public class BattleMagePlugin extends Plugin
 		{
 			gain = (int) Math.round(gain * gainMultiplier());
 		}
+		// the Eclipse Moon shrinks gains and losses
+		gain = (int) Math.round(moonScale(gain));
 		// a worn chance item (Bracelet of slaughter) may stop this gain landing at all; for a ranged
 		// hit, a set's no-gain chance (the ranger kit) adds to it in the same roll
 		int noGain = gain > 0 ? wornNoGainChance + ("ranged".equals(kind) ? setActionChance("noRangedGain")
@@ -3398,6 +3574,8 @@ public class BattleMagePlugin extends Plugin
 		soulAura.update();
 		demonicBrutus.update();
 		clownRespawn.update();
+		cowbellRing.update();
+		deathSignposts.update();
 		randomPkpSwings();
 	}
 
@@ -3405,7 +3583,11 @@ public class BattleMagePlugin extends Plugin
 	public void onGameTick(GameTick event)
 	{
 		trackCombatLevel();
+		combatGate.setInCombat(inCombat());
+		checkFactionlessGear();
 		clownRespawn.onGameTick();
+		moonTick();
+		shareWithParty();
 		final long now = System.currentTimeMillis();
 		tickCounter++;
 
@@ -3564,7 +3746,7 @@ public class BattleMagePlugin extends Plugin
 				}
 				// worn regen speed (Runner boots)
 				perTick *= wornRegenFactor;
-				addPkp(perTick);
+				addPkp(moonScale(perTick));
 			}
 		}
 
@@ -4544,7 +4726,7 @@ public class BattleMagePlugin extends Plugin
 			}
 			randomPkpLastMs.put(name, now);
 			double before = pkp;
-			addPkp(stateSaveRng.nextBoolean() ? r[0] : -r[0]);
+			addPkp(moonScale(stateSaveRng.nextBoolean() ? r[0] : -r[0]));
 			notePkpChange(pkp - before);
 		}
 		// taken off: forget the timer, so putting it back on waits a full interval again
@@ -5306,7 +5488,271 @@ public class BattleMagePlugin extends Plugin
 		return rules.overchargeEnabled() ? effectiveMax() + rules.overchargeHeadroom() : effectiveMax();
 	}
 
+	/**
+	 * The RuneLite party data the side panel's member views show. Not location (COORD) or vengeance:
+	 * nothing here shows them, and location would be sent every tick you walk.
+	 */
+	private static final net.runelite.client.party.PartyDataType[] PARTY_DATA = {
+		net.runelite.client.party.PartyDataType.CHARACTER_NAME,
+		net.runelite.client.party.PartyDataType.ENERGY,
+		net.runelite.client.party.PartyDataType.SPEC,
+		net.runelite.client.party.PartyDataType.INV,
+		net.runelite.client.party.PartyDataType.WORN,
+		net.runelite.client.party.PartyDataType.ACTIVE_PRAYERS,
+		net.runelite.client.party.PartyDataType.RUNE_POUCH,
+		net.runelite.client.party.PartyDataType.QUIVER,
+	};
+
+	// ============================================================ overlay menus
+
+	/**
+	 * RuneLite adds an "Overlay Origin" choice to the Shift + right-click menu of every overlay. The
+	 * PKP bar and orb have their own menus and no use for it, so it is taken off theirs. Runs after
+	 * RuneLite has added it.
+	 */
+	@Subscribe(priority = -1)
+	public void onMenuOpened(net.runelite.api.events.MenuOpened e)
+	{
+		final net.runelite.api.Point mouse = client.getMouseCanvasPosition();
+		if (mouse == null)
+		{
+			return;
+		}
+		final java.awt.Rectangle orbAt = pkpOrbOverlay.shownBounds();
+		final java.awt.Rectangle barAt = pkpBarShownBounds();
+		final boolean over = (orbAt != null && orbAt.contains(mouse.getX(), mouse.getY()))
+			|| (barAt != null && barAt.contains(mouse.getX(), mouse.getY()));
+		if (!over)
+		{
+			return;
+		}
+		for (MenuEntry entry : client.getMenu().getMenuEntries())
+		{
+			if ("Overlay Origin".equals(entry.getOption()))
+			{
+				client.getMenu().removeMenuEntry(entry);
+			}
+		}
+	}
+
+	// ============================================================ lunar blessings
+
+	/** Attacks of protection a Lunar blessing gives. */
+	private static final int BLESSING_ATTACKS = 2;
+
+	/**
+	 * A party member's Lunar spell landed on you. Heal Other: overload and depletion cleared, PKP to 0,
+	 * and no depletion for your next 2 attacks. Vengeance Other: no overload for your next 2 attacks.
+	 * Client thread.
+	 */
+	private void blessed(int kind, String from)
+	{
+		if (!oath.isSworn() || !rules.isActive())
+		{
+			return;
+		}
+		final long now = System.currentTimeMillis();
+		lapseIdleImmunityAttacks(now);
+		immunityAttacksExpireMs = now + IMMUNITY_ATTACKS_IDLE_MS;
+		final String text;
+		if (kind == BattleMagePartyBlessing.HEAL)
+		{
+			final double before = pkp;
+			overloadActive = false;
+			overloadFoodUnlockMs = 0L;
+			criticalUntilMs = 0L;
+			depletedLatch = false;
+			setPkp(0, false);
+			notePkpChange(pkp - before);
+			depletionImmuneAttacks = Math.max(depletionImmuneAttacks, BLESSING_ATTACKS);
+			text = from + "'s Heal Other: overload and depletion cleared, PKP set to 0, and no depletion for your next "
+				+ BLESSING_ATTACKS + " attacks.";
+		}
+		else
+		{
+			overloadImmuneAttacks = Math.max(overloadImmuneAttacks, BLESSING_ATTACKS);
+			text = from + "'s Vengeance Other: no overload for your next " + BLESSING_ATTACKS + " attacks.";
+		}
+		client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", "<col=7f1fff>Battle Mage Mode:</col> " + text, null);
+	}
+
+	// ============================================================ faction-less gear
+
+	/** Worn items the Faction-less may not use, by name; empty when there are none (or not Faction-less). */
+	private volatile List<String> factionlessBarred = java.util.Collections.emptyList();
+
+	/** Worn items your faction doesn't allow, by name; empty when there are none. Any faction. */
+	private volatile List<String> barredWorn = java.util.Collections.emptyList();
+
+	/**
+	 * Once a game tick: what you are wearing that your faction doesn't allow (gear put on before an
+	 * oath, or kept on through a change of faction). While any of it is on, no spell can be cast and
+	 * nothing attacked, and party members see you crossed out. The Faction-less also get the blackout.
+	 */
+	private void checkFactionlessGear()
+	{
+		final List<String> was = barredWorn;
+		if (!oath.isSworn() || !rules.isActive() || oath.inCeremony())
+		{
+			factionlessBarred = java.util.Collections.emptyList();
+			barredWorn = java.util.Collections.emptyList();
+			return;
+		}
+		final ItemContainer eq = client.getItemContainer(InventoryID.EQUIPMENT);
+		if (eq == null)
+		{
+			factionlessBarred = java.util.Collections.emptyList();
+			barredWorn = java.util.Collections.emptyList();
+			return;
+		}
+		final List<String> out = new ArrayList<>();
+		for (Item item : eq.getItems())
+		{
+			if (item == null || item.getId() <= 0 || !shouldBlockEquip(item.getId()))
+			{
+				continue;
+			}
+			final ItemComposition comp = itemManager.getItemComposition(item.getId());
+			out.add(comp == null ? "Item " + item.getId() : comp.getName());
+		}
+		barredWorn = out.isEmpty() ? java.util.Collections.emptyList() : out;
+		factionlessBarred = oath.getFaction() == Faction.FACTIONLESS ? barredWorn : java.util.Collections.emptyList();
+		if (was.isEmpty() && !out.isEmpty())
+		{
+			client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", "<col=7f1fff>Battle Mage Mode:</col> "
+				+ oath.getFaction().getDisplayName() + " doesn't allow your <col=ff3030>" + String.join(", ", out)
+				+ "</col>. You can't cast spells or attack until it comes off.", null);
+		}
+	}
+
+	/** Whether you are wearing anything your faction doesn't allow. */
+	boolean barredGearWorn()
+	{
+		return !barredWorn.isEmpty();
+	}
+
+	/** For the blackout: what has to come off. */
+	List<String> factionlessBarredGear()
+	{
+		return factionlessBarred;
+	}
+
+	// ============================================================ moons of peril
+
+	/** Once a game tick: which Moon's chamber you are in (which counts as combat), and the Blood Moon's drain. */
+	private void moonTick()
+	{
+		moon = oath.isSworn() && rules.isActive() ? moons.detect() : MoonsOfPeril.Moon.NONE;
+		if (moon != MoonsOfPeril.Moon.NONE)
+		{
+			// a Moon's chamber always counts as combat, fighting or not: no out-of-combat regen, and
+			// nothing that waits for time out of combat (an overload, the ILLEGAL warning) runs down
+			long now = System.currentTimeMillis();
+			lastCombatMs = now;
+			inCombatUntilMs = Math.max(inCombatUntilMs, now + COMBAT_GRACE_MS);
+		}
+		if (moon == MoonsOfPeril.Moon.BLOOD && pkp > 0 && !isPkpFrozen())
+		{
+			// drains to empty and stops there: it never depletes you (no popups: it is a steady bleed)
+			setPkp(Math.max(0, pkp - MoonsOfPeril.BLOOD_DRAIN_PER_SECOND * TICK_SECONDS), true, false);
+		}
+	}
+
+	/**
+	 * A PKP change as it lands in the Eclipse Moon's chamber: gains shrink to a fifth, other losses to
+	 * a quarter. Spell costs are not passed through here: they are paid in full.
+	 */
+	private double moonScale(double delta)
+	{
+		if (moon != MoonsOfPeril.Moon.ECLIPSE)
+		{
+			return delta;
+		}
+		return delta * (delta > 0 ? MoonsOfPeril.ECLIPSE_GAIN_SCALE : MoonsOfPeril.ECLIPSE_LOSS_SCALE);
+	}
+
+	/** The Moon whose chamber you are in, for the bar's border. */
+	MoonsOfPeril.Moon activeMoon()
+	{
+		return moon;
+	}
+
+	// ============================================================ party
+
+	/** Once a game tick: tells the RuneLite party where your PKP stands (when sharing is on). */
+	private void shareWithParty()
+	{
+		partySync.tickExtras(client.getTickCount());
+		if (!partySync.inParty())
+		{
+			return;
+		}
+		int state = 0;
+		if (isDepleted())
+		{
+			state |= BattleMagePartyUpdate.DEPLETED;
+		}
+		if (isOverloaded())
+		{
+			state |= BattleMagePartyUpdate.OVERLOADED;
+		}
+		if (criticalOverloadActive())
+		{
+			state |= BattleMagePartyUpdate.CRITICAL;
+		}
+		if (barredGearWorn())
+		{
+			state |= BattleMagePartyUpdate.BARRED_GEAR;
+		}
+		// for teammates' screens: the in-game style, and which positive effects are running (their
+		// particles show on you only when you and they both use the in-game style and the X-Ray aura)
+		if (look.inGameStyle())
+		{
+			state |= BattleMagePartyUpdate.IN_GAME;
+			// (not the appearance editor's samples)
+			for (ActiveEffect fx : look.sampleEffects() ? java.util.Collections.<ActiveEffect>emptyList() : activeEffects())
+			{
+				if (fx.pending)
+				{
+					continue;
+				}
+				switch (fx.kind)
+				{
+					case FREEZE:
+						state |= BattleMagePartyUpdate.FX_FREEZE;
+						break;
+					case OVERLOAD_IMMUNE:
+						state |= BattleMagePartyUpdate.FX_OVERLOAD_PROOF;
+						break;
+					case DEPLETION_IMMUNE:
+						state |= BattleMagePartyUpdate.FX_DEPLETION_PROOF;
+						break;
+					default:
+						break;
+				}
+			}
+			if (!look.sampleEffects())
+			{
+				final double gain = gainScaleNow();
+				final double spend = spendScaleNow();
+				state |= gain > 1.0 ? BattleMagePartyUpdate.FX_GAIN_MORE : gain < 1.0 ? BattleMagePartyUpdate.FX_GAIN_LESS : 0;
+				state |= spend < 1.0 ? BattleMagePartyUpdate.FX_SPEND_LESS : spend > 1.0 ? BattleMagePartyUpdate.FX_SPEND_MORE : 0;
+			}
+		}
+		// always shared while sworn: each player decides for themselves what of the party they see
+		boolean share = oath.isSworn();
+		Player me = client.getLocalPlayer();
+		partySync.tick(share, me == null ? null : me.getName(), oath.getFaction(), state,
+			look.shownAura());
+	}
+
 	// ============================================================ state queries (overlays)
+
+	/** Where the PKP bar is on screen right now, or null while it isn't showing. */
+	java.awt.Rectangle pkpBarShownBounds()
+	{
+		return barOverlay.shownBounds();
+	}
 
 	/** Where the PKP bar was last drawn (empty when it is hidden or not drawn yet). */
 	java.awt.Rectangle pkpBarBounds()
@@ -5428,6 +5874,36 @@ public class BattleMagePlugin extends Plugin
 	static final Color DRUNK_GOLD = new Color(0xF2, 0xB8, 0x2B);
 	/** Red for a drink's gain / spend surge. */
 	static final Color SURGE_RED = new Color(0xFF, 0x4A, 0x3A);
+
+	/** A drink's PKP gain scale while it runs (1.0 when none). */
+	double gainScaleNow()
+	{
+		return System.currentTimeMillis() < gainScaleUntilMs ? gainScale : 1.0;
+	}
+
+	/** A drink's PKP spend scale while it runs (1.0 when none). */
+	double spendScaleNow()
+	{
+		return System.currentTimeMillis() < spendScaleUntilMs ? spendScale : 1.0;
+	}
+
+	/** A positive effect's colour, as its badge and particles use it (for a teammate's effects too). */
+	Color effectColor(EffectKind kind)
+	{
+		switch (kind)
+		{
+			case FREEZE:
+				return FROZEN_FRAME;
+			case OVERLOAD_IMMUNE:
+				return look.overloadColor();
+			case DEPLETION_IMMUNE:
+				return look.depletedColor();
+			case SURGE:
+				return look.overchargeColor();
+			default:
+				return Color.WHITE;
+		}
+	}
 
 	/** "x2", "x1.5", "x0.5" - a multiplier without a trailing ".0". */
 	private static String multiplierLabel(double m)
@@ -6194,6 +6670,7 @@ public class BattleMagePlugin extends Plugin
 	 */
 	private void addPkpSpec(double delta, boolean canOvercharge)
 	{
+		delta = moonScale(delta);
 		if (specActivation && delta > 0 && pkp > effectiveMax() && !isPkpFrozen() && !overloadImmune()
 			&& !cowbellAutoSave(1))
 		{
@@ -6673,6 +7150,7 @@ public class BattleMagePlugin extends Plugin
 		pkp = Math.max(pkp, Math.min(effectiveMax(), pkp + storedOver));
 		storedOver = 0;
 		overCooldownUntilMs = System.currentTimeMillis() + COWBELL_COOLDOWN_MS;
+		cowbellCombatReset();
 		zap(1);
 		notePkpChange(pkp - before);
 	}
@@ -6688,8 +7166,30 @@ public class BattleMagePlugin extends Plugin
 		pkp = Math.min(pkp, Math.max(0, pkp - storedUnder));
 		storedUnder = 0;
 		underCooldownUntilMs = System.currentTimeMillis() + COWBELL_COOLDOWN_MS;
+		cowbellCombatReset();
 		zap(-1);
 		notePkpChange(pkp - before);
+	}
+
+	/**
+	 * A Replenish or Exhume (by hand or on its own) counts as combat: every timer that waits on time
+	 * out of combat starts over. That holds off out-of-combat regen, keeps an overload, CRITICAL
+	 * OVERLOAD and the ILLEGAL warning from clearing, keeps the spell symbol up, and keeps a sustained
+	 * freeze and any unused attack-count immunity from going idle. Client thread only.
+	 */
+	private void cowbellCombatReset()
+	{
+		long now = System.currentTimeMillis();
+		lastCombatMs = now;
+		inCombatUntilMs = Math.max(inCombatUntilMs, now + COMBAT_GRACE_MS);
+		if (sustainFreezeWeaponId > 0)
+		{
+			sustainFreezeActionMs = now;
+		}
+		if ((overloadImmuneAttacks > 0 || depletionImmuneAttacks > 0) && now < immunityAttacksExpireMs)
+		{
+			immunityAttacksExpireMs = now + IMMUNITY_ATTACKS_IDLE_MS;
+		}
 	}
 
 	private void zap(int side)
@@ -6748,6 +7248,7 @@ public class BattleMagePlugin extends Plugin
 			return false;
 		}
 		long now = System.currentTimeMillis();
+		cowbellCombatReset();
 		if (state > 0)
 		{
 			pkp = Math.min(pkp, Math.max(0, pkp - storedUnder));
@@ -6787,7 +7288,8 @@ public class BattleMagePlugin extends Plugin
 
 	boolean isPkpFrozen()
 	{
-		return (System.currentTimeMillis() < freezeUntilMs || freezeAttacks > 0);
+		return (System.currentTimeMillis() < freezeUntilMs || freezeAttacks > 0)
+			|| moon == MoonsOfPeril.Moon.BLUE;
 	}
 
 	// ============================================================ sustained freeze

@@ -63,15 +63,65 @@ class CastCardOverlay extends Overlay
 		g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 		g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
 
-		final int screenW = client.getCanvasWidth() > 0 ? client.getCanvasWidth() : 520;
 		final int margin = 8;
 		final int gap = 6;
 		final long now = System.currentTimeMillis();
 		final int n = cards.size();
 		final Composite base = g.getComposite();
 
-		int flowX = margin;     // cursor: left-to-right, wrapping back to the left
-		int flowY = margin;
+		// the game view, which the cards stay inside
+		int vx = client.getViewportXOffset();
+		int vy = client.getViewportYOffset();
+		int vw = client.getViewportWidth();
+		int vh = client.getViewportHeight();
+		if (vw <= 0 || vh <= 0)
+		{
+			vx = 0;
+			vy = 0;
+			vw = client.getCanvasWidth() > 0 ? client.getCanvasWidth() : 520;
+			vh = client.getCanvasHeight() > 0 ? client.getCanvasHeight() : 340;
+		}
+
+		// lay the live cards out first (left to right, wrapping), to know the block's size
+		g.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 15));
+		final FontMetrics lfm = g.getFontMetrics();
+		final int room = Math.max(120, vw - 2 * margin);
+		final int[] relX = new int[n];
+		final int[] relY = new int[n];
+		int blockW = 0;
+		int blockH = 0;
+		{
+			int fx = 0;
+			int fy = 0;
+			for (int i = 0; i < n; i++)
+			{
+				BattleMagePlugin.CastCard c = cards.get(i);
+				double age = (now - c.spawnMs) / (double) LIFE_MS;
+				if (age < 0 || age >= 1.0)
+				{
+					continue;
+				}
+				int w = Math.max(120, lfm.stringWidth(c.label) + 54);
+				if (fx > 0 && fx + w > room)
+				{
+					fx = 0;
+					fy += CARD_H + GAP;
+				}
+				relX[i] = fx;
+				relY[i] = fy;
+				blockW = Math.max(blockW, fx + w);
+				blockH = Math.max(blockH, fy + CARD_H);
+				fx += w + gap;
+			}
+		}
+		// where the block lands, set in Customize appearance: percent across and down the game view
+		final double px = Math.max(0, Math.min(100, look.castCardsX())) / 100.0;
+		final double py = Math.max(0, Math.min(100, look.castCardsY())) / 100.0;
+		final int originX = vx + margin + (int) Math.round(Math.max(0, vw - 2 * margin - blockW) * px);
+		// the first row sits at the chosen spot; further rows push away from the nearer edge - upwards in
+		// the lower half of the screen, downwards in the upper half
+		final int anchorY = vy + margin + (int) Math.round(Math.max(0, vh - 2 * margin - CARD_H) * py);
+		final boolean upwards = anchorY + CARD_H / 2 >= vy + vh / 2;
 
 		for (int i = 0; i < n; i++)
 		{
@@ -83,20 +133,15 @@ class CastCardOverlay extends Overlay
 			}
 			double in = Math.min(1.0, age / 0.12);        // quick slide-in
 			float alpha = (float) Math.max(0f, Math.min(1f, in * (1.0 - age) * 1.3));
-			int slideY = (int) Math.round((1.0 - in) * -24); // enters from above its landing spot
+			// enters from the side it pushes away from: from below when the cards stack upwards
+			int slideY = (int) Math.round((1.0 - in) * (upwards ? 24 : -24));
 
 			g.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 15));
 			FontMetrics fm = g.getFontMetrics();
 
 			int cardW = Math.max(120, fm.stringWidth(c.label) + 54);
-			if (flowX + cardW > screenW - margin)
-			{
-				flowX = margin;                            // wrap back to the left
-				flowY += CARD_H + GAP;
-			}
-			int x = flowX;
-			int y = flowY + slideY;
-			flowX += cardW + gap;
+			int x = originX + relX[i];
+			int y = (upwards ? anchorY - relY[i] : anchorY + relY[i]) + slideY;
 
 			Color col = plugin.colorFor(c.family);
 			g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, alpha));

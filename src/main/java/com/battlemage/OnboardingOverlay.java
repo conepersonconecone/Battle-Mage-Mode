@@ -142,6 +142,17 @@ public class OnboardingOverlay extends Overlay
 		} : onComplete;
 	}
 
+	/** Set by {@link #openLockedTo}: the only god the next opening allows. */
+	private Faction forcedLock;
+
+	/** Shows the oath flow with only {@code god} choosable: the rest are greyed and marked LOCKED. */
+	public void openLockedTo(Faction god)
+	{
+		forcedLock = god;
+		open();
+		forcedLock = null;
+	}
+
 	/** Shows the oath flow from its first screen. */
 	public void open()
 	{
@@ -155,7 +166,7 @@ public class OnboardingOverlay extends Overlay
 		// rather than starting from a blank screen.
 		Faction current = oath.getFaction();
 		selected = current != null && current.isGod() ? current : null;
-		locked = gate.lockedTo();
+		locked = forcedLock != null ? forcedLock : gate.lockedTo();
 		if (locked != null && locked.isGod())
 		{
 			selected = locked;

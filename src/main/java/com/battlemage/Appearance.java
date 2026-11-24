@@ -41,8 +41,21 @@ public class Appearance
 	/** Defaults, in one place, for the editor's "Reset to defaults". Match {@link BattleMageConfig}. */
 	static final Map<String, Object> DEFAULTS = new LinkedHashMap<>();
 
+
+	/**
+	 * Where the in-game profile starts out different from the HUD one. Anything not named here (the
+	 * colours, the texts, ...) starts as whatever the HUD profile has, until it is changed in-game.
+	 */
+	static final Map<String, Object> IN_GAME_DEFAULTS = new LinkedHashMap<>();
+
 	/** A state-text position of -1 means "not placed by hand": the text sits centred above the PKP bar. */
 	static final double ANCHORED = -1.0;
+
+	/** The words for the three PKP states: on the HUD bar, and floating off your character in-game. */
+	static final String DEPLETED_WORD = "DEPLETED";
+	static final String OVERLOADED_WORD = "OVERLOADED";
+	static final String CRITICAL_WORD = "CRITICAL OVERLOAD";
+
 
 	/** Gap, in pixels, between the bottom of the state text and the top of the PKP bar. */
 	static final int ANCHOR_GAP_PX = 50;
@@ -66,7 +79,7 @@ public class Appearance
 		DEFAULTS.put("effectIconSize", 34);
 		DEFAULTS.put("effectBorderEnabled", true);
 		DEFAULTS.put("desaturateScreen", true);
-		DEFAULTS.put("desaturationStrength", 77);
+		DEFAULTS.put("desaturationStrength", 58);
 		DEFAULTS.put("depletedTextScalePercent", 100);
 		DEFAULTS.put("overloadTextScalePercent", 100);
 		DEFAULTS.put("criticalTextScalePercent", 100);
@@ -85,15 +98,55 @@ public class Appearance
 		DEFAULTS.put("pkpPopupSeconds", 3);
 		DEFAULTS.put("inventoryTooltips", true);
 		DEFAULTS.put("spellTooltips", true);
+		DEFAULTS.put("partyHeadBars", true);
+		DEFAULTS.put("partyAuras", true);
+		DEFAULTS.put("partyExpand", false);
+		DEFAULTS.put("partyVirtualLevels", false);
+		DEFAULTS.put("partyWorlds", true);
+		DEFAULTS.put("partyShowPassphrase", true);
+		DEFAULTS.put("partyDeathCards", true);
+		DEFAULTS.put("partyPictures", true);
 		DEFAULTS.put("castCardsEnabled", true);
 		DEFAULTS.put("levelUpCards", true);
+		// where the cards land, in percent across and down the game view (0 = left/top edge)
+		DEFAULTS.put("castCardsX", 0);
+		DEFAULTS.put("castCardsY", 0);
+		DEFAULTS.put("levelCardX", 100);
+		DEFAULTS.put("levelCardY", 0);
 		DEFAULTS.put("meleeColor", new Color(0xF2F2F2));
 		DEFAULTS.put("combatSpellColor", new Color(0x46C8FF));
 		DEFAULTS.put("curseSpellColor", new Color(0xFF4FD8));
 		DEFAULTS.put("illegalInventoryShade", new Color(0xFFB300));
 		DEFAULTS.put("illegalExemptOutline", new Color(0x39FF14));
 		DEFAULTS.put("auraMode", AuraMode.XRAY);
+		DEFAULTS.put("showOwnAura", true);
+		// the in-game style's pieces: off in the HUD profile, on in the in-game one (IN_GAME_DEFAULTS)
+		DEFAULTS.put("selfGlow", false);
+		DEFAULTS.put("pkpOrb", false);
+		DEFAULTS.put("effectParticles", false);
+		DEFAULTS.put("floatTextEnabled", true);
+		DEFAULTS.put("floatTextScalePercent", 100);
+		DEFAULTS.put("floatTextSeconds", 2);
+		DEFAULTS.put("floatTextRise", 60);
+		DEFAULTS.put("pkpOrbFlipped", false);
+		DEFAULTS.put("pkpOrbScale", 125);
+		DEFAULTS.put("pkpOrbPopupsSideways", false);
+		DEFAULTS.put("pkpBarPopupsAtBar", true);
+		DEFAULTS.put("pkpBarPopupsRight", false);
+		DEFAULTS.put("pkpBarPopupsBelow", false);
+
+		IN_GAME_DEFAULTS.put("showBar", false);
+		IN_GAME_DEFAULTS.put("showEffectTimers", false);
+		IN_GAME_DEFAULTS.put("selfGlow", true);
+		IN_GAME_DEFAULTS.put("pkpOrb", true);
+		IN_GAME_DEFAULTS.put("castCardsEnabled", false);
+		IN_GAME_DEFAULTS.put("levelUpCards", false);
+		IN_GAME_DEFAULTS.put("effectParticles", true);
 	}
+
+
+	/** The in-game profile's settings are stored under their HUD names with this in front. */
+	private static final String IN_GAME_PREFIX = "ingame_";
 
 	/** The colour settings each faction's look sets. Everything else comes from {@link #DEFAULTS}. */
 	static final String[] PALETTE_KEYS = {
@@ -245,6 +298,12 @@ public class Appearance
 			{
 				configManager.setConfiguration(BattleMageConfig.GROUP, key, now.get(key));
 			}
+			// the in-game profile only has its own colour once one was picked there; it follows too
+			Color mine = configManager.getConfiguration(BattleMageConfig.GROUP, IN_GAME_PREFIX + key, Color.class);
+			if (mine != null && (sameRgb(mine, was.get(key)) || sameRgb(mine, DEFAULTS.get(key))))
+			{
+				configManager.setConfiguration(BattleMageConfig.GROUP, IN_GAME_PREFIX + key, now.get(key));
+			}
 		}
 		lookFaction = next;
 	}
@@ -290,7 +349,7 @@ public class Appearance
 	{
 		for (Map.Entry<String, Object> e : draft.entrySet())
 		{
-			configManager.setConfiguration(BattleMageConfig.GROUP, e.getKey(), e.getValue());
+			configManager.setConfiguration(BattleMageConfig.GROUP, storedKey(e.getKey()), e.getValue());
 		}
 		end();
 	}
@@ -310,6 +369,10 @@ public class Appearance
 		if (editing)
 		{
 			draft.putAll(defaultsFor(oath.getFaction()));
+			if (pkpStyle() == PkpStyle.IN_GAME)
+			{
+				draft.putAll(IN_GAME_DEFAULTS);
+			}
 		}
 	}
 
@@ -429,19 +492,206 @@ public class Appearance
 				return (T) v;
 			}
 		}
+		if (inGameProfile(key))
+		{
+			Object v = inGameValue(key);
+			if (v != null)
+			{
+				return (T) v;
+			}
+		}
 		return stored.get();
+	}
+
+	/**
+	 * A setting with no getter on {@link BattleMageConfig}: the draft, then the current profile,
+	 * then the stored HUD value, then the default.
+	 */
+	@SuppressWarnings("unchecked")
+	private <T> T value(String key)
+	{
+		return get(key, () ->
+		{
+			Object d = DEFAULTS.get(key);
+			Object v = configManager.getConfiguration(BattleMageConfig.GROUP, key, d.getClass());
+			return (T) (v != null ? v : d);
+		});
+	}
+
+	/** Whether this setting is read from the in-game profile right now. Party settings are shared. */
+	private boolean inGameProfile(String key)
+	{
+		return pkpStyle() == PkpStyle.IN_GAME && DEFAULTS.containsKey(key) && !key.startsWith("party");
+	}
+
+	/** The in-game profile's own value, or its starting value, or null to fall back to the HUD's. */
+	private Object inGameValue(String key)
+	{
+		Object d = DEFAULTS.get(key);
+		Object v = configManager.getConfiguration(BattleMageConfig.GROUP, IN_GAME_PREFIX + key, d.getClass());
+		return v != null ? v : IN_GAME_DEFAULTS.get(key);
+	}
+
+	/** The config key a setting is saved under for the current profile. */
+	private String storedKey(String key)
+	{
+		return inGameProfile(key) ? IN_GAME_PREFIX + key : key;
+	}
+
+	// ------------------------------------------------------------------ PKP style
+
+	/** HUD or in-game: which look (and which profile of settings) is in use. Shared, not per profile. */
+	PkpStyle pkpStyle()
+	{
+		PkpStyle s = style;
+		if (s == null)
+		{
+			s = configManager.getConfiguration(BattleMageConfig.GROUP, "pkpStyle", PkpStyle.class);
+			s = s == null ? PkpStyle.HUD : s;
+			style = s;
+		}
+		return s;
+	}
+
+	/** Read once, then kept: every setting asks which profile it comes from, many times a frame. */
+	private volatile PkpStyle style;
+
+	/** The side panel's PKP Style slider: saved straight away. */
+	void setPkpStyle(PkpStyle next)
+	{
+		style = next;
+		configManager.setConfiguration(BattleMageConfig.GROUP, "pkpStyle", next);
+	}
+
+	boolean inGameStyle()
+	{
+		return pkpStyle() == PkpStyle.IN_GAME;
+	}
+
+	/** Your own character glows with your PKP state, like party members do. */
+	boolean selfGlow()
+	{
+		return value("selfGlow");
+	}
+
+	/** The small PKP orb by the minimap. */
+	boolean pkpOrb()
+	{
+		return value("pkpOrb");
+	}
+
+	/** Particles round your aura while a positive PKP effect is running. */
+	boolean effectParticles()
+	{
+		return value("effectParticles");
+	}
+
+	/** State words that float off the PKP orb (in-game) or out of the PKP bar (HUD) as a state starts. */
+	boolean floatTextEnabled()
+	{
+		return value("floatTextEnabled");
+	}
+
+	int floatTextScalePercent()
+	{
+		return value("floatTextScalePercent");
+	}
+
+	int floatTextSeconds()
+	{
+		return value("floatTextSeconds");
+	}
+
+	/** How far the floating text rises over its life, in pixels. */
+	int floatTextRise()
+	{
+		return value("floatTextRise");
+	}
+
+	/** The PKP orb's number sits right of the orb instead of left. Set from the orb's right-click menu. */
+	boolean pkpOrbFlipped()
+	{
+		return value("pkpOrbFlipped");
+	}
+
+	/**
+	 * With the PKP orb showing, the PKP gain/loss numbers scroll sideways from it (away from the
+	 * nearer screen edge) instead of up or down. Set from the orb's right-click menu.
+	 */
+	boolean pkpOrbPopupsSideways()
+	{
+		return value("pkpOrbPopupsSideways");
+	}
+
+	/**
+	 * The PKP gain/loss numbers come off the PKP bar, at one of its corners (above-left unless another
+	 * is picked from the bar's Shift + right-click menu).
+	 */
+	boolean pkpBarPopupsAtBar()
+	{
+		return value("pkpBarPopupsAtBar");
+	}
+
+	/** At the bar: the numbers line up with its right end rather than its left. */
+	boolean pkpBarPopupsRight()
+	{
+		return value("pkpBarPopupsRight");
+	}
+
+	/** At the bar: the numbers scroll down from under it rather than up from above it. */
+	boolean pkpBarPopupsBelow()
+	{
+		return value("pkpBarPopupsBelow");
+	}
+
+	/** The PKP orb's size, 100-175%. Set from the orb's right-click menu. */
+	int pkpOrbScale()
+	{
+		return value("pkpOrbScale");
+	}
+
+	/** Saves one setting straight away, to the current style's profile (the orb's right-click menu). */
+	void setNow(String key, Object v)
+	{
+		configManager.setConfiguration(BattleMageConfig.GROUP, storedKey(key), v);
 	}
 
 	/** The aura under your character. Set straight from the side panel's slider, not the editor. */
 	AuraMode auraMode()
 	{
 		AuraMode m = get("auraMode", config::auraMode);
-		return m == null ? AuraMode.XRAY : m;
+		// "None" is no longer a choice on the slider (hiding your aura is a setting now): it reads as X-Ray
+		return m == null || m == AuraMode.NONE ? AuraMode.XRAY : m;
+	}
+
+	/**
+	 * Whether your own aura is drawn (and shown to the party) at all. Off for anyone who had picked
+	 * "None" on the old slider, until they change it.
+	 */
+	boolean showOwnAura()
+	{
+		return get("showOwnAura", () ->
+		{
+			Boolean v = configManager.getConfiguration(BattleMageConfig.GROUP, "showOwnAura", Boolean.class);
+			return v != null ? v : config.auraMode() != AuraMode.NONE;
+		});
+	}
+
+	/** The aura actually under you: your choice, or NONE while your aura is switched off. */
+	AuraMode shownAura()
+	{
+		return showOwnAura() ? auraMode() : AuraMode.NONE;
+	}
+
+	/** The side panel's "show teammates' PKP in game" box: saved straight away. */
+	void setPartyHeadBars(boolean on)
+	{
+		configManager.setConfiguration(BattleMageConfig.GROUP, "partyHeadBars", on);
 	}
 
 	void setAuraMode(AuraMode mode)
 	{
-		configManager.setConfiguration(BattleMageConfig.GROUP, "auraMode", mode);
+		configManager.setConfiguration(BattleMageConfig.GROUP, storedKey("auraMode"), mode);
 	}
 
 	boolean showBar()
@@ -619,9 +869,73 @@ public class Appearance
 		return get("spellTooltips", config::spellTooltips);
 	}
 
+	/** Where the cast cards land: percent across the game view (0 left edge, 100 right edge). */
+	int castCardsX()
+	{
+		return value("castCardsX");
+	}
+
+	/** Where the cast cards land: percent down the game view (0 top, 100 bottom). */
+	int castCardsY()
+	{
+		return value("castCardsY");
+	}
+
+	/** Where the level-up card lands: percent across the game view. */
+	int levelCardX()
+	{
+		return value("levelCardX");
+	}
+
+	/** Where the level-up card lands: percent down the game view. */
+	int levelCardY()
+	{
+		return value("levelCardY");
+	}
+
 	boolean castCardsEnabled()
 	{
 		return get("castCardsEnabled", config::castCardsEnabled);
+	}
+
+	boolean partyHeadBars()
+	{
+		return get("partyHeadBars", config::partyHeadBars);
+	}
+
+	boolean partyAuras()
+	{
+		return get("partyAuras", config::partyAuras);
+	}
+
+	boolean partyExpand()
+	{
+		return get("partyExpand", config::partyExpand);
+	}
+
+	boolean partyVirtualLevels()
+	{
+		return get("partyVirtualLevels", config::partyVirtualLevels);
+	}
+
+	boolean partyWorlds()
+	{
+		return get("partyWorlds", config::partyWorlds);
+	}
+
+	boolean partyPictures()
+	{
+		return get("partyPictures", config::partyPictures);
+	}
+
+	boolean partyDeathCards()
+	{
+		return get("partyDeathCards", config::partyDeathCards);
+	}
+
+	boolean partyShowPassphrase()
+	{
+		return get("partyShowPassphrase", config::partyShowPassphrase);
 	}
 
 	boolean levelUpCards()

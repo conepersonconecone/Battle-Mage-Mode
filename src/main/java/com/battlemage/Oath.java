@@ -115,6 +115,23 @@ public class Oath
 		changeListener.run();
 	}
 
+	/**
+	 * Denounces your god: you become Faction-less, held to the gear all four gods allow. Only from a
+	 * god; denouncing is the one way to become Faction-less.
+	 */
+	public void denounce()
+	{
+		if (faction == null || !faction.isGod())
+		{
+			return;
+		}
+		previous = faction;
+		faction = Faction.FACTIONLESS;
+		persist();
+		log.debug("Denounced {}: now faction-less", previous);
+		changeListener.run();
+	}
+
 	/** Drops the oath entirely, so the oath screen reopens. */
 	public void clear()
 	{

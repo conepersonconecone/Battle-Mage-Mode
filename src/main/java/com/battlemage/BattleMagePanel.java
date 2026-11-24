@@ -18,6 +18,7 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JSlider;
+import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.util.LinkBrowser;
@@ -41,6 +42,8 @@ class BattleMagePanel extends PluginPanel
 	private final CombatGate gate;
 	private final Appearance look;
 	private final AppearanceEditor.Previews previews;
+	/** Fellow Battle Mages in your RuneLite party; hides itself when there are none. */
+	private final PartyBox partyBox;
 
 	/** The normal panel contents, swapped out while the appearance editor is open. */
 	private final JPanel body = new JPanel();
@@ -51,15 +54,33 @@ class BattleMagePanel extends PluginPanel
 	/** The channel the Creator button opens. */
 	private static final String CREATOR_URL = "https://www.youtube.com/@AConePerson";
 	private static final String TITHES_URL = "https://ko-fi.com/coneperson";
-	private static final String SUGGESTIONS_URL = "https://discord.gg/mxtk4RRCmr";
+	private static final String SUGGESTIONS_URL = "https://forms.gle/9nvB4J9tt5PmiQyK7";
 	/** The rulebook, hosted with GitHub Pages from the plugin repo's docs/ folder. */
 	private static final String RULEBOOK_URL = "https://conepersonconecone.github.io/Battle-Mage-Mode/";
 
 	/** Where a faction is chosen from - the panel can only point there. */
 	static final String BEGIN_HINT = "Ring the Cowbell Amulet in front of the Wise Old Man";
 
-	BattleMagePanel(Oath oath, Rules rules, CombatGate gate, Appearance look, AppearanceEditor.Previews previews)
+	/** Opens the oath screen (test builds only use it, from Select faction). */
+	private Runnable openOath = () -> { };
+
+	void setOpenOath(Runnable r)
 	{
+		openOath = r == null ? () -> { } : r;
+	}
+
+	/** Opens the oath screen locked to your own god (Combat Level 99). */
+	private Runnable openRenewal = () -> { };
+
+	void setOpenRenewal(Runnable r)
+	{
+		openRenewal = r == null ? () -> { } : r;
+	}
+
+	BattleMagePanel(Oath oath, Rules rules, CombatGate gate, Appearance look, AppearanceEditor.Previews previews,
+		PartyBox partyBox)
+	{
+		this.partyBox = partyBox;
 		this.oath = oath;
 		this.rules = rules;
 		this.gate = gate;
@@ -71,10 +92,12 @@ class BattleMagePanel extends PluginPanel
 
 		body.setLayout(new BoxLayout(body, BoxLayout.Y_AXIS));
 
-		JLabel title = new JLabel("Battle-Mage Mode");
+		JLabel title = new JLabel("Battle Mage Mode", SwingConstants.CENTER);
 		title.setFont(FontManager.getRunescapeBoldFont());
 		title.setForeground(Color.WHITE);
 		title.setAlignmentX(Component.LEFT_ALIGNMENT);
+		// full width, so the centred text sits in the middle of the panel
+		title.setMaximumSize(new Dimension(Integer.MAX_VALUE, title.getPreferredSize().height));
 		body.add(title);
 		body.add(Box.createVerticalStrut(10));
 
@@ -120,6 +143,7 @@ class BattleMagePanel extends PluginPanel
 
 		buildReselect();
 		buildGodCard();
+		partyBox.refresh();
 		revalidate();
 		repaint();
 	}
@@ -153,24 +177,29 @@ class BattleMagePanel extends PluginPanel
 			BorderFactory.createEmptyBorder(9, 9, 9, 9)));
 
 		// faction-less has no crest: it shows the gold partyhat from the toolbar instead
-		godCard.add(new JLabel(new ImageIcon(f.isGod() ? factionIcon(f, 38)
-			: navIcon(null).getScaledInstance(38, 38, java.awt.Image.SCALE_SMOOTH))), BorderLayout.WEST);
+		godCard.add(new JLabel(new ImageIcon(f.isGod() ? factionIcon(f, 44)
+			: navIcon(null).getScaledInstance(44, 44, java.awt.Image.SCALE_SMOOTH))), BorderLayout.WEST);
 
-		JPanel text = new JPanel();
-		text.setLayout(new BoxLayout(text, BoxLayout.Y_AXIS));
+		// the name and epithet, larger, centred in the space between the crest and the right edge
+		JPanel text = new JPanel(new java.awt.GridBagLayout());
 		text.setOpaque(false);
+		java.awt.GridBagConstraints c = new java.awt.GridBagConstraints();
+		c.gridx = 0;
+		c.anchor = java.awt.GridBagConstraints.CENTER;
 
 		ContentPack.Lore lore = rules.lore(f);
 
-		JLabel name = new JLabel(lore.displayName);
-		name.setFont(FontManager.getRunescapeBoldFont());
+		JLabel name = new JLabel(lore.displayName, javax.swing.SwingConstants.CENTER);
+		name.setFont(FontManager.getRunescapeBoldFont().deriveFont(22f));
 		name.setForeground(Color.WHITE);
-		text.add(name);
+		c.gridy = 0;
+		text.add(name, c);
 
-		JLabel epithet = new JLabel(lore.epithet);
-		epithet.setFont(FontManager.getRunescapeSmallFont());
+		JLabel epithet = new JLabel(lore.epithet, javax.swing.SwingConstants.CENTER);
+		epithet.setFont(FontManager.getRunescapeFont().deriveFont(17f));
 		epithet.setForeground(f.getPrimary());
-		text.add(epithet);
+		c.gridy = 1;
+		text.add(epithet, c);
 
 		godCard.add(text, BorderLayout.CENTER);
 	}
@@ -202,36 +231,59 @@ class BattleMagePanel extends PluginPanel
 		final String where = sworn
 			? "Denounce your faction first, then " + BEGIN_HINT.substring(0, 1).toLowerCase() + BEGIN_HINT.substring(1)
 			: BEGIN_HINT;
-		choose.setForeground(ColorScheme.MEDIUM_GRAY_COLOR);
-		choose.setToolTipText(where);
-		choose.addActionListener(e -> JOptionPane.showMessageDialog(BattleMagePanel.this,
-			where + ".", "Select faction", JOptionPane.INFORMATION_MESSAGE));
-		reselect.add(choose);
-
-		if (sworn)
+		if (gate.canRenewFromPanel())
 		{
-			reselect.add(Box.createVerticalStrut(4));
-			reselect.add(denounceButton());
-			reselect.add(Box.createVerticalStrut(6));
-			reselect.add(auraSlider());
+			// Combat Level 99: the oath screen opens here, with only your own god choosable
+			choose.setToolTipText("Combat Level " + CombatGate.RENEW_COMBAT + ": renew your oath to "
+				+ oath.getFaction().getDisplayName());
+			choose.addActionListener(e -> openRenewal.run());
 		}
+		else
+		{
+			choose.setForeground(ColorScheme.MEDIUM_GRAY_COLOR);
+			choose.setToolTipText(where);
+			choose.addActionListener(e -> JOptionPane.showMessageDialog(BattleMagePanel.this,
+				where + ".", "Select faction", JOptionPane.INFORMATION_MESSAGE));
+		}
+		reselect.add(choose);
 
 		// the faction card sits between the oath buttons and the rest
 		reselect.add(Box.createVerticalStrut(8));
 		reselect.add(godCard);
 
-		reselect.add(Box.createVerticalStrut(8));
-		reselect.add(appearanceButton());
+		if (sworn)
+		{
+			// the Aura and PKP Style sliders, standing side by side
+			reselect.add(Box.createVerticalStrut(10));
+			reselect.add(sliderPair());
+		}
 		reselect.add(Box.createVerticalStrut(4));
-		reselect.add(rulesButton());
-		reselect.add(Box.createVerticalStrut(4));
+		reselect.add(partyBox);
 		reselect.add(Box.createVerticalStrut(10));
 		reselect.add(tithesShrine());
 		reselect.add(Box.createVerticalStrut(22));
-		reselect.add(creatorButton());
-		reselect.add(Box.createVerticalStrut(4));
-		reselect.add(linkButton("Suggestions", SUGGESTIONS_URL));
+		// four buttons of one size, evenly spaced
+		final JButton[] links = {rulesButton(), appearanceButton(), creatorButton(), linkButton("Suggestions", SUGGESTIONS_URL)};
+		for (int i = 0; i < links.length; i++)
+		{
+			if (i > 0)
+			{
+				reselect.add(Box.createVerticalStrut(LINK_GAP));
+			}
+			links[i].setPreferredSize(new Dimension(0, 26));
+			links[i].setMaximumSize(new Dimension(Integer.MAX_VALUE, 26));
+			reselect.add(links[i]);
+		}
+		// the Faction-less have nothing left to denounce: they leave by choosing a god
+		if (sworn && oath.getFaction().isGod())
+		{
+			reselect.add(Box.createVerticalStrut(16));
+			reselect.add(denounceButton());
+		}
 	}
+
+	/** The gap between the four buttons near the bottom of the panel. */
+	private static final int LINK_GAP = 6;
 
 	/** Opens the appearance editor in place of the normal panel. */
 	private JButton appearanceButton()
@@ -266,11 +318,12 @@ class BattleMagePanel extends PluginPanel
 	private JButton denounceButton()
 	{
 		JButton clear = new JButton("Denounce Faction");
-		clear.setFont(FontManager.getRunescapeSmallFont());
+		clear.setFont(FontManager.getRunescapeBoldFont());
 		clear.setForeground(DANGER);
 		clear.setFocusPainted(false);
 		clear.setAlignmentX(Component.LEFT_ALIGNMENT);
-		clear.setMaximumSize(new Dimension(Integer.MAX_VALUE, 26));
+		clear.setPreferredSize(new Dimension(0, 36));
+		clear.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
 		// the combat lock: said on hover always, and past it the button greys out (the hover stays)
 		clear.setToolTipText(CombatGate.DENOUNCE_TIP);
 		if (gate.denounceLocked())
@@ -279,60 +332,101 @@ class BattleMagePanel extends PluginPanel
 		}
 		clear.addActionListener(e ->
 		{
-			if (!oath.isSworn() || gate.denounceLocked())
+			if (!oath.isSworn() || !oath.getFaction().isGod() || gate.denounceLocked())
 			{
+				return;
+			}
+			if (gate.inCombat())
+			{
+				JOptionPane.showMessageDialog(BattleMagePanel.this, CombatGate.IN_COMBAT_NOTICE,
+					"Denounce Faction", JOptionPane.WARNING_MESSAGE);
 				return;
 			}
 			final String name = rules.lore(oath.getFaction()).displayName;
 			int first = JOptionPane.showConfirmDialog(BattleMagePanel.this,
-				"Denounce " + name + "? Nothing will be restricted until you choose a faction again,\n"
-				+ "which you do by ringing the Cowbell Amulet in front of the Wise Old Man.",
+				"Denounce " + name + "? You will be Faction-less: you may only wear and wield what all\n"
+				+ "four gods allow. Choose a god again by ringing the Cowbell Amulet in front of the Wise Old Man.",
 				"Denounce Faction", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
-			if (first != JOptionPane.YES_OPTION)
+			if (first != JOptionPane.YES_OPTION || gate.inCombat())
 			{
 				return;
 			}
 
-			oath.clear();
+			oath.denounce();
 		});
 		return clear;
 	}
 
-	/**
-	 * The aura under your character: three stops, None, X-Ray (a ring drawn over everything, so it
-	 * shows through walls) and Soul (the game's own Soul Wars glow in your god's colour). Saved the
-	 * moment the slider settles.
-	 */
-	private JComponent auraSlider()
+	/** The Aura and PKP Style sliders, upright and side by side, each under its centred white title. */
+	private JComponent sliderPair()
 	{
-		JPanel box = new JPanel(new BorderLayout(0, 2));
+		JPanel pair = new JPanel(new java.awt.GridLayout(1, 2, 6, 0));
+		pair.setOpaque(false);
+		pair.setAlignmentX(Component.LEFT_ALIGNMENT);
+		pair.setMaximumSize(new Dimension(Integer.MAX_VALUE, 96));
+		pair.add(auraSlider());
+		pair.add(styleSlider());
+		return pair;
+	}
+
+	/** One upright slider under its title; the first choice at the top. */
+	private static JComponent column(String titleText, JSlider slider)
+	{
+		JPanel box = new JPanel(new BorderLayout(0, 4));
 		box.setOpaque(false);
-		box.setAlignmentX(Component.LEFT_ALIGNMENT);
-		box.setMaximumSize(new Dimension(Integer.MAX_VALUE, 58));
-
-		JLabel title = new JLabel("Aura");
+		JLabel title = new JLabel(titleText, javax.swing.SwingConstants.CENTER);
 		title.setFont(FontManager.getRunescapeSmallFont());
-		title.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+		title.setForeground(Color.WHITE);
 		box.add(title, BorderLayout.NORTH);
+		JPanel holder = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.CENTER, 0, 0));
+		holder.setOpaque(false);
+		holder.add(slider);
+		box.add(holder, BorderLayout.CENTER);
+		return box;
+	}
 
-		final AuraMode[] modes = AuraMode.values();
-		JSlider slider = new JSlider(0, modes.length - 1, look.auraMode().ordinal());
+	/** An upright slider with one named stop per choice, the first at the top. */
+	private static JSlider upright(int count, int value, String[] names)
+	{
+		JSlider slider = new JSlider(JSlider.VERTICAL, 0, count - 1, value);
+		slider.setInverted(true);
 		slider.setOpaque(false);
 		slider.setMajorTickSpacing(1);
 		slider.setSnapToTicks(true);
 		slider.setPaintTicks(true);
 		slider.setPaintLabels(true);
 		slider.setFocusable(false);
+		slider.setPreferredSize(new Dimension(80, 22 * count + 8));
 		Hashtable<Integer, JComponent> labels = new Hashtable<>();
-		for (AuraMode m : modes)
+		for (int i = 0; i < count; i++)
 		{
-			JLabel l = new JLabel(m.label());
+			JLabel l = new JLabel(names[i]);
 			l.setFont(FontManager.getRunescapeSmallFont());
 			l.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
-			labels.put(m.ordinal(), l);
+			labels.put(i, l);
 		}
 		slider.setLabelTable(labels);
-		slider.setToolTipText("None: no aura. X-Ray: a ring that shows through walls. Soul: the Soul Wars glow in your god's colour.");
+		return slider;
+	}
+
+	/** Aura: X-Ray or Soul. */
+	private JComponent auraSlider()
+	{
+		// no "None": hiding your aura is a setting in Customize appearance
+		final AuraMode[] modes = {AuraMode.XRAY, AuraMode.SOUL};
+		final String[] names = new String[modes.length];
+		int current = 0;
+		for (int i = 0; i < modes.length; i++)
+		{
+			names[i] = modes[i].label();
+			if (modes[i] == look.auraMode())
+			{
+				current = i;
+			}
+		}
+		JSlider slider = upright(modes.length, current, names);
+		slider.setToolTipText("X-Ray: a ring that shows through walls and shows your PKP. "
+			+ "Soul: the Soul Wars glow in your god's colour. Hide auras in Customize appearance.");
 		slider.addChangeListener(e ->
 		{
 			if (!slider.getValueIsAdjusting())
@@ -340,8 +434,35 @@ class BattleMagePanel extends PluginPanel
 				look.setAuraMode(modes[slider.getValue()]);
 			}
 		});
-		box.add(slider, BorderLayout.CENTER);
-		return box;
+		return column("Aura Effect", slider);
+	}
+
+	/**
+	 * PKP Style: HUD (the bar, the big state text, the effect badges) or In-game (your character
+	 * glows with your state, the words float off a small orb by the minimap).
+	 * Each style keeps its own appearance settings; switching is saved at once and the panel redrawn,
+	 * since the aura slider belongs to the style too.
+	 */
+	private JComponent styleSlider()
+	{
+		final PkpStyle[] styles = PkpStyle.values();
+		final String[] names = new String[styles.length];
+		for (PkpStyle st : styles)
+		{
+			names[st.ordinal()] = st.label();
+		}
+		JSlider slider = upright(styles.length, look.pkpStyle().ordinal(), names);
+		slider.setToolTipText("HUD: the PKP bar and big state text on screen. In-game: your character glows with "
+			+ "your PKP state and a small PKP orb sits by the minimap. Each keeps its own appearance settings.");
+		slider.addChangeListener(e ->
+		{
+			if (!slider.getValueIsAdjusting() && styles[slider.getValue()] != look.pkpStyle())
+			{
+				look.setPkpStyle(styles[slider.getValue()]);
+				javax.swing.SwingUtilities.invokeLater(this::rebuild);
+			}
+		});
+		return column("PKP Style", slider);
 	}
 
 	/** Opens the bundled rulebook in the player's browser. */

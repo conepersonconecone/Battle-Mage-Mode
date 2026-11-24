@@ -55,7 +55,6 @@ class AppearanceEditor extends JPanel
 	/** The state the text section previews; the three buttons switch it. */
 	private Appearance.Sample stateSample = Appearance.Sample.DEPLETED;
 	private final JToggleButton[] stateButtons = new JToggleButton[3];
-	private final JLabel position = new JLabel();
 
 	/**
 	 * @param onClose  called after Apply or Cancel, to put the normal side panel back
@@ -68,7 +67,9 @@ class AppearanceEditor extends JPanel
 		this.onClose = onClose;
 		this.onReload = onReload;
 		// Opening the editor a second time (after Reset) keeps the draft that is already open.
-		look.begin(() -> javax.swing.SwingUtilities.invokeLater(this::refreshPosition));
+		look.begin(() ->
+		{
+		});
 
 		setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
 		setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -79,11 +80,46 @@ class AppearanceEditor extends JPanel
 		title.setAlignmentX(Component.LEFT_ALIGNMENT);
 		add(title);
 		add(note("Changes show on screen straight away. Nothing is saved until you press Apply."));
+		add(note("Editing the " + look.pkpStyle().label() + " PKP style's settings. Each PKP style keeps its own;"
+			+ " switch styles on the side panel."));
 		add(Box.createVerticalStrut(6));
 		add(buttons());
 
-		// ---------------------------------------------------------------- PKP bar
-		add(section("PKP bar"));
+		// what belongs to the PKP style being edited comes first; what both styles share after it
+		if (look.inGameStyle())
+		{
+			addInGameSections();
+		}
+		else
+		{
+			addHudSections();
+		}
+		add(Box.createVerticalStrut(8));
+		JLabel shared = new JLabel("Shared by both PKP styles");
+		shared.setFont(FontManager.getRunescapeBoldFont());
+		shared.setForeground(Color.WHITE);
+		shared.setAlignmentX(Component.LEFT_ALIGNMENT);
+		add(shared);
+		addSharedSections();
+
+		add(Box.createVerticalStrut(10));
+		add(buttons());
+		JButton defaults = smallButton("Reset all to defaults");
+		defaults.addActionListener(e ->
+		{
+			look.resetDraftToDefaults();
+			onReload.run();
+		});
+		add(Box.createVerticalStrut(6));
+		add(defaults);
+	}
+
+	// ------------------------------------------------------------------ sections
+
+	/** The HUD style's own settings: the PKP bar and the effect badges. */
+	private void addHudSections()
+	{
+		add(section("PKP bar (HUD style)"));
 		Runnable bar = () -> sample(Appearance.Sample.NONE, -1, false, false);
 		add(check("Show PKP bar", "showBar", look.showBar(), bar));
 		add(text("Bar label", "barLabel", look.barLabel(), bar));
@@ -95,59 +131,65 @@ class AppearanceEditor extends JPanel
 		add(check("Pulse", "barPulse", look.barPulse(), bar));
 		add(check("Cost ticks", "showCostTicks", look.showCostTicks(), bar));
 		add(check("Cowbell sparkle", "barExhaust", look.barExhaust(), bar));
-		add(colour("Full colour", "barColorFull", look.barColorFull(), () -> sample(Appearance.Sample.NONE, 1.0, false, false)));
-		add(colour("Low colour", "barColorLow", look.barColorLow(), () -> sample(Appearance.Sample.NONE, 0.12, false, false)));
-		add(colour("Overcharge colour", "overchargeColor", look.overchargeColor(), () -> sample(Appearance.Sample.NONE, 1.0, true, false)));
+		add(note("In a PKP state the bar names it (OVERLOADED, DEPLETED, CRITICAL OVERLOAD)."));
 
-		// ---------------------------------------------------------------- effects
-		add(section("Effect badges"));
+		add(section("Effect badges (HUD style)"));
 		Runnable fx = () -> sample(Appearance.Sample.NONE, -1, false, true);
 		add(check("Show effect timers", "showEffectTimers", look.showEffectTimers(), fx));
 		add(slider("Badge size", "effectIconSize", 20, 96, look.effectIconSize(), v -> v + " px", fx));
 		add(check("Effects on bar border", "effectBorderEnabled", look.effectBorderEnabled(), fx));
+	}
 
-		// ---------------------------------------------------------------- state text
-		add(section("State text"));
+	/** The in-game style's own settings: the orb, your character's glow and words, the particles. */
+	private void addInGameSections()
+	{
+		add(section("PKP orb (in-game style)"));
+		add(check("PKP orb by the minimap", "pkpOrb", look.pkpOrb(), () -> sample(Appearance.Sample.NONE, 0.6, false, false)));
+		add(note("Alt-drag the orb to move it; Shift + right-click it to flip, resize, or change how the PKP numbers scroll. In a PKP state its rim glows in that state's colour."));
+
+		add(section("Your character (in-game style)"));
+		Runnable state = () -> pickState(stateSample);
+		add(check("Glow on your character", "selfGlow", look.selfGlow(), state));
+		add(check("Floating state text", "floatTextEnabled", look.floatTextEnabled(), state));
+		add(slider("Floating text size", "floatTextScalePercent", 50, 300, look.floatTextScalePercent(), v -> v + "%", state));
+		add(slider("Floating text duration", "floatTextSeconds", 1, 6, look.floatTextSeconds(), v -> v + " s", state));
+		add(slider("Floating text rise", "floatTextRise", 0, 200, look.floatTextRise(), v -> v + " px", state));
+
+		add(section("Positive effects (in-game style)"));
+		Runnable fx = () -> sample(Appearance.Sample.NONE, -1, false, true);
+		add(check("Effect particles round your aura", "effectParticles", look.effectParticles(), fx));
+		add(slider("Badge size", "effectIconSize", 20, 96, look.effectIconSize(), v -> v + " px", fx));
+		add(note("Particles need the X-Ray aura; with the Soul aura (or your aura hidden) the effects show as badges instead."));
+	}
+
+	/** Everything both PKP styles use. */
+	private void addSharedSections()
+	{
+		add(section("PKP colours"));
+		add(colour("Full colour", "barColorFull", look.barColorFull(), () -> sample(Appearance.Sample.NONE, 1.0, false, false)));
+		add(colour("Low colour", "barColorLow", look.barColorLow(), () -> sample(Appearance.Sample.NONE, 0.12, false, false)));
+		add(colour("Overcharge colour", "overchargeColor", look.overchargeColor(), () -> sample(Appearance.Sample.NONE, 1.0, true, false)));
+
+		add(section("PKP states"));
+		add(note("Pick a state to preview it."));
 		add(stateButtons());
-		position.setFont(FontManager.getRunescapeSmallFont());
-		position.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
-		position.setAlignmentX(Component.LEFT_ALIGNMENT);
-		refreshPosition();
-		add(position);
-		JButton centre = smallButton("Reset this text's position");
-		centre.addActionListener(e ->
-		{
-			String[] keys = Appearance.positionKeys(stateSample);
-			double[] home = Appearance.defaultPosition(stateSample);
-			look.set(keys[0], home[0]);
-			look.set(keys[1], home[1]);
-			pickState(stateSample);
-		});
-		add(centre);
 		add(Box.createVerticalStrut(4));
 		Runnable dep = () -> pickState(Appearance.Sample.DEPLETED);
 		Runnable over = () -> pickState(Appearance.Sample.OVERLOAD);
 		Runnable crit = () -> pickState(Appearance.Sample.CRITICAL);
-		add(text("Depleted text", "depletedText", look.depletedText(), dep));
-		add(slider("Depleted text size", "depletedTextScalePercent", 50, 500, look.depletedTextScalePercent(), v -> v + "%", dep));
 		add(colour("Depleted colour", "depletedColor", look.depletedColor(), dep));
 		add(check("Grey wash while depleted", "desaturateScreen", look.desaturateScreen(), dep));
 		add(slider("Grey wash strength", "desaturationStrength", 0, 255, look.desaturationStrength(),
 			v -> Math.round(v * 100 / 255.0) + "%", dep));
-		add(text("Overload text", "overloadText", look.overloadText(), over));
-		add(slider("Overload text size", "overloadTextScalePercent", 50, 500, look.overloadTextScalePercent(), v -> v + "%", over));
 		add(colour("Overload colour", "overloadColor", look.overloadColor(), over));
-		add(text("Critical overload text", "criticalText", look.criticalText(), crit));
-		add(slider("Critical overload text size", "criticalTextScalePercent", 50, 500, look.criticalTextScalePercent(), v -> v + "%", crit));
 		add(colour("Critical overload colour", "criticalColor", look.criticalColor(), crit));
-		add(note("Markers on the inventory and worn equipment during critical overload:"));
-		add(stackedColour("Critical Overload: inventory shade", "illegalInventoryShade",
-			look.illegalInventoryShade(), crit));
-		add(stackedColour("Critical Overload: exempt-item outline", "illegalExemptOutline",
-			look.illegalExemptOutline(), crit));
-		add(note("The outline shows on the Cowbell amulet, if you are carrying or wearing it."));
 
-		// ---------------------------------------------------------------- cards
+		add(section("Auras"));
+		add(note("Which aura (X-Ray or Soul) is picked on the side panel."));
+		Runnable aura = () -> sample(Appearance.Sample.NONE, -1, false, false);
+		add(check("Show your aura", "showOwnAura", look.showOwnAura(), aura));
+		add(check("Show party members' auras", "partyAuras", look.partyAuras(), aura));
+
 		add(section("Cast & level-up cards"));
 		Runnable combatCard = () ->
 		{
@@ -166,35 +208,37 @@ class AppearanceEditor extends JPanel
 			sample(Appearance.Sample.NONE, -1, false, false);
 			previews.castCard(PsiAction.CURSE);
 		}));
+		add(sliderPreviewOnRelease("Cast cards across", "castCardsX", 0, 100, look.castCardsX(), v -> v + "%", combatCard));
+		add(sliderPreviewOnRelease("Cast cards down", "castCardsY", 0, 100, look.castCardsY(), v -> v + "%", combatCard));
 		add(note("Cast cards must be on for the colour samples to show."));
-		add(check("Show level-up cards", "levelUpCards", look.levelUpCards(), () ->
+		Runnable levelCard = () ->
 		{
 			sample(Appearance.Sample.NONE, -1, false, false);
 			previews.levelUp();
-		}));
+		};
+		add(check("Show level-up cards", "levelUpCards", look.levelUpCards(), levelCard));
+		add(sliderPreviewOnRelease("Level-up card across", "levelCardX", 0, 100, look.levelCardX(), v -> v + "%", levelCard));
+		add(sliderPreviewOnRelease("Level-up card down", "levelCardY", 0, 100, look.levelCardY(), v -> v + "%", levelCard));
 
-		// ---------------------------------------------------------------- popups & tooltips
 		add(section("Popups & tooltips"));
 		Runnable pop = () ->
 		{
 			sample(Appearance.Sample.NONE, -1, false, false);
 			previews.popups();
 		};
+		Runnable none = () -> sample(Appearance.Sample.NONE, -1, false, false);
 		add(check("PKP change popups", "pkpPopupsEnabled", look.pkpPopupsEnabled(), pop));
-		add(slider("Popup duration", "pkpPopupSeconds", 1, 10, look.pkpPopupSeconds(), v -> v + " s", pop));
-		add(check("Inventory tooltips", "inventoryTooltips", look.inventoryTooltips(), bar));
-		add(check("Spellbook tooltips", "spellTooltips", look.spellTooltips(), bar));
+		add(sliderPreviewOnRelease("Popup duration", "pkpPopupSeconds", 1, 10, look.pkpPopupSeconds(), v -> v + " s", pop));
+		add(check("Inventory tooltips", "inventoryTooltips", look.inventoryTooltips(), none));
+		add(check("Spellbook tooltips", "spellTooltips", look.spellTooltips(), none));
 
-		add(Box.createVerticalStrut(10));
-		add(buttons());
-		JButton defaults = smallButton("Reset all to defaults");
-		defaults.addActionListener(e ->
-		{
-			look.resetDraftToDefaults();
-			onReload.run();
-		});
-		add(Box.createVerticalStrut(6));
-		add(defaults);
+		add(section("Party"));
+		add(check("Party PKP status in game", "partyHeadBars", look.partyHeadBars(), none));
+		add(check("Death signposts for party members", "partyDeathCards", look.partyDeathCards(), none));
+		add(check("Show party members' pictures", "partyPictures", look.partyPictures(), none));
+		add(check("Open members' details by default", "partyExpand", look.partyExpand(), none));
+		add(check("Show members' worlds", "partyWorlds", look.partyWorlds(), none));
+		add(check("Virtual levels (above 99)", "partyVirtualLevels", look.partyVirtualLevels(), none));
 	}
 
 	// ------------------------------------------------------------------ actions
@@ -214,20 +258,6 @@ class AppearanceEditor extends JPanel
 			stateButtons[i].setSelected(i == s.ordinal() - 1);
 		}
 		sample(s, -1, false, false);
-		refreshPosition();
-	}
-
-	private void refreshPosition()
-	{
-		boolean critical = stateSample == Appearance.Sample.CRITICAL;
-		double x = critical ? look.criticalTextXPercent() : look.stateTextXPercent();
-		double y = critical ? look.criticalTextYPercent() : look.stateTextYPercent();
-		String label = critical ? "Critical" : "Depleted / overload";
-		String where = (x < 0 || y < 0)
-			? label + " position: above the PKP bar"
-			: String.format("%s position: %.0f%% across, %.0f%% down", label, x, y);
-		position.setText("<html><body style='width:170px'>" + where
-			+ "<br>Drag the text on screen to move it.</body></html>");
 	}
 
 	private JPanel buttons()
@@ -284,6 +314,21 @@ class AppearanceEditor extends JPanel
 
 	private JPanel slider(String label, String key, int min, int max, int value, Format format, Runnable onTouch)
 	{
+		return slider(label, key, min, max, value, format, onTouch, false);
+	}
+
+	/**
+	 * A slider for a setting whose preview spawns something (a card, a popup): the value still follows
+	 * the drag, but the preview only fires once the mouse is let go, so dragging doesn't spam it.
+	 */
+	private JPanel sliderPreviewOnRelease(String label, String key, int min, int max, int value, Format format, Runnable onTouch)
+	{
+		return slider(label, key, min, max, value, format, onTouch, true);
+	}
+
+	private JPanel slider(String label, String key, int min, int max, int value, Format format, Runnable onTouch,
+		boolean previewOnRelease)
+	{
 		JPanel p = row();
 		JLabel name = label(label);
 		JLabel shown = label(format.of(value));
@@ -300,7 +345,10 @@ class AppearanceEditor extends JPanel
 		{
 			shown.setText(format.of(s.getValue()));
 			look.set(key, s.getValue());
-			onTouch.run();
+			if (!previewOnRelease || !s.getValueIsAdjusting())
+			{
+				onTouch.run();
+			}
 		});
 		p.add(s, BorderLayout.CENTER);
 		p.setMaximumSize(new Dimension(Integer.MAX_VALUE, 46));
@@ -366,18 +414,6 @@ class AppearanceEditor extends JPanel
 		});
 		p.add(f, BorderLayout.CENTER);
 		p.setMaximumSize(new Dimension(Integer.MAX_VALUE, 44));
-		return p;
-	}
-
-	/** A colour whose name is too long for one row: the name on top, the swatch on its own row. */
-	private JPanel stackedColour(String label, String key, Color value, Runnable onTouch)
-	{
-		JPanel p = row();
-		p.add(label(label), BorderLayout.NORTH);
-		JButton swatch = swatch(label, key, value, onTouch);
-		swatch.setPreferredSize(new Dimension(40, 20));
-		p.add(swatch, BorderLayout.CENTER);
-		p.setMaximumSize(new Dimension(Integer.MAX_VALUE, 46));
 		return p;
 	}
 

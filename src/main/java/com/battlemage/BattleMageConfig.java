@@ -24,7 +24,7 @@ public interface BattleMageConfig extends Config
 	 * The only thing the configuration panel shows: a pointer to the side panel, where every setting
 	 * lives. A section with no items still draws its header, which carries the note.
 	 */
-	@ConfigSection(name = "Check the side panel", description = "Every Battle-Mage setting is in the Battle-Mage side panel (the toolbar icon on the right)", position = 0)
+	@ConfigSection(name = "Check the side panel", description = "Every Battle Mage setting is in the Battle Mage side panel (the toolbar icon on the right)", position = 0)
 	String note = "note";
 
 	// ------------------------------------------------------------------ appearance (hidden)
@@ -178,7 +178,7 @@ public interface BattleMageConfig extends Config
 	@ConfigItem(keyName = "desaturationStrength", name = "desaturationStrength", description = "", hidden = true)
 	default int desaturationStrength()
 	{
-		return 77;
+		return 58;
 	}
 
 	@ConfigItem(keyName = "depletedTextScalePercent", name = "depletedTextScalePercent", description = "", hidden = true)
@@ -281,6 +281,61 @@ public interface BattleMageConfig extends Config
 	default boolean spellTooltips()
 	{
 		return true;
+	}
+
+	@ConfigItem(keyName = "partyHeadBars", name = "partyHeadBars", description = "", hidden = true)
+	default boolean partyHeadBars()
+	{
+		return true;
+	}
+
+	@ConfigItem(keyName = "partyAuras", name = "partyAuras", description = "", hidden = true)
+	default boolean partyAuras()
+	{
+		return true;
+	}
+
+	@ConfigItem(keyName = "partyExpand", name = "partyExpand", description = "", hidden = true)
+	default boolean partyExpand()
+	{
+		return false;
+	}
+
+	@ConfigItem(keyName = "partyVirtualLevels", name = "partyVirtualLevels", description = "", hidden = true)
+	default boolean partyVirtualLevels()
+	{
+		return false;
+	}
+
+	@ConfigItem(keyName = "partyWorlds", name = "partyWorlds", description = "", hidden = true)
+	default boolean partyWorlds()
+	{
+		return true;
+	}
+
+	@ConfigItem(keyName = "partyShowPassphrase", name = "partyShowPassphrase", description = "", hidden = true)
+	default boolean partyShowPassphrase()
+	{
+		return true;
+	}
+
+	@ConfigItem(keyName = "partyPictures", name = "partyPictures", description = "", hidden = true)
+	default boolean partyPictures()
+	{
+		return true;
+	}
+
+	@ConfigItem(keyName = "partyDeathCards", name = "partyDeathCards", description = "", hidden = true)
+	default boolean partyDeathCards()
+	{
+		return true;
+	}
+
+	/** The last party joined or created from the side panel, for Rejoin. */
+	@ConfigItem(keyName = "partyLastPassphrase", name = "partyLastPassphrase", description = "", hidden = true)
+	default String partyLastPassphrase()
+	{
+		return "";
 	}
 
 	/** Shields whose block PKP the player has switched off: canonical item ids, comma separated. */

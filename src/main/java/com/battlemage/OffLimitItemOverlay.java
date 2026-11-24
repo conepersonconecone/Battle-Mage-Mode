@@ -331,144 +331,41 @@ class OffLimitItemOverlay extends Overlay
 
 	// ---------------------------------------------------------------- ILLEGAL state
 
-	/** Orange wash over the inventory AND the worn-equipment panel, with the exempt item(s) outlined. */
+	/**
+	 * Critical Overload in the inventory: every item crossed out except the exempt ones (the Cowbell
+	 * amulet), in the spellbook's colour. No wash or outline: the spellbook's glow and these crosses
+	 * say it all.
+	 */
 	private void renderIllegal(Graphics2D g)
 	{
-		final Color s = look.illegalInventoryShade();
-		final double blink = 0.5 + 0.5 * Math.sin(System.currentTimeMillis() / 320.0);
-		final Color wash = new Color(s.getRed(), s.getGreen(), s.getBlue(), (int) Math.round(60 + 40 * blink));
-		final List<Rectangle> exempt = new ArrayList<>();
-
-		// inventory tab: wash it, mark every non-exempt item, and note any exempt item carried
 		Widget inv = client.getWidget(INVENTORY_GROUP, 0);
-		if (inv != null && !inv.isHidden())
-		{
-			fill(g, wash, inv.getBounds());
-
-			// match the spellbook X colour (orange while illegal); fall back to the shade if unavailable
-			Color sym = plugin.spellbookStateColor();
-			if (sym == null)
-			{
-				sym = s;
-			}
-
-			Widget[] items = inv.getDynamicChildren();
-			if (items != null)
-			{
-				for (Widget item : items)
-				{
-					if (item == null || item.isHidden())
-					{
-						continue;
-					}
-					int id = item.getItemId();
-					if (id <= 0)
-					{
-						continue;
-					}
-					if (plugin.isRestrictionExemptItem(id))
-					{
-						exempt.add(item.getBounds());
-					}
-					else
-					{
-						drawNoSymbol(g, item.getBounds(), sym);
-					}
-				}
-			}
-		}
-
-		// worn-equipment tab: wash the whole panel and note the exempt item if it's worn
-		Rectangle[] union = new Rectangle[1];
-		Widget[] roots = client.getWidgetRoots();
-		if (roots != null)
-		{
-			for (Widget root : roots)
-			{
-				scanEquip(root, 0, union, exempt);
-			}
-		}
-		fill(g, wash, union[0]);
-
-		// outlines drawn last, on top of the washes
-		for (Rectangle b : exempt)
-		{
-			drawOutline(g, b, look.illegalExemptOutline());
-		}
-	}
-
-	/** Accumulate the worn-equipment panel bounds (union) and any exempt worn-item slot bounds. */
-	private void scanEquip(Widget w, int depth, Rectangle[] union, List<Rectangle> exempt)
-	{
-		if (w == null || depth > 8 || w.isHidden())
+		if (inv == null || inv.isHidden())
 		{
 			return;
 		}
-		if ((w.getId() >>> 16) == EQUIPMENT_GROUP)
+		// match the spellbook X colour; fall back to the critical colour if unavailable
+		Color sym = plugin.spellbookStateColor();
+		if (sym == null)
 		{
-			Rectangle b = w.getBounds();
-			if (b != null && b.width > 0 && b.height > 0)
+			sym = look.criticalColor();
+		}
+		Widget[] items = inv.getDynamicChildren();
+		if (items == null)
+		{
+			return;
+		}
+		for (Widget item : items)
+		{
+			if (item == null || item.isHidden())
 			{
-				union[0] = union[0] == null ? new Rectangle(b) : union[0].union(b);
-				int id = w.getItemId();
-				if (id > 0 && plugin.isRestrictionExemptItem(id))
-				{
-					exempt.add(b);
-				}
+				continue;
+			}
+			int id = item.getItemId();
+			if (id > 0 && !plugin.isRestrictionExemptItem(id))
+			{
+				drawNoSymbol(g, item.getBounds(), sym);
 			}
 		}
-		scanEquipChildren(w.getStaticChildren(), depth, union, exempt);
-		scanEquipChildren(w.getDynamicChildren(), depth, union, exempt);
-		scanEquipChildren(w.getNestedChildren(), depth, union, exempt);
-	}
-
-	private void scanEquipChildren(Widget[] children, int depth, Rectangle[] union, List<Rectangle> exempt)
-	{
-		if (children == null)
-		{
-			return;
-		}
-		for (Widget c : children)
-		{
-			scanEquip(c, depth + 1, union, exempt);
-		}
-	}
-
-	private static void fill(Graphics2D g, Color c, Rectangle b)
-	{
-		if (b != null && b.width > 0 && b.height > 0)
-		{
-			g.setColor(c);
-			g.fillRect(b.x, b.y, b.width, b.height);
-		}
-	}
-
-	/** Bright outline (glow + solid) around an item's slot. */
-	private void drawOutline(Graphics2D g, Rectangle b, Color base)
-	{
-		if (b == null || b.width <= 0)
-		{
-			return;
-		}
-		double blink = 0.5 + 0.5 * Math.sin(System.currentTimeMillis() / 260.0);
-		int pad = 1;
-		int x = b.x - pad;
-		int y = b.y - pad;
-		int w = b.width + pad * 2;
-		int h = b.height + pad * 2;
-
-		int glowA = (int) Math.round(60 + 110 * blink);
-		g.setColor(new Color(base.getRed(), base.getGreen(), base.getBlue(), glowA));
-		g.setStroke(new BasicStroke(5f));
-		g.drawRoundRect(x - 1, y - 1, w + 2, h + 2, 8, 8);
-
-		g.setColor(new Color(0, 0, 0, 150));
-		g.setStroke(new BasicStroke(3.5f));
-		g.drawRoundRect(x, y, w, h, 6, 6);
-
-		g.setColor(new Color(base.getRed(), base.getGreen(), base.getBlue(), 255));
-		g.setStroke(new BasicStroke(2f));
-		g.drawRoundRect(x, y, w, h, 6, 6);
 	}
 
 	// ---------------------------------------------------------------- normal state

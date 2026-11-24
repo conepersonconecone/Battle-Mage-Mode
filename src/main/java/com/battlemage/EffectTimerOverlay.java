@@ -55,11 +55,19 @@ class EffectTimerOverlay extends Overlay
 	@Override
 	public Dimension render(Graphics2D g)
 	{
-		if (!look.showEffectTimers())
+		// with effect particles on but no X-Ray aura to send them off, the positive effects fall back
+		// to their badges
+		final boolean fallback = !look.showEffectTimers() && look.effectParticles() && look.shownAura() != AuraMode.XRAY;
+		if (!look.showEffectTimers() && !fallback)
 		{
 			return null;
 		}
-		final List<BattleMagePlugin.ActiveEffect> fx = plugin.activeEffects();
+		List<BattleMagePlugin.ActiveEffect> fx = plugin.activeEffects();
+		if (fallback)
+		{
+			fx = new java.util.ArrayList<>(fx);
+			fx.removeIf(e -> e.kind == BattleMagePlugin.EffectKind.DRUNK);
+		}
 		if (fx.isEmpty())
 		{
 			return null;

@@ -35,6 +35,54 @@ class PkpBarOverlay extends Overlay
 		setSnappable(true);
 	}
 
+	/** Whether the bar was drawn last frame: the PKP numbers follow it only while it is. */
+	private volatile boolean shown;
+	/** The numbers' place the right-click menu was last built for: -1 Report button, else a corner. */
+	private int menuFor = -2;
+
+	private static final String TARGET = "PKP bar";
+
+	/** Where the bar is on screen right now, or null while it isn't showing. */
+	java.awt.Rectangle shownBounds()
+	{
+		final java.awt.Rectangle b = getBounds();
+		return shown && b != null && b.width > 0 ? new java.awt.Rectangle(b) : null;
+	}
+
+	/**
+	 * The right-click menu: put the PKP gain/loss numbers at any corner of the bar they aren't at
+	 * already (above or below it, lined up with its left or right end).
+	 */
+	private void syncMenu()
+	{
+		final boolean atBar = look.pkpBarPopupsAtBar();
+		final boolean right = look.pkpBarPopupsRight();
+		final boolean below = look.pkpBarPopupsBelow();
+		final int now = atBar ? (right ? 1 : 0) + (below ? 2 : 0) : -1;
+		if (now == menuFor)
+		{
+			return;
+		}
+		menuFor = now;
+		getMenuEntries().clear();
+		final String[] names = {"above left", "above right", "below left", "below right"};
+		for (int corner = 0; corner < 4; corner++)
+		{
+			if (corner == now)
+			{
+				continue;
+			}
+			final boolean r = (corner & 1) != 0;
+			final boolean b = (corner & 2) != 0;
+			addMenuEntry(net.runelite.api.MenuAction.RUNELITE_OVERLAY, "PKP numbers " + names[corner], TARGET, e ->
+			{
+				look.setNow("pkpBarPopupsRight", r);
+				look.setNow("pkpBarPopupsBelow", b);
+				look.setNow("pkpBarPopupsAtBar", true);
+			});
+		}
+	}
+
 	/** How long the bar glints after the amulet catches a spill (matches the amulet's own glint). */
 	private static final long SPARKLE_MS = 700L;
 
@@ -99,8 +147,11 @@ class PkpBarOverlay extends Overlay
 		// appearance editor is open and the bar is being judged.
 		if (!look.showBar() || (!look.isEditing() && plugin.bankOpen()))
 		{
+			shown = false;
 			return null;
 		}
+		shown = true;
+		syncMenu();
 
 		plugin.noteBarBounds(getBounds());
 		final int w = look.barWidth();
@@ -213,6 +264,7 @@ class PkpBarOverlay extends Overlay
 		g.drawRoundRect(0, 0, w, h, 8, 8);
 
 		drawEffectBorder(g, w, h, thick, pulse);
+		drawMoonBorder(g, w, h, thick);
 
 		double criticalLeft = plugin.criticalOverloadRemaining();
 		if (criticalLeft > 0)
@@ -244,6 +296,25 @@ class PkpBarOverlay extends Overlay
 		}
 		String label = sb.toString();
 		Color labelColor = Color.WHITE;
+		// in a PKP state the bar names it instead, in that state's colour (the HUD style's state text)
+		{
+			final Appearance.Sample s = look.sample();
+			final boolean preview = s != Appearance.Sample.NONE;
+			final boolean critical = preview ? s == Appearance.Sample.CRITICAL : plugin.criticalOverloadActive();
+			final boolean overloaded = preview ? s == Appearance.Sample.OVERLOAD : plugin.isOverloaded();
+			final boolean depleted = preview ? s == Appearance.Sample.DEPLETED : plugin.isDepleted();
+			if (critical || overloaded || depleted)
+			{
+				label = critical ? Appearance.CRITICAL_WORD : overloaded ? Appearance.OVERLOADED_WORD : Appearance.DEPLETED_WORD;
+				if (plugin.isPkpFrozen())
+				{
+					label += "  FROZEN";
+				}
+				final Color c = critical ? look.criticalColor() : overloaded ? look.overloadColor() : look.depletedColor();
+				// lifted towards white so it reads on its own colour of fill
+				labelColor = new Color((c.getRed() + 255 * 2) / 3, (c.getGreen() + 255 * 2) / 3, (c.getBlue() + 255 * 2) / 3);
+			}
+		}
 		if (!label.isEmpty())
 		{
 			FontMetrics fm = g.getFontMetrics();
@@ -317,6 +388,154 @@ class PkpBarOverlay extends Overlay
 				new float[]{seg, seg * (k - 1)}, march + i * seg));
 			g.drawRoundRect(0, 0, w, h, 8, 8);
 		}
+	}
+
+	/**
+	 * The border of a Moon of Peril while you are in its chamber, drawn over everything else on the
+	 * frame so the arena reads at a glance:
+	 * <ul>
+	 * <li>Eclipse Moon: a dark ring with a gold corona, and one bright bead (the "diamond ring" of an
+	 * eclipse) slowly circling it.</li>
+	 * <li>Blood Moon: deep red that beats like a heart (two quick pulses, then a rest), with drops
+	 * falling from the bottom edge as the bar bleeds.</li>
+	 * <li>Blue Moon: still, icy blue edged in white, with frost spikes along the top and bottom that
+	 * glint one after another.</li>
+	 * </ul>
+	 */
+	private void drawMoonBorder(Graphics2D g, int w, int h, float thick)
+	{
+		MoonsOfPeril.Moon moon = plugin.activeMoon();
+		if (moon == null || moon == MoonsOfPeril.Moon.NONE)
+		{
+			return;
+		}
+		long now = System.currentTimeMillis();
+		java.awt.Stroke oldStroke = g.getStroke();
+		Color base = moon.base;
+		Color glow = moon.glow;
+		float ring = thick + 2f;
+		switch (moon)
+		{
+			case ECLIPSE:
+			{
+				// the corona: soft gold haze outside a dark ring
+				for (int i = 4; i >= 1; i--)
+				{
+					g.setColor(alpha(glow, 26 * (5 - i)));
+					g.setStroke(new BasicStroke(ring + i * 2.5f));
+					g.drawRoundRect(0, 0, w, h, 8, 8);
+				}
+				g.setColor(alpha(base, 245));
+				g.setStroke(new BasicStroke(ring));
+				g.drawRoundRect(0, 0, w, h, 8, 8);
+				g.setColor(alpha(glow, 200));
+				g.setStroke(new BasicStroke(1f));
+				g.drawRoundRect(-1, -1, w + 2, h + 2, 9, 9);
+				// the diamond ring: a bright bead orbiting the border every 6 seconds
+				double t = (now % 6000L) / 6000.0;
+				java.awt.geom.Point2D.Double p = perimeterPoint(w, h, t);
+				for (int r = 7; r >= 2; r--)
+				{
+					g.setColor(alpha(glow, 40 + (7 - r) * 30));
+					g.fillOval((int) Math.round(p.x - r), (int) Math.round(p.y - r), r * 2, r * 2);
+				}
+				g.setColor(Color.WHITE);
+				g.fillOval((int) Math.round(p.x - 1.5), (int) Math.round(p.y - 1.5), 3, 3);
+				break;
+			}
+			case BLOOD:
+			{
+				// a heartbeat: two quick beats then a rest, every 1.2 seconds
+				double t = (now % 1200L) / 1200.0;
+				double beat = Math.max(bump(t, 0.08, 0.07), 0.7 * bump(t, 0.28, 0.07));
+				for (int i = 3; i >= 1; i--)
+				{
+					g.setColor(alpha(glow, (int) Math.round((20 + 70 * beat) * (4 - i) / 3.0)));
+					g.setStroke(new BasicStroke(ring + i * 2f + (float) (3 * beat)));
+					g.drawRoundRect(0, 0, w, h, 8, 8);
+				}
+				g.setColor(lerp(base, glow, 0.6 * beat));
+				g.setStroke(new BasicStroke(ring));
+				g.drawRoundRect(0, 0, w, h, 8, 8);
+				// drops sliding off the bottom edge, staggered across the bar
+				int drops = Math.max(3, w / 40);
+				for (int i = 0; i < drops; i++)
+				{
+					double phase = ((now + i * 517L) % 1700L) / 1700.0;
+					int x = (int) Math.round((i + 0.5) * w / drops + 6 * Math.sin(i * 2.3));
+					int y = h + (int) Math.round(phase * 10);
+					int len = 2 + (int) Math.round(3 * (1 - phase));
+					g.setColor(alpha(base, (int) Math.round(230 * (1 - phase))));
+					g.fillOval(x - 2, y - len, 4, len + 3);
+				}
+				break;
+			}
+			case BLUE:
+			default:
+			{
+				g.setColor(alpha(glow, 70));
+				g.setStroke(new BasicStroke(ring + 4f));
+				g.drawRoundRect(0, 0, w, h, 8, 8);
+				g.setColor(alpha(base, 240));
+				g.setStroke(new BasicStroke(ring));
+				g.drawRoundRect(0, 0, w, h, 8, 8);
+				g.setColor(alpha(glow, 230));
+				g.setStroke(new BasicStroke(1f));
+				g.drawRoundRect(1, 1, w - 2, h - 2, 7, 7);
+				// frost spikes along the top and bottom, glinting one after another
+				int spikes = Math.max(4, w / 18);
+				double sweep = (now % 2600L) / 2600.0;
+				for (int i = 0; i < spikes; i++)
+				{
+					int x = (int) Math.round((i + 0.5) * w / spikes);
+					double d = Math.abs((i + 0.5) / spikes - sweep);
+					double glint = Math.max(0, 1 - d * 8);
+					int len = 3 + (i % 3 == 0 ? 3 : i % 2 == 0 ? 1 : 2);
+					g.setColor(lerp(alpha(glow, 200), Color.WHITE, glint));
+					g.setStroke(new BasicStroke(1.3f));
+					g.drawLine(x, 0, x - 2, -len);
+					g.drawLine(x, 0, x + 2, -len);
+					g.drawLine(x, h, x - 2, h + len);
+					g.drawLine(x, h, x + 2, h + len);
+				}
+				break;
+			}
+		}
+		g.setStroke(oldStroke);
+	}
+
+	/** A smooth pulse peaking at {@code at}, {@code width} wide (both as fractions of the cycle). */
+	private static double bump(double t, double at, double width)
+	{
+		double d = (t - at) / width;
+		return Math.exp(-d * d * 2);
+	}
+
+	/** The point a fraction {@code t} of the way round the bar's border, clockwise from top left. */
+	private static java.awt.geom.Point2D.Double perimeterPoint(int w, int h, double t)
+	{
+		double d = t * 2 * (w + h);
+		if (d < w)
+		{
+			return new java.awt.geom.Point2D.Double(d, 0);
+		}
+		d -= w;
+		if (d < h)
+		{
+			return new java.awt.geom.Point2D.Double(w, d);
+		}
+		d -= h;
+		if (d < w)
+		{
+			return new java.awt.geom.Point2D.Double(w - d, h);
+		}
+		d -= w;
+		return new java.awt.geom.Point2D.Double(0, h - d);
+	}
+
+	private static Color alpha(Color c, int a)
+	{
+		return new Color(c.getRed(), c.getGreen(), c.getBlue(), Math.max(0, Math.min(255, a)));
 	}
 
 	/**

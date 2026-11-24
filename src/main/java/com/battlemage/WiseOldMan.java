@@ -187,7 +187,8 @@ public class WiseOldMan
 		}
 	}
 
-	private boolean isRingingCowbell(MenuEntry entry)
+	/** True for a click on the Cowbell amulet's Ring option, carried or worn. */
+	static boolean isRingingCowbell(MenuEntry entry)
 	{
 		String option = entry.getOption();
 		if (option == null || !RING.equalsIgnoreCase(Text.removeTags(option).trim()))
@@ -264,6 +265,27 @@ public class WiseOldMan
 		), null);
 	}
 
+	/** Faction-less and ringing in front of him: he offers a god again (until the combat lock). */
+	private void factionlessReturn(NPC man)
+	{
+		final int npcId = man.getId();
+		dialogue.play(npcId, NAME, Line.npc(Mood.QUESTION, "Still wandering without a god? Ready to choose one?"),
+			() -> dialogue.menu("Select an Option", Arrays.asList(
+				new Option("Choose a god", () ->
+				{
+					if (gate.denounceLocked())
+					{
+						tooLateToLeave(npcId);
+						return;
+					}
+					dialogue.close();
+					onBegin.run();
+				}),
+				new Option("Nevermind", () -> dialogue.play(npcId, NAME,
+					Line.npc(Mood.HAPPY, "Spend some time reading from my shelves!"), null))
+			)));
+	}
+
 	/** Past the denounce lock: there is no leaving your faction now. */
 	private void tooLateToLeave(int npcId)
 	{
@@ -278,6 +300,11 @@ public class WiseOldMan
 	private void changeOfHeart(NPC man)
 	{
 		final int npcId = man.getId();
+		if (oath.getFaction() == Faction.FACTIONLESS)
+		{
+			factionlessReturn(man);
+			return;
+		}
 		dialogue.play(npcId, NAME, Line.npc(Mood.CONFUSED, "Eh...? What's that? Change of Heart???"),
 			() -> dialogue.menu("Select an Option", Arrays.asList(
 				new Option("Denounce faction", () ->
@@ -286,6 +313,13 @@ public class WiseOldMan
 					if (gate.denounceLocked())
 					{
 						tooLateToLeave(npcId);
+						return;
+					}
+					if (gate.inCombat())
+					{
+						dialogue.play(npcId, NAME, Arrays.asList(
+							Line.npc(Mood.ANGRY, "In the middle of a fight?! Finish it first, then we'll talk."),
+							Line.message(CombatGate.IN_COMBAT_NOTICE)), null);
 						return;
 					}
 					dialogue.close();
@@ -408,7 +442,7 @@ public class WiseOldMan
 		{
 			return Arrays.asList(
 				Line.player(Mood.QUESTION, "What can I wear and wield?"),
-				Line.npc(Mood.HAPPY, "Without a god, nothing is off limits. Wear and wield whatever you like!"),
+				Line.npc(Mood.NEUTRAL, "Without a god, you answer to all four of them. You may wear and wield only what every one of them allows."),
 				Line.npc(Mood.NEUTRAL, "Your PKP still rises and falls with every swing, shot and spell, all the same."));
 		}
 		return Arrays.asList(

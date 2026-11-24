@@ -81,22 +81,27 @@ class LevelUpCardOverlay extends Overlay
 		int vx = client.getViewportXOffset();
 		int vy = client.getViewportYOffset();
 		int vw = client.getViewportWidth();
-		if (vw <= 0)
+		int vh = client.getViewportHeight();
+		if (vw <= 0 || vh <= 0)
 		{
 			vx = 0;
 			vy = 0;
 			vw = client.getCanvasWidth() > 0 ? client.getCanvasWidth() : 520;
+			vh = client.getCanvasHeight() > 0 ? client.getCanvasHeight() : 340;
 		}
-		final int rightEdge = vx + vw - MARGIN;
 
 		double in = Math.min(1.0, age / 0.12);            // quick slide-in
 		float alpha = (float) Math.max(0f, Math.min(1f, in * (1.0 - age) * 1.25));
-		int slideY = (int) Math.round((1.0 - in) * -24);  // enters from above its landing spot
+		// slides in from above in the upper half of the screen, from below in the lower half
+		final double py = clampPct(look.levelCardY());
+		final boolean upwards = py >= 0.5;
+		int slideY = (int) Math.round((1.0 - in) * (upwards ? 24 : -24));
 
 		String label = "\u25B2 " + c.skill + "  Lv " + c.level;
 		int cardW = Math.max(150, fm.stringWidth(label) + 44);
-		int x = rightEdge - cardW;                         // fixed landing x at the viewport's top-right
-		int y = vy + MARGIN + slideY;
+		// where it lands, set in Customize appearance: percent across and down the game view, kept on it
+		int x = vx + MARGIN + (int) Math.round((vw - 2 * MARGIN - cardW) * clampPct(look.levelCardX()));
+		int y = vy + MARGIN + (int) Math.round((vh - 2 * MARGIN - CARD_H) * py) + slideY;
 
 		Color col = c.color != null ? c.color : Color.WHITE;
 		final Composite baseComposite = g.getComposite();
@@ -134,5 +139,10 @@ class LevelUpCardOverlay extends Overlay
 
 		g.setComposite(baseComposite);
 		return null;
+	}
+
+	private static double clampPct(int pct)
+	{
+		return Math.max(0, Math.min(100, pct)) / 100.0;
 	}
 }

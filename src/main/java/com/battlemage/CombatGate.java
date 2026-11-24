@@ -19,6 +19,8 @@ class CombatGate
 {
 	static final int START_MAX_COMBAT = 33;
 	static final int LOCK_COMBAT = 88;
+	/** From this combat level a sworn player can renew their oath from the side panel. */
+	static final int RENEW_COMBAT = 99;
 	/** From this level up to the lock, each level-up warns that the lock is coming. */
 	static final int WARN_FROM = 85;
 
@@ -30,6 +32,20 @@ class CombatGate
 
 	private final Oath oath;
 	private volatile int combat;
+	/** Kept up to date by the plugin each game tick: no denouncing mid-fight. */
+	private volatile boolean fighting;
+
+	static final String IN_COMBAT_NOTICE = "You can't denounce your faction while in combat.";
+
+	void setInCombat(boolean on)
+	{
+		fighting = on;
+	}
+
+	boolean inCombat()
+	{
+		return fighting;
+	}
 
 	@Inject
 	CombatGate(Oath oath)
@@ -49,6 +65,12 @@ class CombatGate
 	}
 
 	/** Too high to begin the mode for the first time. */
+	/** Sworn to a god at {@link #RENEW_COMBAT} or above: the side panel's Select faction renews the oath. */
+	boolean canRenewFromPanel()
+	{
+		return oath.isSworn() && oath.getFaction() != null && oath.getFaction().isGod() && combat >= RENEW_COMBAT;
+	}
+
 	boolean tooHighToStart()
 	{
 		return !oath.hasEverSworn() && combat > START_MAX_COMBAT;
@@ -66,6 +88,11 @@ class CombatGate
 	 */
 	Faction lockedTo()
 	{
+		if (oath.getFaction() == Faction.FACTIONLESS && denounceLocked())
+		{
+			// past the lock, the Faction-less stay Faction-less
+			return Faction.FACTIONLESS;
+		}
 		return !oath.isSworn() && denounceLocked() ? oath.getPrevious() : null;
 	}
 

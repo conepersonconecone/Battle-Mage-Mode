@@ -313,7 +313,7 @@ public class Rules
 	 */
 	public boolean enforceCannonLevel()
 	{
-		return isActive() && oath.getFaction() != Faction.FACTIONLESS && cannon().enforceCannonLevel;
+		return isActive() && cannon().enforceCannonLevel;
 	}
 
 	/** The first Ranged level at which a cannon may no longer be placed. */
