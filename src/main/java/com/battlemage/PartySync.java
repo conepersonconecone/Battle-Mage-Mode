@@ -366,13 +366,6 @@ class PartySync
 			packed[0], packed[1]);
 		// your own panel shows your extras straight away
 		applyExtras(party.getLocalMember().getMemberId(), now);
-		avatar.setShowTheirs(look.partyPictures());
-		if (avatarDirty)
-		{
-			avatarDirty = false;
-			avatar.send();
-			avatar.tidy();
-		}
 		if (now.sameAs(lastExtras) && !resendExtras)
 		{
 			return;
@@ -1180,7 +1173,26 @@ class PartySync
 		});
 	}
 
-	/** Your picture changed (chosen or removed): send it on the next tick. */
+	/**
+	 * Once a second, logged in or not: sends your party picture when it changed or someone joined, so
+	 * it shows whenever you're in the party, even from the login screen.
+	 */
+	void tickAvatar()
+	{
+		if (!party.isInParty() || party.getLocalMember() == null)
+		{
+			return;
+		}
+		avatar.setShowTheirs(look.partyPictures());
+		if (avatarDirty)
+		{
+			avatarDirty = false;
+			avatar.send();
+			avatar.tidy();
+		}
+	}
+
+	/** Your picture changed (chosen or removed): send it within a second. */
 	void avatarChanged()
 	{
 		avatarDirty = true;

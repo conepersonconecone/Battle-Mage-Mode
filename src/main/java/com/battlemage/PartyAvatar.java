@@ -6,8 +6,6 @@ import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -27,17 +25,18 @@ import javax.imageio.stream.ImageOutputStream;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.client.RuneLite;
+import net.runelite.client.config.ConfigManager;
 import net.runelite.client.party.PartyService;
 
 /**
- * Your party picture: an image you choose from your computer, shown in your square in every
- * teammate's Party section (and in RuneLite's own party views, which read the same picture).
+ * Your party picture: an image you copy and paste in (no files are read or written), shown in your
+ * square in every teammate's Party section (and in RuneLite's own party views, which read the same
+ * picture).
  *
  * <p>The image is cropped to a square from its middle and shrunk to at most {@link #MAX_SIZE}
- * pixels a side, then kept in {@code .runelite/battle-mage-mode/party-picture.png}, so it survives
- * restarts without going into your synced RuneLite settings. It is sent to the party as a JPEG in
- * Base64 pieces of {@link #CHUNK} characters; teammates put the pieces back together.
+ * pixels a side for this session. What's kept for next time is the small copy the party sees
+ * ({@link #SEND_SIZE} pixels, a JPEG of a few KB), in your RuneLite settings. It is sent to the
+ * party as a JPEG in Base64 pieces of {@link #CHUNK} characters; teammates put the pieces back together.
  *
  * <p>A teammate's picture beats a Discord profile picture for the same person: if RuneLite's Discord
  * plugin sets one, theirs is put back.
@@ -46,7 +45,7 @@ import net.runelite.client.party.PartyService;
 @Singleton
 class PartyAvatar
 {
-	/** Largest side kept on your computer, in pixels. */
+	/** Largest side kept while RuneLite is open, in pixels. */
 	static final int MAX_SIZE = 512;
 	/**
 	 * Largest side sent to the party. The square it fills is about 32 pixels, so 128 is still four
@@ -60,20 +59,20 @@ class PartyAvatar
 	 * 15 KB at most, so this only ever stops pictures from a tampered client.
 	 */
 	private static final int MAX_CHUNKS = 4;
-	/** Largest file accepted from your computer. */
-	private static final long MAX_FILE_BYTES = 15L * 1024 * 1024;
-	/** Largest picture accepted from your computer, in pixels (about 8000 x 5000), checked before it is opened. */
-	private static final long MAX_FILE_PIXELS = 40_000_000L;
+	/** Largest picture accepted from the clipboard, in pixels (about 8000 x 5000). */
+	private static final long MAX_PASTE_PIXELS = 40_000_000L;
 	/** A teammate's picture is taken at most this often (a tampered client can't make you decode a stream). */
 	private static final long RECEIVE_GAP_MS = 20_000L;
 	/** Your picture is sent again (for people joining) at most this often; your own changes go at once. */
 	private static final long RESEND_GAP_MS = 60_000L;
 	private static final float JPEG_QUALITY = 0.88f;
 
-	private static final File DIR = new File(RuneLite.RUNELITE_DIR, "battle-mage-mode");
-	private static final File FILE = new File(DIR, "party-picture.png");
+	/** Where the picture is kept between sessions: RuneLite's settings, Base64 JPEG. */
+	private static final String CONFIG_GROUP = "battlemage";
+	private static final String CONFIG_KEY = "partyPicture";
 
 	private final PartyService party;
+	private final ConfigManager configManager;
 
 	/** Your picture, or null. */
 	private volatile BufferedImage mine;
@@ -110,9 +109,10 @@ class PartyAvatar
 	}
 
 	@Inject
-	PartyAvatar(PartyService party)
+	PartyAvatar(PartyService party, ConfigManager configManager)
 	{
 		this.party = party;
+		this.configManager = configManager;
 	}
 
 	/** Loads your saved picture (plugin start). */
@@ -120,9 +120,11 @@ class PartyAvatar
 	{
 		try
 		{
-			if (FILE.isFile())
+			final String saved = configManager.getConfiguration(CONFIG_GROUP, CONFIG_KEY);
+			if (saved != null && !saved.isEmpty() && saved.length() <= MAX_CHUNKS * CHUNK)
 			{
-				setMine(readSafely(new FileInputStream(FILE), (long) MAX_SIZE * MAX_SIZE, MAX_SIZE, null));
+				setMine(readSafely(new ByteArrayInputStream(Base64.getDecoder().decode(saved)),
+					(long) MAX_SIZE * MAX_SIZE, MAX_SIZE, null));
 			}
 		}
 		catch (IOException | RuntimeException e)
@@ -137,41 +139,43 @@ class PartyAvatar
 	}
 
 	/**
-	 * Uses this image file as your picture: cropped square, shrunk to {@link #MAX_SIZE}, saved.
-	 * Throws with a readable message when the file isn't an image.
+	 * Uses this pasted image as your picture: cropped square, shrunk to {@link #MAX_SIZE}, and the
+	 * party's small copy kept in your settings. Throws with a readable message when it can't be used.
 	 */
-	void choose(File file) throws IOException
+	void choose(java.awt.Image pasted) throws IOException
 	{
-		if (file == null || !file.isFile())
+		if (pasted == null)
 		{
-			throw new IOException("That isn't a file.");
+			throw new IOException("There's no picture to paste.");
 		}
-		if (file.length() > MAX_FILE_BYTES)
+		// make sure the whole picture has arrived (clipboard images can still be loading)
+		final java.awt.Image img = new javax.swing.ImageIcon(pasted).getImage();
+		final int w = img.getWidth(null);
+		final int h = img.getHeight(null);
+		if (w <= 0 || h <= 0)
 		{
-			throw new IOException("That picture is too big (the limit is 15 MB).");
+			throw new IOException("That isn't a picture RuneLite can read.");
 		}
-		// size checked from the header before anything is decoded; an animated GIF gives its first frame
-		final BufferedImage raw = readSafely(new FileInputStream(file), MAX_FILE_PIXELS, Integer.MAX_VALUE, null);
-		if (raw == null)
+		if ((long) w * h > MAX_PASTE_PIXELS)
 		{
-			throw new IOException("That file isn't a picture RuneLite can read, or it is too large (try PNG or JPG).");
+			throw new IOException("That picture is too big. Try a smaller one.");
 		}
-		final BufferedImage square = squareAndShrink(raw);
-		if (!DIR.isDirectory() && !DIR.mkdirs())
+		final BufferedImage raw = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
+		final Graphics2D g = raw.createGraphics();
+		g.drawImage(img, 0, 0, null);
+		g.dispose();
+		setMine(squareAndShrink(raw));
+		if (pieces.isEmpty())
 		{
-			throw new IOException("Couldn't create " + DIR);
+			throw new IOException("Couldn't use that picture. Try another.");
 		}
-		ImageIO.write(square, "png", FILE);
-		setMine(square);
+		configManager.setConfiguration(CONFIG_GROUP, CONFIG_KEY, String.join("", pieces));
 	}
 
 	/** Removes your picture. */
 	void remove()
 	{
-		if (FILE.isFile() && !FILE.delete())
-		{
-			log.debug("Couldn't delete {}", FILE);
-		}
+		configManager.unsetConfiguration(CONFIG_GROUP, CONFIG_KEY);
 		setMine(null);
 	}
 

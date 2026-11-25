@@ -5679,6 +5679,13 @@ public class BattleMagePlugin extends Plugin
 
 	// ============================================================ party
 
+	/** Your party picture goes out even when you're not logged in (game ticks only run in game). */
+	@net.runelite.client.task.Schedule(period = 1, unit = java.time.temporal.ChronoUnit.SECONDS, asynchronous = true)
+	public void partyPictureTick()
+	{
+		partySync.tickAvatar();
+	}
+
 	/** Once a game tick: tells the RuneLite party where your PKP stands (when sharing is on). */
 	private void shareWithParty()
 	{

@@ -288,12 +288,13 @@ class PartyBox extends JPanel
 		});
 	}
 
-	/** Clicking your own picture square: choose a picture, or remove the one you have. */
+	/** Clicking your own picture square: paste a picture, or remove the one you have. */
 	private void pictureMenu(java.awt.event.MouseEvent e)
 	{
 		final javax.swing.JPopupMenu menu = new javax.swing.JPopupMenu();
-		final javax.swing.JMenuItem choose = new javax.swing.JMenuItem("Choose party picture...");
-		choose.addActionListener(a -> choosePicture());
+		final javax.swing.JMenuItem choose = new javax.swing.JMenuItem("Paste party picture");
+		choose.setToolTipText("Right-click a picture anywhere, choose Copy image, then use this");
+		choose.addActionListener(a -> pastePicture());
 		menu.add(choose);
 		if (avatar.mine() != null)
 		{
@@ -308,21 +309,27 @@ class PartyBox extends JPanel
 		menu.show(e.getComponent(), e.getX(), e.getY());
 	}
 
-	private void choosePicture()
+	/** Your party picture from the clipboard: an image copied anywhere (no files are opened). */
+	private void pastePicture()
 	{
-		final javax.swing.JFileChooser chooser = new javax.swing.JFileChooser();
-		chooser.setDialogTitle("Choose your party picture");
-		chooser.setAcceptAllFileFilterUsed(false);
-		chooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter(
-			"Pictures (PNG, JPG, GIF, BMP)", "png", "jpg", "jpeg", "gif", "bmp"));
-		if (chooser.showOpenDialog(this) != javax.swing.JFileChooser.APPROVE_OPTION)
-		{
-			return;
-		}
 		try
 		{
-			avatar.choose(chooser.getSelectedFile());
+			final java.awt.datatransfer.Clipboard clip = java.awt.Toolkit.getDefaultToolkit().getSystemClipboard();
+			if (!clip.isDataFlavorAvailable(java.awt.datatransfer.DataFlavor.imageFlavor))
+			{
+				JOptionPane.showMessageDialog(this,
+					"Copy a picture first: right-click an image (in your browser, Discord and so on),\n"
+						+ "choose Copy image, then use Paste party picture again.",
+					"Party picture", JOptionPane.INFORMATION_MESSAGE);
+				return;
+			}
+			avatar.choose((java.awt.Image) clip.getData(java.awt.datatransfer.DataFlavor.imageFlavor));
 			party.avatarChanged();
+		}
+		catch (java.awt.datatransfer.UnsupportedFlavorException | IllegalStateException | ClassCastException ex)
+		{
+			JOptionPane.showMessageDialog(this, "Couldn't read the copied picture. Try copying it again.",
+				"Party picture", JOptionPane.ERROR_MESSAGE);
 		}
 		catch (java.io.IOException ex)
 		{
