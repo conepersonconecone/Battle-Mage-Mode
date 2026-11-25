@@ -21,7 +21,7 @@ Create or join a RuneLite party from the Battle-Mage side panel. Teammates also 
 
 ## Privacy
 
-Outside a party, the plugin makes no network requests and stores no account details. In a party, it shares your god, PKP status, aura and (if you set one) party picture with your teammates through RuneLite's own party service. It saves only your chosen god and your appearance settings, in RuneLite's normal plugin configuration. It does not send any game input. It only reads client state, removes menu options that break the rules, and draws overlays.
+Outside a party, the plugin makes no network requests and stores no account details. In a party, it shares your god, PKP status, aura and (if you set one) party picture with your teammates through RuneLite's own party service. It saves only your chosen god, your appearance settings and party image, in RuneLite's normal plugin configuration. It does not send any game input. It only reads client state, removes menu options that break the rules, and draws overlays.
 
 ## Rules data
 
